@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(ql-governor-persona)",
+      "Skill(ql-governor-persona:*)",
+      "Skill(ql-judge-persona)",
+      "Skill(ql-judge-persona:*)",
+      "Skill(ql-specialist-persona)",
+      "Skill(ql-specialist-persona:*)",
+      "Bash(find:*)"
+    ]
+  }
+}

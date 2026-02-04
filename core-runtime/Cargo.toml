@@ -1,0 +1,42 @@
+[package]
+name = "core-runtime"
+version = "0.1.0"
+edition = "2021"
+description = "Hearthlink CORE Runtime - sandboxed offline inference engine"
+license = "MIT"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["rt-multi-thread", "sync", "time", "macros"] }
+
+# Serialization for IPC
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Cross-platform IPC
+interprocess = { version = "2.0", features = ["tokio"] }
+
+# Model inference (using candle for pure Rust)
+candle-core = "0.4"
+candle-nn = "0.4"
+candle-transformers = "0.4"
+
+# Error handling
+thiserror = "1.0"
+
+# Cryptographic hashing for session tokens
+sha2 = "0.10"
+hex = "0.4"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+
+# FORBIDDEN DEPENDENCIES - DO NOT ADD:
+# reqwest - network access
+# hyper - HTTP server
+# tungstenite/tokio-tungstenite - WebSocket
+# walkdir/glob - filesystem traversal

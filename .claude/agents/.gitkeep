@@ -1,0 +1,3 @@
+# General agent definitions
+# This folder holds agent configurations separate from QoreLogic persona definitions
+# QoreLogic personas are in commands/agents/
