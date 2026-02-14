@@ -1,0 +1,446 @@
+# Plan: Observability Stack
+
+## Open Questions
+
+1. **Log rotation**: Should the runtime manage log rotation, or delegate to external tools (logrotate)?
+
+2. **Metrics exposure**: Since CORE is offline (no network), should metrics be exposed via IPC or written to a file for external scraping?
+
+3. **Trace sampling**: For high-throughput inference, should we sample traces or record all?
+
+---
+
+## Target Capabilities
+
+| Capability | Purpose |
+|------------|---------|
+| Structured Logging | JSON logs with request correlation |
+| Distributed Tracing | Spans across async operations |
+| Metrics | Counters, gauges, histograms |
+| Error Classification | Automatic severity from error types |
+
+---
+
+## Phase 1: Tracing Foundation
+
+### Affected Files
+
+- `Cargo.toml` - Add tracing dependencies
+- `src/telemetry/mod.rs` - NEW: Telemetry module root
+- `src/telemetry/logging.rs` - NEW: Logging subscriber setup
+- `src/telemetry/spans.rs` - NEW: Span macros and utilities
+- `src/lib.rs` - Export telemetry module
+- `src/main.rs` - Initialize subscriber on startup
+- `tests/telemetry_test.rs` - NEW: Telemetry tests
+
+### Changes
+
+#### 1.1 Add Dependencies
+
+```toml
+# Cargo.toml
+[dependencies]
+# Structured logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+```
+
+#### 1.2 Implement Telemetry Module
+
+```rust
+// src/telemetry/mod.rs
+
+mod logging;
+mod spans;
+
+pub use logging::{init_logging, LogConfig, LogFormat};
+pub use spans::{RequestSpan, SpanExt};
+```
+
+```rust
+// src/telemetry/logging.rs
+
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use std::path::Path;
+
+/// Log output format.
+#[derive(Debug, Clone, Copy, Default)]
+pub enum LogFormat {
+    #[default]
+    Json,
+    Pretty,
+}
+
+/// Logging configuration.
+#[derive(Debug, Clone)]
+pub struct LogConfig {
+    pub format: LogFormat,
+    pub level: String,
+    pub output_path: Option<std::path::PathBuf>,
+}
+
+impl Default for LogConfig {
+    fn default() -> Self {
+        Self {
+            format: LogFormat::Json,
+            level: "info".to_string(),
+            output_path: None,
+        }
+    }
+}
+
+/// Initialize the tracing subscriber.
+pub fn init_logging(config: &LogConfig) -> Result<(), LogError> {
+    let filter = EnvFilter::try_new(&config.level)
+        .map_err(|e| LogError::InvalidFilter(e.to_string()))?;
+
+    match config.format {
+        LogFormat::Json => init_json_subscriber(filter, &config.output_path),
+        LogFormat::Pretty => init_pretty_subscriber(filter),
+    }
+}
+
+fn init_json_subscriber(filter: EnvFilter, path: &Option<std::path::PathBuf>) -> Result<(), LogError> {
+    let subscriber = tracing_subscriber::registry().with(filter);
+
+    if let Some(path) = path {
+        let file = std::fs::File::create(path)
+            .map_err(|e| LogError::FileOpen(e.to_string()))?;
+        subscriber.with(fmt::layer().json().with_writer(file)).init();
+    } else {
+        subscriber.with(fmt::layer().json()).init();
+    }
+
+    Ok(())
+}
+
+fn init_pretty_subscriber(filter: EnvFilter) -> Result<(), LogError> {
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt::layer().pretty())
+        .init();
+    Ok(())
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum LogError {
+    #[error("Invalid filter: {0}")]
+    InvalidFilter(String),
+    #[error("Failed to open log file: {0}")]
+    FileOpen(String),
+}
+```
+
+```rust
+// src/telemetry/spans.rs
+
+use tracing::{info_span, Span};
+
+/// Extension trait for adding context to spans.
+pub trait SpanExt {
+    fn record_result<T, E>(&self, result: &Result<T, E>)
+    where
+        E: std::fmt::Display;
+}
+
+impl SpanExt for Span {
+    fn record_result<T, E>(&self, result: &Result<T, E>)
+    where
+        E: std::fmt::Display,
+    {
+        match result {
+            Ok(_) => self.record("status", "ok"),
+            Err(e) => {
+                self.record("status", "error");
+                self.record("error.message", e.to_string().as_str());
+            }
+        }
+    }
+}
+
+/// Create a request span with standard fields.
+pub struct RequestSpan;
+
+impl RequestSpan {
+    pub fn new(request_id: &str, model_id: &str) -> Span {
+        info_span!(
+            "inference_request",
+            request_id = %request_id,
+            model_id = %model_id,
+            status = tracing::field::Empty,
+            error.message = tracing::field::Empty,
+            latency_ms = tracing::field::Empty,
+            tokens_generated = tracing::field::Empty,
+        )
+    }
+}
+```
+
+### Unit Tests
+
+- `tests/telemetry_test.rs`
+  - `logging_json_format` - JSON output has required fields
+  - `span_records_result_ok` - Success case recorded
+  - `span_records_result_error` - Error message captured
+  - `request_span_fields` - All standard fields present
+  - `env_filter_parsing` - Log levels parsed correctly
+
+---
+
+## Phase 2: Metrics Collection
+
+### Affected Files
+
+- `Cargo.toml` - Add metrics dependency
+- `src/telemetry/metrics.rs` - NEW: Metrics definitions
+- `src/telemetry/mod.rs` - Export metrics
+- `tests/metrics_test.rs` - NEW: Metrics tests
+
+### Changes
+
+#### 2.1 Add Metrics Dependency
+
+```toml
+# Cargo.toml
+[dependencies]
+# Metrics facade
+metrics = "0.22"
+```
+
+#### 2.2 Implement Metrics Module
+
+```rust
+// src/telemetry/metrics.rs
+
+use metrics::{counter, gauge, histogram, describe_counter, describe_gauge, describe_histogram};
+
+/// Initialize metric descriptions.
+pub fn init_metrics() {
+    // Request counters
+    describe_counter!("core_requests_total", "Total inference requests");
+    describe_counter!("core_requests_success", "Successful inference requests");
+    describe_counter!("core_requests_failed", "Failed inference requests");
+
+    // Latency histograms
+    describe_histogram!("core_inference_latency_ms", "Inference latency in milliseconds");
+    describe_histogram!("core_tokenization_latency_ms", "Tokenization latency in milliseconds");
+
+    // Token counters
+    describe_counter!("core_tokens_input_total", "Total input tokens processed");
+    describe_counter!("core_tokens_output_total", "Total output tokens generated");
+
+    // Resource gauges
+    describe_gauge!("core_memory_pool_used_bytes", "Memory pool bytes in use");
+    describe_gauge!("core_queue_depth", "Number of pending requests");
+    describe_gauge!("core_active_sessions", "Number of active sessions");
+
+    // Arena metrics (Tier 3)
+    describe_gauge!("core_arena_used_bytes", "Arena allocator bytes in use");
+    describe_counter!("core_arena_resets_total", "Arena reset count");
+
+    // Speculative decoding (Tier 3)
+    describe_counter!("core_speculative_drafts_total", "Total draft generation cycles");
+    describe_counter!("core_speculative_accepted_tokens", "Draft tokens accepted");
+    describe_counter!("core_speculative_rejected_tokens", "Draft tokens rejected");
+}
+
+/// Record a successful request.
+pub fn record_request_success(model: &str, latency_ms: u64, tokens_out: u64) {
+    counter!("core_requests_total", "model" => model.to_string()).increment(1);
+    counter!("core_requests_success", "model" => model.to_string()).increment(1);
+    counter!("core_tokens_output_total", "model" => model.to_string()).increment(tokens_out);
+    histogram!("core_inference_latency_ms", "model" => model.to_string()).record(latency_ms as f64);
+}
+
+/// Record a failed request.
+pub fn record_request_failure(model: &str, error_type: &str) {
+    counter!("core_requests_total", "model" => model.to_string()).increment(1);
+    counter!("core_requests_failed",
+        "model" => model.to_string(),
+        "error" => error_type.to_string()
+    ).increment(1);
+}
+
+/// Record memory pool usage.
+pub fn record_memory_pool(used_bytes: usize) {
+    gauge!("core_memory_pool_used_bytes").set(used_bytes as f64);
+}
+
+/// Record queue depth.
+pub fn record_queue_depth(depth: usize) {
+    gauge!("core_queue_depth").set(depth as f64);
+}
+
+/// Record speculative decoding stats.
+pub fn record_speculative_cycle(accepted: usize, rejected: usize) {
+    counter!("core_speculative_drafts_total").increment(1);
+    counter!("core_speculative_accepted_tokens").increment(accepted as u64);
+    counter!("core_speculative_rejected_tokens").increment(rejected as u64);
+}
+```
+
+### Unit Tests
+
+- `tests/metrics_test.rs`
+  - `metrics_init_no_panic` - Initialization succeeds
+  - `record_request_increments_counters` - Counters increment correctly
+  - `record_memory_updates_gauge` - Gauge reflects current value
+  - `histogram_records_latency` - Latency recorded with labels
+
+---
+
+## Phase 3: Instrumentation Integration
+
+### Affected Files
+
+- `src/ipc/handler.rs` - Add request tracing
+- `src/engine/inference.rs` - Add inference spans
+- `src/memory/pool.rs` - Add pool metrics
+- `src/scheduler/queue.rs` - Add queue depth metrics
+- `src/engine/speculative.rs` - Add speculative metrics
+- `src/telemetry/mod.rs` - Update exports
+
+### Changes
+
+#### 3.1 IPC Handler Instrumentation
+
+```rust
+// src/ipc/handler.rs - add to handle_request
+
+use tracing::{info, warn, instrument};
+use crate::telemetry::spans::RequestSpan;
+
+#[instrument(skip(self, raw_bytes), fields(request_id = %request_id))]
+pub async fn handle_request(&self, raw_bytes: &[u8], request_id: &str) -> Result<...> {
+    let span = RequestSpan::new(request_id, "unknown");
+    let _guard = span.enter();
+
+    info!(bytes = raw_bytes.len(), "received request");
+
+    let result = self.process_internal(raw_bytes).await;
+
+    span.record_result(&result);
+    result
+}
+```
+
+#### 3.2 Inference Engine Instrumentation
+
+```rust
+// src/engine/inference.rs - add spans around key operations
+
+use tracing::{info_span, Instrument};
+
+pub async fn run_inference(&self, input: InferenceInput) -> Result<InferenceOutput, InferenceError> {
+    let span = info_span!("run_inference",
+        model_id = %input.model_id(),
+        input_tokens = tracing::field::Empty,
+        output_tokens = tracing::field::Empty,
+    );
+
+    async {
+        let start = std::time::Instant::now();
+
+        // ... existing inference logic ...
+
+        let latency = start.elapsed().as_millis() as u64;
+        crate::telemetry::metrics::record_request_success(
+            input.model_id(),
+            latency,
+            output.token_count() as u64
+        );
+
+        Ok(output)
+    }.instrument(span).await
+}
+```
+
+#### 3.3 Memory Pool Instrumentation
+
+```rust
+// src/memory/pool.rs - add metrics on acquire/release
+
+use crate::telemetry::metrics;
+
+impl MemoryPool {
+    pub fn acquire_buffer(&self) -> Option<PooledBuffer> {
+        let result = self.try_acquire();
+        metrics::record_memory_pool(self.used_bytes());
+        result
+    }
+
+    pub fn release_buffer(&self, buffer: PooledBuffer) {
+        self.return_buffer(buffer);
+        metrics::record_memory_pool(self.used_bytes());
+    }
+}
+```
+
+#### 3.4 Queue Depth Instrumentation
+
+```rust
+// src/scheduler/queue.rs - add metrics on push/pop
+
+impl RequestQueue {
+    pub async fn push(&self, request: InferenceRequest) -> Result<(), QueueError> {
+        let result = self.inner_push(request).await;
+        crate::telemetry::metrics::record_queue_depth(self.len());
+        result
+    }
+
+    pub async fn pop(&self) -> Option<InferenceRequest> {
+        let request = self.inner_pop().await;
+        crate::telemetry::metrics::record_queue_depth(self.len());
+        request
+    }
+}
+```
+
+#### 3.5 Speculative Decoding Metrics
+
+```rust
+// src/engine/speculative.rs - add metrics after verify
+
+impl<D, T> SpeculativeDecoder<D, T> {
+    async fn speculative_step(&self, context: &mut Vec<u32>) -> Result<Vec<u32>, InferenceError> {
+        let draft = self.draft_model.generate_draft(context, self.config.draft_tokens).await?;
+        let verified = self.target_model.verify_tokens(context, &draft).await?;
+
+        // Record metrics
+        let rejected = draft.len().saturating_sub(verified.accepted_count);
+        crate::telemetry::metrics::record_speculative_cycle(verified.accepted_count, rejected);
+
+        let accepted = Self::accept_tokens(&draft, &verified);
+        // ... rest of method
+    }
+}
+```
+
+### Unit Tests
+
+- `tests/telemetry_integration_test.rs`
+  - `handler_creates_span` - Request span created and closed
+  - `inference_records_latency` - Histogram updated after inference
+  - `queue_metrics_reflect_depth` - Gauge matches actual queue size
+  - `speculative_metrics_accurate` - Accept/reject counts correct
+
+---
+
+## Summary
+
+| Phase | Focus | Key Deliverable |
+|-------|-------|-----------------|
+| 1 | Tracing Foundation | JSON structured logging with spans |
+| 2 | Metrics Collection | Counters, gauges, histograms |
+| 3 | Integration | Instrumented hot paths |
+
+**Dependencies Added**:
+- `tracing` (0.1) - Structured diagnostics
+- `tracing-subscriber` (0.3) - Log formatting
+- `metrics` (0.22) - Metrics facade
+
+**No Network Dependencies**: All observability outputs to files or exposes via existing IPC. No external push required.
+
+---
+
+_Plan follows Simple Made Easy principles_

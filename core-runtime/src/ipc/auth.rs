@@ -5,6 +5,7 @@
 
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use thiserror::Error;
@@ -38,6 +39,7 @@ impl SessionToken {
 struct Session {
     created_at: Instant,
     last_activity: Instant,
+    connection_count: AtomicUsize,
 }
 
 /// Manages session authentication.
@@ -77,7 +79,11 @@ impl SessionAuth {
 
         self.sessions.write().await.insert(
             session_token.clone(),
-            Session { created_at: now, last_activity: now },
+            Session {
+                created_at: now,
+                last_activity: now,
+                connection_count: AtomicUsize::new(0),
+            },
         );
 
         Ok(session_token)
@@ -101,6 +107,29 @@ impl SessionAuth {
     pub async fn cleanup(&self) {
         let mut sessions = self.sessions.write().await;
         sessions.retain(|_, s| s.created_at.elapsed() <= self.session_timeout);
+    }
+
+    /// Increment connection count for session.
+    pub async fn track_connection(&self, token: &SessionToken) -> Result<usize, AuthError> {
+        let sessions = self.sessions.read().await;
+        let session = sessions.get(token).ok_or(AuthError::SessionNotFound)?;
+        let new_count = session.connection_count.fetch_add(1, Ordering::SeqCst) + 1;
+        Ok(new_count)
+    }
+
+    /// Decrement connection count for session.
+    pub async fn release_connection(&self, token: &SessionToken) {
+        let sessions = self.sessions.read().await;
+        if let Some(session) = sessions.get(token) {
+            session.connection_count.fetch_sub(1, Ordering::SeqCst);
+        }
+    }
+
+    /// Get current connection count for session.
+    pub async fn connection_count(&self, token: &SessionToken) -> Result<usize, AuthError> {
+        let sessions = self.sessions.read().await;
+        let session = sessions.get(token).ok_or(AuthError::SessionNotFound)?;
+        Ok(session.connection_count.load(Ordering::Relaxed))
     }
 }
 

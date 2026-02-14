@@ -10,13 +10,14 @@ use core_runtime::engine::InferenceParams;
 fn handshake_roundtrip() {
     let message = IpcMessage::Handshake {
         token: "test-token".to_string(),
+        protocol_version: None,
     };
 
     let encoded = encode_message(&message).unwrap();
     let decoded = decode_message(&encoded).unwrap();
 
     match decoded {
-        IpcMessage::Handshake { token } => assert_eq!(token, "test-token"),
+        IpcMessage::Handshake { token, .. } => assert_eq!(token, "test-token"),
         _ => panic!("Expected Handshake message"),
     }
 }

@@ -18,20 +18,28 @@
 //! - IPC: Named pipes/Unix sockets only. No HTTP/REST/WebSocket.
 
 pub mod engine;
+pub mod health;
 pub mod ipc;
 pub mod memory;
 pub mod models;
+pub mod sandbox;
 pub mod scheduler;
+pub mod shutdown;
+pub mod telemetry;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
 use engine::InferenceEngine;
-use ipc::{IpcHandler, IpcHandlerConfig, SessionAuth};
+use health::{HealthChecker, HealthConfig};
+use ipc::{ConnectionConfig, ConnectionPool, IpcHandler, IpcHandlerConfig, SessionAuth};
 use memory::{ContextCache, ContextCacheConfig, GpuMemory, GpuMemoryConfig, MemoryPool, MemoryPoolConfig};
 use models::{ModelLoader, ModelRegistry};
-use scheduler::{BatchConfig, BatchProcessor, RequestQueue, RequestQueueConfig};
+use scheduler::{BatchConfig, BatchProcessor, OutputCache, OutputCacheConfig, RequestQueue, RequestQueueConfig};
+use shutdown::ShutdownCoordinator;
+use telemetry::MetricsStore;
+use tokio::sync::Mutex;
 
 /// Runtime configuration.
 #[derive(Debug, Clone)]
@@ -45,6 +53,9 @@ pub struct RuntimeConfig {
     pub context_cache: ContextCacheConfig,
     pub request_queue: RequestQueueConfig,
     pub batch: BatchConfig,
+    pub shutdown_timeout: Duration,
+    pub output_cache: OutputCacheConfig,
+    pub connections: ConnectionConfig,
 }
 
 impl Default for RuntimeConfig {
@@ -59,12 +70,16 @@ impl Default for RuntimeConfig {
             context_cache: ContextCacheConfig::default(),
             request_queue: RequestQueueConfig::default(),
             batch: BatchConfig::default(),
+            shutdown_timeout: Duration::from_secs(30),
+            output_cache: OutputCacheConfig::default(),
+            connections: ConnectionConfig::default(),
         }
     }
 }
 
 /// The CORE Runtime instance.
 pub struct Runtime {
+    pub config: RuntimeConfig,
     pub memory_pool: MemoryPool,
     pub gpu_memory: GpuMemory,
     pub context_cache: ContextCache,
@@ -74,28 +89,43 @@ pub struct Runtime {
     pub request_queue: Arc<RequestQueue>,
     pub batch_processor: BatchProcessor,
     pub ipc_handler: IpcHandler,
+    pub shutdown: Arc<ShutdownCoordinator>,
+    pub health: Arc<HealthChecker>,
+    pub metrics_store: Arc<MetricsStore>,
+    pub output_cache: Arc<Mutex<OutputCache>>,
+    pub connections: Arc<ConnectionPool>,
 }
 
 impl Runtime {
     /// Create a new runtime instance with the given configuration.
     pub fn new(config: RuntimeConfig) -> Self {
-        let memory_pool = MemoryPool::new(config.memory_pool);
-        let gpu_memory = GpuMemory::new(config.gpu_memory);
-        let context_cache = ContextCache::new(config.context_cache);
-        let model_loader = ModelLoader::new(config.base_path);
+        let memory_pool = MemoryPool::new(config.memory_pool.clone());
+        let gpu_memory = GpuMemory::new(config.gpu_memory.clone());
+        let context_cache = ContextCache::new(config.context_cache.clone());
+        let model_loader = ModelLoader::new(config.base_path.clone());
         let model_registry = Arc::new(ModelRegistry::new());
         let inference_engine = InferenceEngine::new(config.max_context_length);
-        let request_queue = Arc::new(RequestQueue::new(config.request_queue));
-        let batch_processor = BatchProcessor::new(config.batch);
+        let request_queue = Arc::new(RequestQueue::new(config.request_queue.clone()));
+        let batch_processor = BatchProcessor::new(config.batch.clone());
+        let shutdown = Arc::new(ShutdownCoordinator::new());
+        let health = Arc::new(HealthChecker::new(HealthConfig::default()));
+        let metrics_store = Arc::new(MetricsStore::new());
+        let output_cache = Arc::new(Mutex::new(OutputCache::new(config.output_cache.clone())));
+        let connections = Arc::new(ConnectionPool::new(config.connections.clone()));
 
         let session_auth = Arc::new(SessionAuth::new(&config.auth_token, config.session_timeout));
         let ipc_handler = IpcHandler::new(
             session_auth,
             request_queue.clone(),
             IpcHandlerConfig::default(),
+            shutdown.clone(),
+            health.clone(),
+            model_registry.clone(),
+            metrics_store.clone(),
         );
 
         Self {
+            config,
             memory_pool,
             gpu_memory,
             context_cache,
@@ -105,6 +135,11 @@ impl Runtime {
             request_queue,
             batch_processor,
             ipc_handler,
+            shutdown,
+            health,
+            metrics_store,
+            output_cache,
+            connections,
         }
     }
 }

@@ -1,0 +1,282 @@
+# Plan: Graceful Shutdown with Request Draining
+
+## Open Questions
+
+1. **Force Kill Timeout**: Should there be a hard timeout after which we force-kill remaining requests? (Suggested: 30s default, configurable)
+2. **Shutdown Signal**: SIGTERM only, or also SIGINT/Ctrl+C? (Suggested: Both, SIGINT for interactive, SIGTERM for orchestrators)
+
+## Strategic Summary
+
+**Why**: Enable clean process termination that completes in-flight requests before exit, preventing data loss and enabling zero-downtime deployments.
+
+**Vibe**: graceful, observable, composable
+
+## Current State Analysis
+
+Existing infrastructure:
+- `FlightTracker` - Per-model in-flight tracking with drain support
+- `ContinuousBatcher` - Has `active_count()` and `pending_count()` methods
+- `main.rs` - Basic Ctrl+C handling that breaks immediately
+- `IpcHandler` - No pause/shutdown awareness
+
+**Gap**: No global shutdown coordination. No way to pause IPC. No drain-before-exit.
+
+---
+
+## Phase 1: Shutdown Coordinator
+
+### Affected Files
+
+- `src/shutdown.rs` - NEW: Global shutdown coordination
+- `src/lib.rs` - Export shutdown module
+
+### Changes
+
+**src/shutdown.rs** (NEW ~90 lines)
+
+```rust
+/// Shutdown state machine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShutdownState {
+    Running,
+    Draining,
+    Stopped,
+}
+
+/// Coordinates graceful shutdown across runtime components.
+pub struct ShutdownCoordinator {
+    state: Arc<RwLock<ShutdownState>>,
+    in_flight: Arc<AtomicU32>,
+    notify: Arc<Notify>,
+}
+
+impl ShutdownCoordinator {
+    pub fn new() -> Self;
+
+    /// Get current shutdown state.
+    pub async fn state(&self) -> ShutdownState;
+
+    /// Check if accepting new requests.
+    pub fn is_accepting(&self) -> bool;
+
+    /// Increment in-flight count (returns guard).
+    pub fn track(&self) -> Option<ShutdownGuard>;
+
+    /// Current in-flight count.
+    pub fn in_flight_count(&self) -> u32;
+
+    /// Initiate shutdown: stop accepting, wait for drain.
+    pub async fn initiate(&self, timeout: Duration) -> ShutdownResult;
+}
+
+/// RAII guard for in-flight request tracking.
+pub struct ShutdownGuard { ... }
+
+pub enum ShutdownResult {
+    Complete,
+    Timeout { remaining: u32 },
+}
+```
+
+**src/lib.rs** - Add shutdown export
+
+```rust
+pub mod shutdown;
+
+pub use shutdown::{ShutdownCoordinator, ShutdownGuard, ShutdownResult, ShutdownState};
+```
+
+### Unit Tests
+
+- `tests/shutdown_test.rs` - NEW
+  - `test_initial_state_is_running` - Fresh coordinator is Running
+  - `test_track_increments_count` - Guard increments, drop decrements
+  - `test_track_returns_none_when_draining` - No new requests during drain
+  - `test_initiate_transitions_to_draining` - State change on initiate
+  - `test_drain_completes_when_zero` - Immediate completion with no requests
+  - `test_drain_waits_for_completion` - Blocks until guards dropped
+  - `test_drain_timeout_returns_remaining` - Timeout reports remaining count
+  - `test_state_is_stopped_after_drain` - Final state is Stopped
+
+---
+
+## Phase 2: IPC Pause Integration
+
+### Affected Files
+
+- `src/ipc/handler.rs` - Add shutdown awareness
+- `src/ipc/mod.rs` - Export new error variant
+
+### Changes
+
+**src/ipc/handler.rs** - Add shutdown check
+
+```rust
+pub struct IpcHandler {
+    auth: Arc<SessionAuth>,
+    queue: Arc<RequestQueue>,
+    config: IpcHandlerConfig,
+    shutdown: Arc<ShutdownCoordinator>,  // ADD
+}
+
+impl IpcHandler {
+    pub fn new(
+        auth: Arc<SessionAuth>,
+        queue: Arc<RequestQueue>,
+        config: IpcHandlerConfig,
+        shutdown: Arc<ShutdownCoordinator>,  // ADD
+    ) -> Self;
+
+    async fn handle_inference(&self, request: InferenceRequest) -> InferenceResponse {
+        // ADD: Check shutdown state before accepting
+        let guard = match self.shutdown.track() {
+            Some(g) => g,
+            None => return InferenceResponse::error(
+                request.request_id,
+                "Server is shutting down".into()
+            ),
+        };
+
+        // Existing validation and enqueue logic...
+        // guard dropped when response sent
+    }
+}
+```
+
+**HandlerError** - Add shutdown variant
+
+```rust
+#[derive(Error, Debug)]
+pub enum HandlerError {
+    // ... existing variants ...
+
+    #[error("Server is shutting down")]
+    ShuttingDown,
+}
+```
+
+### Unit Tests
+
+- `tests/shutdown_test.rs` - ADD
+  - `test_handler_rejects_during_drain` - New requests get shutdown error
+  - `test_handler_completes_existing_during_drain` - In-flight requests complete
+
+---
+
+## Phase 3: Main Integration
+
+### Affected Files
+
+- `src/main.rs` - Wire shutdown coordinator into server loop
+- `src/lib.rs` - Update Runtime to include ShutdownCoordinator
+
+### Changes
+
+**src/lib.rs** - Add coordinator to Runtime
+
+```rust
+pub struct Runtime {
+    // ... existing fields ...
+    pub shutdown: Arc<ShutdownCoordinator>,  // ADD
+}
+
+impl Runtime {
+    pub fn new(config: RuntimeConfig) -> Self {
+        let shutdown = Arc::new(ShutdownCoordinator::new());
+
+        let ipc_handler = IpcHandler::new(
+            session_auth,
+            request_queue.clone(),
+            IpcHandlerConfig::default(),
+            shutdown.clone(),  // ADD
+        );
+
+        // ... rest of construction ...
+    }
+}
+```
+
+**RuntimeConfig** - Add shutdown timeout
+
+```rust
+pub struct RuntimeConfig {
+    // ... existing fields ...
+    pub shutdown_timeout: Duration,  // ADD
+}
+
+impl Default for RuntimeConfig {
+    fn default() -> Self {
+        Self {
+            // ... existing defaults ...
+            shutdown_timeout: Duration::from_secs(30),  // ADD
+        }
+    }
+}
+```
+
+**src/main.rs** - Graceful shutdown loop
+
+```rust
+async fn run_ipc_server(runtime: Runtime) -> Result<(), Box<dyn std::error::Error>> {
+    loop {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {
+                eprintln!("Shutdown signal received, draining...");
+
+                let result = runtime.shutdown.initiate(
+                    runtime.config.shutdown_timeout
+                ).await;
+
+                match result {
+                    ShutdownResult::Complete => {
+                        eprintln!("Shutdown complete");
+                    }
+                    ShutdownResult::Timeout { remaining } => {
+                        eprintln!("Shutdown timeout, {} requests remaining", remaining);
+                    }
+                }
+                break;
+            }
+            // ... IPC accept loop would go here ...
+        }
+    }
+
+    Ok(())
+}
+```
+
+### Unit Tests
+
+- `tests/shutdown_test.rs` - ADD
+  - `test_runtime_creates_with_shutdown` - Runtime has coordinator
+  - `test_config_has_shutdown_timeout` - Config includes timeout
+
+---
+
+## Section 4 Compliance Check
+
+| File | Estimated Lines | Limit | Status |
+|------|-----------------|-------|--------|
+| shutdown.rs | ~90 | 250 | OK |
+| handler.rs | ~145 | 250 | OK |
+| lib.rs | ~120 | 250 | OK |
+| main.rs | ~60 | 250 | OK |
+| shutdown_test.rs | ~150 | 250 | OK |
+
+## Risk Assessment
+
+| Phase | Risk Grade | Justification |
+|-------|------------|---------------|
+| Shutdown Coordinator | L2 | New concurrency primitive, state machine |
+| IPC Pause | L1 | Simple guard check, existing patterns |
+| Main Integration | L1 | Wiring existing components |
+
+**Overall Risk Grade**: L2 (Logic changes)
+
+## Dependencies
+
+No new external dependencies required.
+
+---
+
+_Plan follows Simple Made Easy principles: shutdown coordination is a composable concern separate from IPC handling and request processing._

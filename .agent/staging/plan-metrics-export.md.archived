@@ -1,0 +1,225 @@
+# Plan: Metrics Export via IPC
+
+## Open Questions
+
+1. **Histogram buckets**: Should histogram data include full bucket distribution or just summary stats (p50/p95/p99)?
+   - Recommendation: Summary stats only (simpler, smaller payload)
+
+2. **Reset semantics**: Should counters reset on read or be monotonic?
+   - Recommendation: Monotonic (Prometheus convention, simpler state management)
+
+## Design Rationale
+
+The `metrics` crate facade records values but doesn't store them (fire-and-forget). Rather than adding a complex recorder implementation, we create a simple `MetricsStore` that:
+
+- Stores counter/gauge values directly (no `metrics` crate dependency for storage)
+- Exposes immutable snapshot for IPC export
+- Follows same pattern as `HealthChecker` (composable, stateless queries)
+
+This avoids complecting:
+- Recording (existing `metrics` crate for tracing integration)
+- Exporting (new IPC endpoint with simple data store)
+
+---
+
+## Phase 1: Metrics Store
+
+### Affected Files
+
+- `src/telemetry/store.rs` - NEW: Thread-safe metrics storage
+- `src/telemetry/mod.rs` - MODIFIED: Export MetricsStore, MetricsSnapshot
+
+### Changes
+
+**src/telemetry/store.rs** (~90 lines):
+
+```rust
+//! Thread-safe metrics storage for IPC export.
+
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::RwLock;
+use serde::{Deserialize, Serialize};
+
+/// Snapshot of all metrics at a point in time.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetricsSnapshot {
+    pub counters: HashMap<String, u64>,
+    pub gauges: HashMap<String, f64>,
+    pub histograms: HashMap<String, HistogramSummary>,
+}
+
+/// Summary statistics for a histogram.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistogramSummary {
+    pub count: u64,
+    pub sum: f64,
+    pub min: f64,
+    pub max: f64,
+}
+
+/// Thread-safe metrics store.
+pub struct MetricsStore {
+    counters: RwLock<HashMap<String, AtomicU64>>,
+    gauges: RwLock<HashMap<String, AtomicU64>>,  // f64 bits stored as u64
+    histograms: RwLock<HashMap<String, HistogramData>>,
+}
+
+struct HistogramData {
+    count: AtomicU64,
+    sum: AtomicU64,    // f64 bits
+    min: AtomicU64,    // f64 bits
+    max: AtomicU64,    // f64 bits
+}
+
+impl MetricsStore {
+    pub fn new() -> Self;
+    pub fn increment_counter(&self, name: &str, value: u64);
+    pub fn set_gauge(&self, name: &str, value: f64);
+    pub fn record_histogram(&self, name: &str, value: f64);
+    pub fn snapshot(&self) -> MetricsSnapshot;
+}
+```
+
+**src/telemetry/mod.rs**:
+
+Add exports:
+```rust
+mod store;
+pub use store::{MetricsStore, MetricsSnapshot, HistogramSummary};
+```
+
+### Unit Tests
+
+- `tests/metrics_store_test.rs` - Counter increment atomicity, gauge set/get, histogram min/max/count, snapshot consistency
+
+---
+
+## Phase 2: Wire Integration
+
+### Affected Files
+
+- `src/telemetry/metrics.rs` - MODIFIED: Store to MetricsStore alongside metrics facade
+- `src/lib.rs` - MODIFIED: Add metrics_store field to Runtime
+- `src/ipc/protocol.rs` - MODIFIED: Add MetricsRequest/MetricsResponse variants
+- `src/ipc/mod.rs` - MODIFIED: Export MetricsSnapshot
+
+### Changes
+
+**src/telemetry/metrics.rs**:
+
+Add store parameter to record functions:
+```rust
+use super::store::MetricsStore;
+
+pub fn record_request_success(store: &MetricsStore, model: &str, latency_ms: u64, tokens_out: u64) {
+    // Existing metrics crate calls (unchanged)
+    counter!("core_requests_total", "model" => model.to_string()).increment(1);
+    // ...
+
+    // NEW: Store for IPC export
+    store.increment_counter(&format!("core_requests_total{{model=\"{}\"}}", model), 1);
+    store.increment_counter(&format!("core_requests_success{{model=\"{}\"}}", model), 1);
+    store.increment_counter(&format!("core_tokens_output_total{{model=\"{}\"}}", model), tokens_out);
+    store.record_histogram(&format!("core_inference_latency_ms{{model=\"{}\"}}", model), latency_ms as f64);
+}
+
+// Similar updates for other record_* functions
+```
+
+**src/lib.rs**:
+
+Add to Runtime struct:
+```rust
+pub metrics_store: Arc<MetricsStore>,
+```
+
+Initialize in `Runtime::new()`:
+```rust
+let metrics_store = Arc::new(MetricsStore::new());
+```
+
+**src/ipc/protocol.rs**:
+
+Add message variants:
+```rust
+use crate::telemetry::MetricsSnapshot;
+
+pub enum IpcMessage {
+    // ... existing variants ...
+
+    #[serde(rename = "metrics_request")]
+    MetricsRequest,
+
+    #[serde(rename = "metrics_response")]
+    MetricsResponse(MetricsSnapshot),
+}
+```
+
+### Unit Tests
+
+- `tests/metrics_export_test.rs` - Protocol roundtrip for MetricsRequest/MetricsResponse
+
+---
+
+## Phase 3: Handler Integration
+
+### Affected Files
+
+- `src/ipc/handler.rs` - MODIFIED: Handle MetricsRequest (no-auth pattern)
+
+### Changes
+
+**src/ipc/handler.rs**:
+
+Add metrics_store field:
+```rust
+pub struct IpcHandler {
+    // ... existing fields ...
+    metrics_store: Arc<MetricsStore>,
+}
+```
+
+Update constructor and handle_message:
+```rust
+async fn handle_message(&self, message: IpcMessage, session: Option<&SessionToken>)
+    -> Result<(IpcMessage, Option<SessionToken>), HandlerError>
+{
+    match message {
+        // ... existing handlers ...
+
+        IpcMessage::MetricsRequest => {
+            // NO AUTH REQUIRED (orchestrator pattern, same as health)
+            let snapshot = self.metrics_store.snapshot();
+            Ok((IpcMessage::MetricsResponse(snapshot), None))
+        }
+
+        // ...
+    }
+}
+```
+
+### Unit Tests
+
+- `tests/metrics_export_test.rs` - Add handler integration tests: request returns snapshot, no-auth access works
+
+---
+
+## Summary
+
+| Phase | New Files | Modified Files | New Tests |
+|-------|-----------|----------------|-----------|
+| 1 | store.rs | mod.rs | 6 |
+| 2 | — | metrics.rs, lib.rs, protocol.rs, mod.rs | 4 |
+| 3 | — | handler.rs | 3 |
+| **Total** | **1** | **6** | **13** |
+
+**Section 4 Compliance**:
+- store.rs: ~90 lines (limit 250)
+- All modified files remain under limits
+
+**No New Dependencies** - Uses only std::sync primitives
+
+---
+
+_Plan follows Simple Made Easy principles: composable store, value-oriented snapshot, no complecting of recording and export_

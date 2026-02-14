@@ -3,7 +3,7 @@
 use core_runtime::engine::InferenceParams;
 use core_runtime::scheduler::{
     BatchConfig, BatchProcessor, Priority, PriorityQueue, RequestQueue,
-    RequestQueueConfig,
+    RequestQueueConfig, ThreadPoolConfig,
 };
 
 #[test]
@@ -100,10 +100,57 @@ fn create_test_request(
     id: u64,
     token_count: usize,
 ) -> core_runtime::scheduler::QueuedRequest {
-    core_runtime::scheduler::QueuedRequest {
+    core_runtime::scheduler::QueuedRequest::new(
         id,
-        model_id: "test".to_string(),
-        prompt_tokens: vec![0; token_count],
-        params: InferenceParams::default(),
-    }
+        "test".to_string(),
+        vec![0; token_count],
+        InferenceParams::default(),
+    )
+}
+
+// Thread pool configuration tests
+
+#[test]
+fn thread_pool_config_default_uses_available() {
+    let config = ThreadPoolConfig::default();
+
+    // Should use available parallelism or fallback to 4
+    let expected = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4);
+
+    assert_eq!(config.worker_threads.get(), expected);
+}
+
+#[test]
+fn thread_pool_config_minimum_one_thread() {
+    // Requesting 0 threads should give at least 1
+    let config = ThreadPoolConfig::with_threads(0);
+
+    assert_eq!(config.worker_threads.get(), 1);
+}
+
+#[test]
+fn thread_pool_config_inference_halves_cores() {
+    let config = ThreadPoolConfig::for_inference();
+
+    let cores = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4);
+
+    // Should be half of cores, minimum 2
+    let expected = (cores / 2).max(2);
+    assert_eq!(config.worker_threads.get(), expected);
+}
+
+#[test]
+fn thread_pool_config_stack_size_reasonable() {
+    let default_config = ThreadPoolConfig::default();
+    let inference_config = ThreadPoolConfig::for_inference();
+
+    // Default stack should be at least 2MB
+    assert!(default_config.stack_size >= 2 * 1024 * 1024);
+
+    // Inference stack should be at least 4MB
+    assert!(inference_config.stack_size >= 4 * 1024 * 1024);
 }

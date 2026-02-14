@@ -1,7 +1,8 @@
 //! Request queue management.
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
 use super::priority::{Priority, PriorityQueue};
@@ -19,13 +20,67 @@ impl Default for RequestQueueConfig {
     }
 }
 
-/// A queued inference request.
-#[derive(Debug, Clone)]
+/// A queued inference request with timeout and cancellation support.
+#[derive(Debug)]
 pub struct QueuedRequest {
     pub id: u64,
     pub model_id: String,
     pub prompt_tokens: Vec<u32>,
     pub params: InferenceParams,
+    pub enqueued_at: Instant,
+    pub deadline: Option<Instant>,
+    cancelled: Arc<AtomicBool>,
+}
+
+impl Clone for QueuedRequest {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id,
+            model_id: self.model_id.clone(),
+            prompt_tokens: self.prompt_tokens.clone(),
+            params: self.params.clone(),
+            enqueued_at: self.enqueued_at,
+            deadline: self.deadline,
+            cancelled: Arc::clone(&self.cancelled),
+        }
+    }
+}
+
+impl QueuedRequest {
+    /// Create a new queued request. Used for testing and batch processing.
+    pub fn new(
+        id: u64,
+        model_id: String,
+        prompt_tokens: Vec<u32>,
+        params: InferenceParams,
+    ) -> Self {
+        let enqueued_at = Instant::now();
+        let deadline = params.timeout_ms.map(|ms| enqueued_at + Duration::from_millis(ms));
+        Self {
+            id,
+            model_id,
+            prompt_tokens,
+            params,
+            enqueued_at,
+            deadline,
+            cancelled: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    /// Check if request has been cancelled.
+    pub fn is_cancelled(&self) -> bool {
+        self.cancelled.load(Ordering::Relaxed)
+    }
+
+    /// Check if request has exceeded its deadline.
+    pub fn is_expired(&self) -> bool {
+        self.deadline.map_or(false, |d| Instant::now() > d)
+    }
+
+    /// Mark the request as cancelled.
+    pub fn cancel(&self) {
+        self.cancelled.store(true, Ordering::Relaxed);
+    }
 }
 
 /// Thread-safe request queue with priority support.
@@ -59,16 +114,45 @@ impl RequestQueue {
         }
 
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        let request = QueuedRequest { id, model_id, prompt_tokens, params };
+        let enqueued_at = Instant::now();
+        let deadline = params.timeout_ms.map(|ms| enqueued_at + Duration::from_millis(ms));
+        let request = QueuedRequest {
+            id,
+            model_id,
+            prompt_tokens,
+            params,
+            enqueued_at,
+            deadline,
+            cancelled: Arc::new(AtomicBool::new(false)),
+        };
         let position = queue.len();
         queue.push(request, priority);
 
         Ok((id, position))
     }
 
-    /// Dequeue the highest priority request.
+    /// Cancel a pending request by ID. Returns true if found and cancelled.
+    pub async fn cancel(&self, request_id: u64) -> bool {
+        let queue = self.queue.lock().await;
+        for request in queue.iter() {
+            if request.id == request_id {
+                request.cancel();
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Dequeue the highest priority request, skipping cancelled/expired.
     pub async fn dequeue(&self) -> Option<QueuedRequest> {
-        self.queue.lock().await.pop()
+        let mut queue = self.queue.lock().await;
+        loop {
+            let request = queue.pop()?;
+            if request.is_cancelled() || request.is_expired() {
+                continue; // Skip cancelled/expired requests
+            }
+            return Some(request);
+        }
     }
 
     /// Current queue length.

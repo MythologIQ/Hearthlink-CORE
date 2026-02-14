@@ -1,0 +1,526 @@
+# Plan: Tier 5 Performance Optimization
+
+## Open Questions
+
+1. **SIMD target**: AVX2 only, or also AVX-512 for server CPUs? AVX2 is more portable.
+
+2. **KV quantization precision**: Q8 (8-bit) preserves quality well. Q4 KV may degrade generation quality.
+
+3. **Prompt cache eviction**: LRU or hash-based? Hash avoids prefix collisions but uses more memory.
+
+---
+
+## Target Metrics
+
+| Metric | Tier 4 (Current) | Tier 5 (Target) | Improvement |
+|--------|------------------|-----------------|-------------|
+| Generation | >70 tok/s | >90 tok/s | 28% |
+| Memory Ratio | <1.15x | <1.05x | 9% reduction |
+| KV Bandwidth | f32 (4 bytes) | Q8 (1 byte) | 4x reduction |
+| Prompt Cache Hit | 0% | >80% (chat) | New |
+
+---
+
+## Phase 1: SIMD Matmul Kernels
+
+Add AVX2-accelerated dot products for quantized matrix multiplication.
+
+### Affected Files
+
+- `src/engine/simd_matmul.rs` - New SIMD matmul kernels
+- `src/engine/quantize.rs` - Integrate SIMD dispatch
+- `src/engine/mod.rs` - Export simd_matmul module
+- `tests/simd_matmul_test.rs` - SIMD matmul tests
+
+### Changes
+
+#### 1.1 SIMD Dot Product Kernels
+
+```rust
+// src/engine/simd_matmul.rs
+
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
+
+/// AVX2 dot product for Q8 quantized vectors.
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+pub unsafe fn dot_q8_avx2(
+    q_data: &[u8],
+    input: &[f32],
+    scale: f32,
+) -> f32 {
+    let len = q_data.len().min(input.len());
+    let chunks = len / 8;
+    let mut acc = _mm256_setzero_ps();
+
+    for i in 0..chunks {
+        let offset = i * 8;
+        // Load 8 Q8 values, sign-extend to i32, convert to f32
+        let q_slice = &q_data[offset..offset + 8];
+        let q_i32: [i32; 8] = std::array::from_fn(|j| q_slice[j] as i8 as i32);
+        let q_vec = _mm256_cvtepi32_ps(_mm256_loadu_si256(q_i32.as_ptr() as *const __m256i));
+
+        // Load 8 input floats
+        let in_vec = _mm256_loadu_ps(input[offset..].as_ptr());
+
+        // FMA: acc += q * input
+        acc = _mm256_fmadd_ps(q_vec, in_vec, acc);
+    }
+
+    // Horizontal sum
+    let sum = horizontal_sum_avx2(acc);
+
+    // Handle remainder scalarly
+    let remainder_sum: f32 = (chunks * 8..len)
+        .map(|i| (q_data[i] as i8 as f32) * input[i])
+        .sum();
+
+    (sum + remainder_sum) * scale
+}
+
+/// AVX2 dot product for Q4 quantized vectors.
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+pub unsafe fn dot_q4_avx2(
+    q_data: &[u8],
+    input: &[f32],
+    scale: f32,
+) -> f32 {
+    let num_pairs = q_data.len();
+    let chunks = num_pairs / 4; // 4 bytes = 8 Q4 values = one AVX2 load
+    let mut acc = _mm256_setzero_ps();
+
+    for i in 0..chunks {
+        let offset = i * 4;
+        // Unpack 4 bytes into 8 Q4 values
+        let packed = &q_data[offset..offset + 4];
+        let unpacked: [i32; 8] = unpack_q4_to_i32(packed);
+        let q_vec = _mm256_cvtepi32_ps(_mm256_loadu_si256(unpacked.as_ptr() as *const __m256i));
+
+        // Load 8 input floats
+        let in_offset = i * 8;
+        let in_vec = _mm256_loadu_ps(input[in_offset..].as_ptr());
+
+        acc = _mm256_fmadd_ps(q_vec, in_vec, acc);
+    }
+
+    let sum = horizontal_sum_avx2(acc);
+
+    // Handle remainder
+    let remainder_start = chunks * 8;
+    let remainder_sum: f32 = (remainder_start..num_pairs * 2)
+        .filter_map(|i| {
+            let byte_idx = i / 2;
+            if byte_idx >= q_data.len() { return None; }
+            let q = if i % 2 == 0 {
+                (q_data[byte_idx] & 0x0F) as i8 - 8
+            } else {
+                (q_data[byte_idx] >> 4) as i8 - 8
+            };
+            Some(q as f32 * input.get(i).copied().unwrap_or(0.0))
+        })
+        .sum();
+
+    (sum + remainder_sum) * scale
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+unsafe fn horizontal_sum_avx2(v: __m256) -> f32 {
+    let hi = _mm256_extractf128_ps(v, 1);
+    let lo = _mm256_castps256_ps128(v);
+    let sum128 = _mm_add_ps(lo, hi);
+    let hi64 = _mm_movehl_ps(sum128, sum128);
+    let sum64 = _mm_add_ps(sum128, hi64);
+    let hi32 = _mm_shuffle_ps(sum64, sum64, 1);
+    _mm_cvtss_f32(_mm_add_ss(sum64, hi32))
+}
+
+fn unpack_q4_to_i32(packed: &[u8]) -> [i32; 8] {
+    let mut out = [0i32; 8];
+    for (i, &byte) in packed.iter().enumerate() {
+        out[i * 2] = (byte & 0x0F) as i32 - 8;
+        out[i * 2 + 1] = (byte >> 4) as i32 - 8;
+    }
+    out
+}
+
+/// Runtime dispatch based on CPU features.
+pub fn dot_q8(q_data: &[u8], input: &[f32], scale: f32) -> f32 {
+    #[cfg(target_arch = "x86_64")]
+    if is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma") {
+        return unsafe { dot_q8_avx2(q_data, input, scale) };
+    }
+    dot_q8_scalar(q_data, input, scale)
+}
+
+fn dot_q8_scalar(q_data: &[u8], input: &[f32], scale: f32) -> f32 {
+    q_data.iter().zip(input.iter())
+        .map(|(&q, &x)| (q as i8 as f32) * x)
+        .sum::<f32>() * scale
+}
+```
+
+#### 1.2 Integrate into QuantizedTensor
+
+```rust
+// src/engine/quantize.rs - modify matmul_q8
+
+fn matmul_q8(&self, input: &[f32], output: &mut [f32]) {
+    let [rows, cols] = self.shape;
+    let blocks_per_row = (cols + QUANT_BLOCK_SIZE - 1) / QUANT_BLOCK_SIZE;
+
+    for i in 0..rows {
+        let mut sum = 0.0f32;
+        for b in 0..blocks_per_row {
+            let scale = self.scales[i * blocks_per_row + b];
+            let data_offset = (i * blocks_per_row + b) * QUANT_BLOCK_SIZE;
+            let block_start = b * QUANT_BLOCK_SIZE;
+            let block_len = QUANT_BLOCK_SIZE.min(cols - block_start);
+
+            sum += simd_matmul::dot_q8(
+                &self.data[data_offset..data_offset + block_len],
+                &input[block_start..block_start + block_len],
+                scale,
+            );
+        }
+        output[i] = sum;
+    }
+}
+```
+
+### Unit Tests
+
+- `tests/simd_matmul_test.rs`
+  - `dot_q8_matches_scalar` - SIMD result equals scalar implementation
+  - `dot_q4_matches_scalar` - SIMD result equals scalar implementation
+  - `dot_q8_empty_input` - Handles zero-length gracefully
+  - `dot_q8_unaligned_length` - Non-multiple-of-8 lengths work
+  - `horizontal_sum_correctness` - AVX2 reduction is accurate
+
+---
+
+## Phase 2: Quantized KV-Cache
+
+Store KV values in Q8 format to reduce memory bandwidth.
+
+### Affected Files
+
+- `src/memory/kv_quant.rs` - New Q8 KV storage
+- `src/memory/paged.rs` - Option for Q8 pages
+- `src/memory/mod.rs` - Export kv_quant module
+- `tests/kv_quant_test.rs` - Q8 KV tests
+
+### Changes
+
+#### 2.1 Q8 KV Storage
+
+```rust
+// src/memory/kv_quant.rs
+
+/// Quantized KV storage with per-head scales.
+#[derive(Debug)]
+pub struct Q8KvStore {
+    keys: Vec<u8>,
+    values: Vec<u8>,
+    key_scales: Vec<f32>,
+    value_scales: Vec<f32>,
+    seq_len: usize,
+    hidden_dim: usize,
+}
+
+impl Q8KvStore {
+    pub fn new(hidden_dim: usize, max_seq: usize) -> Self {
+        Self {
+            keys: vec![0; max_seq * hidden_dim],
+            values: vec![0; max_seq * hidden_dim],
+            key_scales: vec![1.0; max_seq],
+            value_scales: vec![1.0; max_seq],
+            seq_len: 0,
+            hidden_dim,
+        }
+    }
+
+    /// Append KV pair, quantizing to Q8.
+    pub fn append(&mut self, keys: &[f32], values: &[f32]) {
+        let k_scale = Self::compute_scale(keys);
+        let v_scale = Self::compute_scale(values);
+
+        let offset = self.seq_len * self.hidden_dim;
+        Self::quantize_to(&mut self.keys[offset..], keys, k_scale);
+        Self::quantize_to(&mut self.values[offset..], values, v_scale);
+
+        self.key_scales[self.seq_len] = k_scale;
+        self.value_scales[self.seq_len] = v_scale;
+        self.seq_len += 1;
+    }
+
+    /// Read dequantized keys for position.
+    pub fn read_keys(&self, pos: usize, output: &mut [f32]) {
+        let offset = pos * self.hidden_dim;
+        let scale = self.key_scales[pos];
+        Self::dequantize(&self.keys[offset..offset + self.hidden_dim], output, scale);
+    }
+
+    /// Compute attention scores directly against Q8 KV.
+    pub fn attention_scores(&self, query: &[f32], output: &mut [f32]) {
+        for pos in 0..self.seq_len {
+            let offset = pos * self.hidden_dim;
+            let scale = self.key_scales[pos];
+            output[pos] = simd_matmul::dot_q8(
+                &self.keys[offset..offset + self.hidden_dim],
+                query,
+                scale,
+            );
+        }
+    }
+
+    fn compute_scale(data: &[f32]) -> f32 {
+        let max_abs = data.iter().map(|x| x.abs()).fold(0.0f32, f32::max);
+        if max_abs > 0.0 { max_abs / 127.0 } else { 1.0 }
+    }
+
+    fn quantize_to(out: &mut [u8], data: &[f32], scale: f32) {
+        for (q, &x) in out.iter_mut().zip(data.iter()) {
+            *q = (x / scale).round().clamp(-128.0, 127.0) as i8 as u8;
+        }
+    }
+
+    fn dequantize(q_data: &[u8], output: &mut [f32], scale: f32) {
+        for (o, &q) in output.iter_mut().zip(q_data.iter()) {
+            *o = (q as i8 as f32) * scale;
+        }
+    }
+}
+```
+
+#### 2.2 Q8 Page Variant
+
+```rust
+// src/memory/paged.rs - add Q8Page
+
+/// Fixed-size page for Q8 KV-cache storage.
+#[derive(Debug)]
+pub struct Q8Page {
+    id: PageId,
+    keys: Vec<u8>,
+    values: Vec<u8>,
+    key_scales: [f32; PAGE_TOKENS],
+    value_scales: [f32; PAGE_TOKENS],
+    used_slots: usize,
+    hidden_dim: usize,
+}
+
+impl Q8Page {
+    pub fn new(id: PageId, hidden_dim: usize) -> Self {
+        let capacity = PAGE_TOKENS * hidden_dim;
+        Self {
+            id,
+            keys: vec![0; capacity],
+            values: vec![0; capacity],
+            key_scales: [1.0; PAGE_TOKENS],
+            value_scales: [1.0; PAGE_TOKENS],
+            used_slots: 0,
+            hidden_dim,
+        }
+    }
+
+    /// Write quantized KV at slot.
+    pub fn write_q8(&mut self, slot: usize, keys: &[f32], values: &[f32]) {
+        let k_scale = Q8KvStore::compute_scale(keys);
+        let v_scale = Q8KvStore::compute_scale(values);
+
+        let offset = slot * self.hidden_dim;
+        Q8KvStore::quantize_to(&mut self.keys[offset..], keys, k_scale);
+        Q8KvStore::quantize_to(&mut self.values[offset..], values, v_scale);
+
+        self.key_scales[slot] = k_scale;
+        self.value_scales[slot] = v_scale;
+        self.used_slots = self.used_slots.max(slot + 1);
+    }
+}
+```
+
+### Unit Tests
+
+- `tests/kv_quant_test.rs`
+  - `q8_roundtrip_within_tolerance` - Quantize/dequantize error < 1%
+  - `q8_attention_matches_f32` - Scores close to f32 computation
+  - `q8_page_write_read` - Page storage works correctly
+  - `q8_memory_reduction` - 4x smaller than f32 pages
+
+---
+
+## Phase 3: Prompt Caching
+
+Cache computed KV for repeated prompt prefixes.
+
+### Affected Files
+
+- `src/memory/prompt_cache.rs` - New prompt cache
+- `src/memory/mod.rs` - Export prompt_cache module
+- `src/engine/prefill.rs` - Integrate cache lookup
+- `tests/prompt_cache_test.rs` - Cache tests
+
+### Changes
+
+#### 3.1 Prompt Cache
+
+```rust
+// src/memory/prompt_cache.rs
+
+use std::collections::HashMap;
+use sha2::{Sha256, Digest};
+
+/// Cache entry for computed KV.
+#[derive(Debug, Clone)]
+pub struct CachedKv {
+    pub token_hash: [u8; 32],
+    pub kv_data: Vec<u8>,      // Serialized Q8 KV
+    pub seq_len: usize,
+    pub last_used: u64,
+}
+
+/// LRU prompt cache with hash-based lookup.
+#[derive(Debug)]
+pub struct PromptCache {
+    entries: HashMap<[u8; 32], CachedKv>,
+    max_entries: usize,
+    access_counter: u64,
+}
+
+impl PromptCache {
+    pub fn new(max_entries: usize) -> Self {
+        Self {
+            entries: HashMap::new(),
+            max_entries,
+            access_counter: 0,
+        }
+    }
+
+    /// Hash token sequence for lookup.
+    pub fn hash_tokens(tokens: &[u32]) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        for &t in tokens {
+            hasher.update(t.to_le_bytes());
+        }
+        hasher.finalize().into()
+    }
+
+    /// Lookup cached KV for token prefix.
+    pub fn get(&mut self, tokens: &[u32]) -> Option<&CachedKv> {
+        let hash = Self::hash_tokens(tokens);
+        if let Some(entry) = self.entries.get_mut(&hash) {
+            self.access_counter += 1;
+            entry.last_used = self.access_counter;
+            return Some(entry);
+        }
+        None
+    }
+
+    /// Store computed KV for token sequence.
+    pub fn insert(&mut self, tokens: &[u32], kv_data: Vec<u8>, seq_len: usize) {
+        if self.entries.len() >= self.max_entries {
+            self.evict_lru();
+        }
+
+        let hash = Self::hash_tokens(tokens);
+        self.access_counter += 1;
+        self.entries.insert(hash, CachedKv {
+            token_hash: hash,
+            kv_data,
+            seq_len,
+            last_used: self.access_counter,
+        });
+    }
+
+    /// Find longest cached prefix.
+    pub fn find_prefix(&mut self, tokens: &[u32]) -> Option<(usize, &CachedKv)> {
+        // Try progressively shorter prefixes
+        for len in (1..=tokens.len()).rev() {
+            if let Some(entry) = self.get(&tokens[..len]) {
+                return Some((len, entry));
+            }
+        }
+        None
+    }
+
+    fn evict_lru(&mut self) {
+        if let Some((&hash, _)) = self.entries.iter()
+            .min_by_key(|(_, e)| e.last_used)
+        {
+            self.entries.remove(&hash);
+        }
+    }
+
+    pub fn len(&self) -> usize { self.entries.len() }
+    pub fn clear(&mut self) { self.entries.clear(); }
+}
+```
+
+#### 3.2 Integrate into Prefill
+
+```rust
+// src/engine/prefill.rs - add cache integration
+
+impl PrefillExecutor {
+    /// Execute with optional prompt cache.
+    pub fn execute_cached(
+        &self,
+        tokens: &[u32],
+        page_table: &mut PageTable,
+        cache: &mut PromptCache,
+    ) -> Result<PrefillResult, InferenceError> {
+        // Check for cached prefix
+        if let Some((prefix_len, cached)) = cache.find_prefix(tokens) {
+            // Restore cached KV to page table
+            self.restore_kv(cached, page_table)?;
+
+            // Process only new tokens
+            if prefix_len < tokens.len() {
+                self.process_chunk(&tokens[prefix_len..], prefix_len, page_table)?;
+            }
+
+            return Ok(PrefillResult {
+                kv_len: tokens.len(),
+                chunks_processed: (tokens.len() - prefix_len + self.config.chunk_size - 1)
+                    / self.config.chunk_size,
+            });
+        }
+
+        // No cache hit - full prefill
+        let result = self.execute(tokens, page_table)?;
+
+        // Cache the result for future reuse
+        let kv_data = self.serialize_kv(page_table, tokens.len())?;
+        cache.insert(tokens, kv_data, tokens.len());
+
+        Ok(result)
+    }
+}
+```
+
+### Unit Tests
+
+- `tests/prompt_cache_test.rs`
+  - `cache_hit_returns_kv` - Exact match retrieval works
+  - `cache_prefix_match` - Finds longest cached prefix
+  - `cache_lru_eviction` - Oldest entry evicted when full
+  - `cache_hash_collision_resistant` - Different prompts have different hashes
+  - `cached_prefill_faster` - Cache hit skips computation
+
+---
+
+## Section 4 Compliance
+
+| File | Estimated Lines | Status |
+|------|-----------------|--------|
+| `src/engine/simd_matmul.rs` | ~120 | OK |
+| `src/memory/kv_quant.rs` | ~100 | OK |
+| `src/memory/prompt_cache.rs` | ~90 | OK |
+| `tests/simd_matmul_test.rs` | ~80 | OK |
+| `tests/kv_quant_test.rs` | ~70 | OK |
+| `tests/prompt_cache_test.rs` | ~80 | OK |
+
+All files under 250-line limit. Functions under 40 lines.

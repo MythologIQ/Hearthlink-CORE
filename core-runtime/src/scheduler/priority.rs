@@ -95,6 +95,11 @@ impl<T> PriorityQueue<T> {
     pub fn is_empty(&self) -> bool {
         self.heap.is_empty()
     }
+
+    /// Iterate over items in the queue (not in priority order).
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.heap.iter().map(|p| &p.item)
+    }
 }
 
 impl<T> Default for PriorityQueue<T> {

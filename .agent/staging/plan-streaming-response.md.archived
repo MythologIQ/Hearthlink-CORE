@@ -1,0 +1,220 @@
+# Plan: Streaming Response via IPC
+
+## Open Questions
+
+1. **Backpressure handling**: Should the sender block when the IPC buffer is full, or drop tokens?
+   - Recommendation: Block with timeout (simpler, matches mpsc semantics)
+
+2. **Client disconnect**: How to detect client disconnect mid-stream?
+   - Recommendation: Rely on IPC pipe errors during write (no heartbeat complexity)
+
+## Design Rationale
+
+The existing `streaming.rs` provides internal token streaming via `TokenStream`/`TokenStreamSender`. The current IPC protocol returns all tokens at once in `InferenceResponse`.
+
+Rather than complecting streaming and batch modes in a single response type, we add a distinct `StreamChunk` message for incremental tokens. This keeps concerns separate:
+- `InferenceResponse` - batch mode (all tokens at once)
+- `StreamChunk` - streaming mode (one token at a time)
+
+The `stream: bool` flag in the request determines which path.
+
+---
+
+## Phase 1: Protocol Extension
+
+### Affected Files
+
+- `src/engine/inference.rs` - Add `stream` field to InferenceParams
+- `src/ipc/protocol.rs` - Add StreamChunk message type
+
+### Changes
+
+**src/engine/inference.rs**:
+
+Add stream field to InferenceParams:
+```rust
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct InferenceParams {
+    pub max_tokens: usize,
+    pub temperature: f32,
+    pub top_p: f32,
+    pub top_k: usize,
+    #[serde(default)]
+    pub stream: bool,  // NEW: Enable token-by-token streaming
+}
+```
+
+**src/ipc/protocol.rs**:
+
+Add StreamChunk message:
+```rust
+/// Single token chunk for streaming responses.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StreamChunk {
+    pub request_id: RequestId,
+    pub token: u32,
+    pub is_final: bool,
+    pub error: Option<String>,
+}
+
+impl StreamChunk {
+    pub fn token(request_id: RequestId, token: u32) -> Self {
+        Self { request_id, token, is_final: false, error: None }
+    }
+
+    pub fn final_token(request_id: RequestId, token: u32) -> Self {
+        Self { request_id, token, is_final: true, error: None }
+    }
+
+    pub fn error(request_id: RequestId, error: String) -> Self {
+        Self { request_id, token: 0, is_final: true, error: Some(error) }
+    }
+}
+
+pub enum IpcMessage {
+    // ... existing variants ...
+
+    #[serde(rename = "stream_chunk")]
+    StreamChunk(StreamChunk),
+}
+```
+
+### Unit Tests
+
+- `tests/streaming_test.rs` - StreamChunk serialization roundtrip, InferenceParams.stream default
+
+---
+
+## Phase 2: Handler Extension
+
+### Affected Files
+
+- `src/ipc/handler.rs` - Add streaming inference path
+- `src/ipc/mod.rs` - Export StreamChunk
+
+### Changes
+
+**src/ipc/handler.rs**:
+
+Add trait for streaming output:
+```rust
+/// Trait for sending streaming responses.
+#[async_trait::async_trait]
+pub trait StreamSender: Send + Sync {
+    async fn send(&self, message: IpcMessage) -> Result<(), HandlerError>;
+}
+
+impl IpcHandler {
+    /// Process streaming inference request.
+    /// Returns immediately after starting stream; chunks sent via sender.
+    pub async fn process_streaming(
+        &self,
+        request: InferenceRequest,
+        session: &SessionToken,
+        sender: &dyn StreamSender,
+    ) -> Result<(), HandlerError> {
+        self.auth.validate(session).await?;
+
+        let _guard = self.shutdown.track()
+            .ok_or(HandlerError::ShuttingDown)?;
+
+        if let Err(e) = request.validate() {
+            let chunk = StreamChunk::error(request.request_id, e.to_string());
+            sender.send(IpcMessage::StreamChunk(chunk)).await?;
+            return Ok(());
+        }
+
+        // Start streaming inference (actual impl would use TokenStream)
+        // Each token sent as StreamChunk via sender
+        // Final chunk has is_final: true
+
+        Ok(())
+    }
+}
+```
+
+**src/ipc/mod.rs**:
+
+Export StreamChunk:
+```rust
+pub use protocol::{
+    // ... existing exports ...
+    StreamChunk,
+};
+```
+
+### Unit Tests
+
+- `tests/streaming_test.rs` - Add mock StreamSender, test streaming request flow, error handling
+
+---
+
+## Phase 3: Integration
+
+### Affected Files
+
+- `src/ipc/handler.rs` - Wire up to TokenStream
+- `tests/streaming_test.rs` - End-to-end streaming test
+
+### Changes
+
+**src/ipc/handler.rs**:
+
+Integrate with existing TokenStream:
+```rust
+async fn stream_inference(
+    &self,
+    request: InferenceRequest,
+    sender: &dyn StreamSender,
+) -> Result<(), HandlerError> {
+    // Create token stream from engine
+    let (tx, mut rx) = TokenStream::new(32);
+
+    // Start inference task (would be spawned in real impl)
+    // tx.send(token, is_final) for each generated token
+
+    // Forward tokens to IPC as StreamChunks
+    while let Some(output) = rx.next().await {
+        let chunk = if output.is_final {
+            StreamChunk::final_token(request.request_id, output.token)
+        } else {
+            StreamChunk::token(request.request_id, output.token)
+        };
+        sender.send(IpcMessage::StreamChunk(chunk)).await?;
+
+        if output.is_final {
+            break;
+        }
+    }
+
+    Ok(())
+}
+```
+
+### Unit Tests
+
+- `tests/streaming_test.rs` - Full streaming flow: request → multiple chunks → final chunk
+- Test cancellation: early disconnect handling
+- Test timeout: stream timeout after N seconds
+
+---
+
+## Summary
+
+| Phase | New Files | Modified Files | New Tests |
+|-------|-----------|----------------|-----------|
+| 1 | — | inference.rs, protocol.rs | 4 |
+| 2 | — | handler.rs, mod.rs | 3 |
+| 3 | — | handler.rs | 3 |
+| **Total** | **0** | **4** | **10** |
+
+**Section 4 Compliance**:
+- StreamChunk struct: ~20 lines
+- Handler streaming methods: ~40 lines each
+- All modified files remain under 250 lines
+
+**No New Dependencies** - Uses existing tokio::sync::mpsc
+
+---
+
+_Plan follows Simple Made Easy principles: separate message types for batch/stream, composable StreamSender trait, value-oriented StreamChunk_

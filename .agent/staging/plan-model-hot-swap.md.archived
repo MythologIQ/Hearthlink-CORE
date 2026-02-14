@@ -1,0 +1,289 @@
+# Plan: Model Hot-Swap with Zero-Downtime Transitions
+
+## Open Questions
+
+1. **Rollback Strategy**: Should failed swaps automatically rollback, or require explicit command?
+2. **Health Check Depth**: Minimal (model loads) vs. comprehensive (run test inference)?
+3. **Drain Timeout**: Maximum wait time before force-draining in-flight requests?
+
+## Strategic Summary
+
+**Why**: Enable runtime model replacement without dropping requests or causing latency spikes.
+
+**Vibe**: atomic, graceful, observable
+
+## Current State Analysis
+
+Existing infrastructure:
+- `SwapManager` - Basic state machine (Idle/Preparing/Swapping) with guard pattern
+- `ModelRegistry` - Tracks loaded models by handle, no routing capability
+- `ModelLoader` - Validates paths, memory-maps files, extracts metadata
+- `RequestQueue` - Queues requests by model_id string, no model handle resolution
+
+**Gap**: No mapping from `model_id` → `ModelHandle`. Requests use string IDs but registry uses handles. No request draining. No preload validation.
+
+---
+
+## Phase 1: Model Router (Atomic Routing Table)
+
+### Affected Files
+
+- `src/models/router.rs` - NEW: Atomic model_id → handle mapping
+- `src/models/mod.rs` - Export router
+- `src/scheduler/queue.rs` - Add model handle resolution
+
+### Changes
+
+**src/models/router.rs** (NEW ~90 lines)
+
+```rust
+/// Atomic routing table: model_id → ModelHandle
+pub struct ModelRouter {
+    routes: Arc<RwLock<HashMap<String, ModelHandle>>>,
+}
+
+impl ModelRouter {
+    /// Atomically swap route to new handle
+    pub async fn swap_route(&self, model_id: &str, new_handle: ModelHandle) -> Option<ModelHandle>;
+
+    /// Resolve model_id to handle (returns None if not routed)
+    pub async fn resolve(&self, model_id: &str) -> Option<ModelHandle>;
+
+    /// Add new route (fails if already exists)
+    pub async fn add_route(&self, model_id: &str, handle: ModelHandle) -> Result<(), RouterError>;
+
+    /// Remove route (returns old handle)
+    pub async fn remove_route(&self, model_id: &str) -> Option<ModelHandle>;
+
+    /// List all active routes
+    pub async fn list_routes(&self) -> Vec<(String, ModelHandle)>;
+}
+```
+
+**src/scheduler/queue.rs** - Add router reference
+
+```rust
+pub struct RequestQueue {
+    queue: Arc<Mutex<PriorityQueue<QueuedRequest>>>,
+    router: Arc<ModelRouter>,  // ADD
+    next_id: AtomicU64,
+    config: RequestQueueConfig,
+}
+
+// QueuedRequest gains resolved handle
+pub struct QueuedRequest {
+    pub id: u64,
+    pub model_id: String,
+    pub model_handle: Option<ModelHandle>,  // ADD: resolved at dequeue time
+    pub prompt_tokens: Vec<u32>,
+    pub params: InferenceParams,
+}
+```
+
+### Unit Tests
+
+- `tests/model_router_test.rs` - NEW
+  - `test_add_route_success` - Add route, verify resolve works
+  - `test_add_route_duplicate_fails` - Duplicate model_id rejected
+  - `test_swap_route_atomic` - Swap returns old handle, new resolve works
+  - `test_remove_route` - Remove returns old handle, resolve returns None
+  - `test_resolve_nonexistent` - Unknown model_id returns None
+  - `test_concurrent_swap` - Multiple concurrent swaps don't corrupt state
+
+---
+
+## Phase 2: Request Draining (In-Flight Tracking)
+
+### Affected Files
+
+- `src/models/drain.rs` - NEW: In-flight request tracking per model
+- `src/models/mod.rs` - Export drain
+- `src/scheduler/continuous.rs` - Integrate flight tracking
+
+### Changes
+
+**src/models/drain.rs** (NEW ~80 lines)
+
+```rust
+/// Tracks in-flight requests per model handle for drain coordination.
+pub struct FlightTracker {
+    in_flight: Arc<RwLock<HashMap<ModelHandle, AtomicU32>>>,
+}
+
+impl FlightTracker {
+    /// Increment in-flight count for model (returns guard)
+    pub fn track(&self, handle: ModelHandle) -> FlightGuard;
+
+    /// Get current in-flight count
+    pub async fn in_flight_count(&self, handle: ModelHandle) -> u32;
+
+    /// Wait until in-flight count reaches zero (with timeout)
+    pub async fn drain(&self, handle: ModelHandle, timeout: Duration) -> Result<(), DrainError>;
+}
+
+/// RAII guard that decrements count on drop
+pub struct FlightGuard { ... }
+
+pub enum DrainError {
+    Timeout,
+}
+```
+
+**src/scheduler/continuous.rs** - Track request flight
+
+```rust
+impl ContinuousBatcher {
+    // When starting request processing:
+    pub async fn start_request(&mut self, request: QueuedRequest) -> ... {
+        let guard = self.flight_tracker.track(request.model_handle.unwrap());
+        // Store guard in slot, dropped when request completes
+    }
+}
+```
+
+### Unit Tests
+
+- `tests/drain_test.rs` - NEW
+  - `test_track_increments_count` - Track increases count, drop decrements
+  - `test_drain_succeeds_when_zero` - Drain completes immediately when no in-flight
+  - `test_drain_waits_for_completion` - Drain blocks until requests finish
+  - `test_drain_timeout` - Drain returns error after timeout
+  - `test_multiple_concurrent_tracks` - Many simultaneous requests tracked correctly
+  - `test_track_unknown_handle` - Tracking unknown handle creates entry
+
+---
+
+## Phase 3: Preload Validation & Swap Orchestration
+
+### Affected Files
+
+- `src/models/preload.rs` - NEW: Preload, validate, prepare model
+- `src/models/swap.rs` - MODIFY: Integrate router, draining, preload
+- `src/models/mod.rs` - Export preload
+
+### Changes
+
+**src/models/preload.rs** (NEW ~100 lines)
+
+```rust
+/// Preloads and validates a model before swap.
+pub struct ModelPreloader {
+    loader: ModelLoader,
+    registry: Arc<ModelRegistry>,
+}
+
+/// Result of successful preload
+pub struct PreloadedModel {
+    pub handle: ModelHandle,
+    pub manifest: ModelManifest,
+    pub mapped: MappedModel,
+}
+
+impl ModelPreloader {
+    /// Preload model: validate path, verify hash, register in registry
+    pub async fn preload(&self, manifest_path: &Path) -> Result<PreloadedModel, PreloadError>;
+
+    /// Validate model can be used (basic inference sanity check)
+    pub async fn validate(&self, preloaded: &PreloadedModel) -> Result<(), PreloadError>;
+
+    /// Abort preload: unregister from registry, free resources
+    pub async fn abort(&self, preloaded: PreloadedModel);
+}
+
+pub enum PreloadError {
+    PathNotAllowed(PathBuf),
+    ManifestInvalid(String),
+    HashMismatch { expected: String, actual: String },
+    LoadFailed(String),
+    ValidationFailed(String),
+}
+```
+
+**src/models/swap.rs** - Enhanced orchestration (~130 lines total)
+
+```rust
+pub struct SwapManager {
+    state: Arc<RwLock<SwapState>>,
+    registry: Arc<ModelRegistry>,
+    router: Arc<ModelRouter>,      // ADD
+    flight_tracker: Arc<FlightTracker>, // ADD
+    preloader: ModelPreloader,     // ADD
+}
+
+impl SwapManager {
+    /// Execute zero-downtime swap:
+    /// 1. Preload new model (parallel with current serving)
+    /// 2. Validate new model
+    /// 3. Pause routing to old model
+    /// 4. Drain in-flight requests
+    /// 5. Atomically swap route
+    /// 6. Unregister old model
+    pub async fn execute_swap(
+        &self,
+        model_id: &str,
+        new_manifest_path: &Path,
+        drain_timeout: Duration,
+    ) -> Result<SwapResult, SwapError>;
+}
+
+pub struct SwapResult {
+    pub old_handle: ModelHandle,
+    pub new_handle: ModelHandle,
+    pub drain_duration: Duration,
+}
+
+pub enum SwapError {
+    // ... existing variants ...
+    PreloadFailed(PreloadError),
+    DrainTimeout,
+    RouteNotFound(String),
+}
+```
+
+### Unit Tests
+
+- `tests/preload_test.rs` - NEW
+  - `test_preload_valid_model` - Preload succeeds, handle registered
+  - `test_preload_invalid_hash` - Hash mismatch detected
+  - `test_preload_invalid_path` - Path outside allowed dirs rejected
+  - `test_abort_unregisters` - Aborted preload cleans up registry
+  - `test_validate_success` - Validation passes for valid model
+
+- `tests/swap_integration_test.rs` - NEW
+  - `test_zero_downtime_swap` - Full swap with in-flight requests completes without drops
+  - `test_swap_with_drain_timeout` - Drain timeout triggers error (old model kept)
+  - `test_swap_preload_failure_rollback` - Preload failure doesn't affect current model
+  - `test_concurrent_swap_rejected` - Second swap blocked while first in progress
+
+---
+
+## Section 4 Compliance Check
+
+| File | Estimated Lines | Limit | Status |
+|------|-----------------|-------|--------|
+| router.rs | ~90 | 250 | OK |
+| drain.rs | ~80 | 250 | OK |
+| preload.rs | ~100 | 250 | OK |
+| swap.rs | ~130 | 250 | OK |
+| model_router_test.rs | ~120 | 250 | OK |
+| drain_test.rs | ~100 | 250 | OK |
+| preload_test.rs | ~100 | 250 | OK |
+| swap_integration_test.rs | ~150 | 250 | OK |
+
+## Risk Assessment
+
+| Phase | Risk Grade | Justification |
+|-------|------------|---------------|
+| Model Router | L2 | New concurrency primitive, atomic operations |
+| Request Draining | L2 | Integrates with scheduler, timeout handling |
+| Preload & Swap | L2 | Orchestrates multiple components, failure modes |
+
+**Overall Risk Grade**: L2 (Logic changes)
+
+## Dependencies
+
+No new external dependencies required.
+
+---
+
+_Plan follows Simple Made Easy principles: routing, draining, and preloading are separate composable concerns._

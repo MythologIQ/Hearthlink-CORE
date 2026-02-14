@@ -7,7 +7,7 @@ license = "MIT"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1.35", features = ["rt-multi-thread", "sync", "time", "macros"] }
+tokio = { version = "1.35", features = ["rt-multi-thread", "sync", "time", "macros", "signal"] }
 
 # Serialization for IPC
 serde = { version = "1.0", features = ["derive"] }
@@ -16,17 +16,44 @@ serde_json = "1.0"
 # Cross-platform IPC
 interprocess = { version = "2.0", features = ["tokio"] }
 
-# Model inference (using candle for pure Rust)
-candle-core = "0.4"
-candle-nn = "0.4"
-candle-transformers = "0.4"
+# ONNX inference backend (Candle - pure Rust)
+candle-core = { version = "0.8", optional = true }
+candle-onnx = { version = "0.8", optional = true }
+
+# GGUF inference backend (llama-cpp-rs)
+llama-cpp-2 = { version = "0.1", optional = true }
 
 # Error handling
 thiserror = "1.0"
 
-# Cryptographic hashing for session tokens
+# Async traits
+async-trait = "0.1"
+
+# Cryptographic hashing for session tokens and model verification
 sha2 = "0.10"
 hex = "0.4"
+
+# Output filtering
+regex = "1.10"
+
+# Config file parsing
+toml = "0.8"
+
+# Memory-mapped file access for zero-copy model loading
+memmap2 = "0.9"
+
+# Structured logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+
+# Metrics facade
+metrics = "0.22"
+
+[features]
+default = []
+onnx = ["candle-core", "candle-onnx"]
+gguf = ["llama-cpp-2"]
+full = ["onnx", "gguf"]
 
 [dev-dependencies]
 tokio-test = "0.4"
@@ -38,6 +65,22 @@ harness = false
 
 [[bench]]
 name = "scheduler_throughput"
+harness = false
+
+[[bench]]
+name = "inference_latency"
+harness = false
+
+[[bench]]
+name = "generation_throughput"
+harness = false
+
+[[bench]]
+name = "memory_overhead"
+harness = false
+
+[[bench]]
+name = "concurrent_load"
 harness = false
 
 [profile.release]

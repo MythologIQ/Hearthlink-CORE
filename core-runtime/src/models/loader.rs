@@ -1,5 +1,7 @@
 //! Model loading and validation.
 
+use memmap2::Mmap;
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -52,7 +54,10 @@ impl ModelLoader {
 
         let is_allowed = ALLOWED_DIRS.iter().any(|dir| {
             let allowed = self.base_path.join(dir);
-            canonical.starts_with(&allowed)
+            // Canonicalize the allowed path to match format of canonical path
+            allowed.canonicalize()
+                .map(|allowed_canonical| canonical.starts_with(&allowed_canonical))
+                .unwrap_or(false)
         });
 
         if !is_allowed {
@@ -79,6 +84,12 @@ impl ModelLoader {
 
         Ok(ModelMetadata { name, size_bytes: size })
     }
+
+    /// Load model using memory-mapping (zero-copy).
+    /// Returns a MappedModel that provides direct access to file contents.
+    pub fn load_mapped(&self, model_path: &ModelPath) -> Result<MappedModel, LoadError> {
+        MappedModel::open(model_path)
+    }
 }
 
 /// Basic model metadata.
@@ -86,4 +97,40 @@ impl ModelLoader {
 pub struct ModelMetadata {
     pub name: String,
     pub size_bytes: u64,
+}
+
+/// Memory-mapped model for zero-copy loading.
+/// Uses memmap2 for cross-platform support.
+pub struct MappedModel {
+    mmap: Mmap,
+}
+
+// SAFETY: Mmap is Send+Sync when underlying file is read-only and not modified.
+// We only use read-only mappings and models are immutable during inference.
+unsafe impl Send for MappedModel {}
+unsafe impl Sync for MappedModel {}
+
+impl MappedModel {
+    /// Memory-map a model file for zero-copy access.
+    pub fn open(path: &ModelPath) -> Result<Self, LoadError> {
+        let file = File::open(path.as_path())?;
+        // SAFETY: File is opened read-only, model files are not modified during runtime
+        let mmap = unsafe { Mmap::map(&file)? };
+        Ok(Self { mmap })
+    }
+
+    /// Get model data as a byte slice (zero-copy).
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.mmap
+    }
+
+    /// Length of mapped data in bytes.
+    pub fn len(&self) -> usize {
+        self.mmap.len()
+    }
+
+    /// Check if mapped region is empty.
+    pub fn is_empty(&self) -> bool {
+        self.mmap.is_empty()
+    }
 }

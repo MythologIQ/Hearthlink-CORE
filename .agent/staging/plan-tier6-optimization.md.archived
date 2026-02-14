@@ -1,0 +1,187 @@
+# Tier 6 Performance Optimization Plan
+
+## Strategic Summary
+
+**Why**: Extend CPU-optimized inference to ARM platforms and reduce peak memory during attention computation.
+
+**Vibe**: cross-platform, memory-efficient, production-ready
+
+## Context
+
+Tier 5 delivered AVX2 SIMD acceleration for x86_64 platforms. Tier 6 addresses:
+1. ARM platform support (Apple Silicon, ARM servers) via NEON SIMD
+2. Memory efficiency during attention via tiled Flash Attention
+3. Integration of SIMD kernels into the quantized tensor matmul path
+
+## Scope
+
+### Phase 1: ARM NEON SIMD Kernels (L2)
+
+Extend `simd_matmul.rs` with NEON equivalents for Q8/Q4 dot products.
+
+**Files Modified**:
+- `src/engine/simd_matmul.rs` - Add NEON kernels and runtime dispatch
+
+**Technical Design**:
+```rust
+// NEON detection and dispatch
+#[cfg(target_arch = "aarch64")]
+static NEON_AVAILABLE: AtomicBool = AtomicBool::new(false);
+
+#[cfg(target_arch = "aarch64")]
+pub fn init_simd() {
+    // NEON is baseline on aarch64 - always available
+    NEON_AVAILABLE.store(true, Ordering::Relaxed);
+    SIMD_INITIALIZED.store(true, Ordering::Relaxed);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "neon")]
+unsafe fn dot_q8_neon(q_data: &[u8], input: &[f32], scale: f32) -> f32;
+```
+
+**Rationale**: ARM is increasingly important for edge deployment and cloud ARM instances. NEON is baseline on aarch64, so no runtime detection needed.
+
+**Test Cases**:
+- `test_dot_q8_neon_matches_scalar` - Verify NEON produces same results as scalar
+- `test_dot_q4_neon_matches_scalar` - Verify Q4 NEON correctness
+- `test_neon_dispatch_on_aarch64` - Verify correct kernel selection
+
+### Phase 2: Flash Attention CPU (L2)
+
+Implement tiled attention that computes softmax in blocks to reduce peak memory from O(n^2) to O(n).
+
+**Files Created**:
+- `src/engine/flash_attn.rs` - Tiled attention implementation
+
+**Technical Design**:
+```rust
+pub struct FlashAttnConfig {
+    pub block_size: usize,    // Tile size (default 64)
+    pub hidden_dim: usize,
+}
+
+pub struct FlashAttn {
+    config: FlashAttnConfig,
+}
+
+impl FlashAttn {
+    /// Tiled attention: computes attention in blocks
+    /// - Reduces memory from O(seq_len^2) to O(seq_len * block_size)
+    /// - Uses online softmax algorithm for numerical stability
+    pub fn forward(
+        &self,
+        query: &[f32],           // [head_dim]
+        keys: &KvStore,          // [seq_len, head_dim]
+        values: &KvStore,        // [seq_len, head_dim]
+        output: &mut [f32],      // [head_dim]
+    ) -> Result<(), InferenceError>;
+}
+```
+
+**Algorithm**:
+1. Divide KV-cache into blocks of `block_size` positions
+2. For each block:
+   - Compute attention scores for block
+   - Track running max for online softmax
+   - Accumulate weighted values with correction factor
+3. Final output is correctly normalized without materializing full attention matrix
+
+**Rationale**: Standard attention requires O(seq_len^2) memory for the attention matrix. Flash Attention computes softmax in tiles, reducing peak memory while maintaining exact results.
+
+**Test Cases**:
+- `test_flash_attn_matches_standard` - Verify output matches naive implementation
+- `test_flash_attn_memory_reduction` - Verify memory usage is O(n) not O(n^2)
+- `test_flash_attn_numerical_stability` - Test with extreme values
+
+### Phase 3: SIMD Quantization Integration (L2)
+
+Replace scalar matmul in `quantize.rs` with SIMD-accelerated kernels from `simd_matmul.rs`.
+
+**Files Modified**:
+- `src/engine/quantize.rs` - Use simd_matmul for Q8/Q4 matmul
+
+**Technical Design**:
+```rust
+// Before: scalar implementation
+fn matmul_q8(&self, input: &[f32], output: &mut [f32]) {
+    // ... scalar loops ...
+}
+
+// After: SIMD dispatch
+fn matmul_q8(&self, input: &[f32], output: &mut [f32]) {
+    for i in 0..rows {
+        let row_data = &self.data[row_offset..row_offset + cols];
+        let scale = self.scales[i * blocks_per_row];
+        output[i] = simd_matmul::dot_q8(row_data, input, scale);
+    }
+}
+```
+
+**Rationale**: The current `quantize.rs` uses scalar matmul while `simd_matmul.rs` provides SIMD-accelerated versions. Integration provides 4-8x speedup on supported platforms.
+
+**Test Cases**:
+- `test_quantized_matmul_uses_simd` - Verify SIMD path is taken
+- `test_quantized_matmul_accuracy` - Verify results unchanged after integration
+
+## File Tree
+
+```
+core-runtime/
+├── src/
+│   └── engine/
+│       ├── simd_matmul.rs    # MODIFIED: Add NEON support
+│       ├── flash_attn.rs     # NEW: Tiled attention
+│       ├── quantize.rs       # MODIFIED: Use simd_matmul
+│       └── mod.rs            # MODIFIED: Export flash_attn
+└── tests/
+    ├── simd_neon_test.rs     # NEW: NEON kernel tests
+    └── flash_attn_test.rs    # NEW: Flash attention tests
+```
+
+## Risk Assessment
+
+| Phase | Risk Grade | Justification |
+|-------|------------|---------------|
+| ARM NEON | L2 | New platform-specific code, but algorithm unchanged |
+| Flash Attention | L2 | New algorithm, but no external dependencies |
+| SIMD Integration | L2 | Modifying existing module, must preserve behavior |
+
+**Overall Risk Grade**: L2 (Logic changes)
+
+## Dependencies
+
+No new external dependencies required.
+
+## Section 4 Constraints
+
+| File | Current Lines | Projected Lines | Limit |
+|------|---------------|-----------------|-------|
+| simd_matmul.rs | 172 | ~220 | 250 |
+| flash_attn.rs | 0 | ~150 | 250 |
+| quantize.rs | 188 | ~195 | 250 |
+
+All files remain within Section 4 limits.
+
+## Test Plan
+
+| Category | Count | Description |
+|----------|-------|-------------|
+| NEON Tests | 5 | Q8/Q4 NEON correctness, dispatch |
+| Flash Attention | 6 | Correctness, memory, numerical stability |
+| Integration | 3 | SIMD integration verification |
+
+**Total New Tests**: 14
+
+## Success Criteria
+
+- [ ] NEON kernels implemented with compile-time feature gating
+- [ ] Flash Attention reduces peak memory for seq_len > 1024
+- [ ] SIMD integration provides measurable speedup on quantized matmul
+- [ ] All existing 319 tests continue to pass
+- [ ] All new tests pass
+- [ ] Section 4 Razor compliance maintained
+
+## Gate Requirements
+
+This is an L2 Risk Grade plan. Requires `/ql-audit` before implementation.

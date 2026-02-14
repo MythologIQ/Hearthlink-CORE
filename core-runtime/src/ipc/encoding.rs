@@ -27,12 +27,50 @@ impl TokenEncoder for V1Encoder {
     }
 }
 
+/// V2 Encoder: Packed binary format for token arrays.
+/// Format: [count: u32-le][token0: u32-le][token1: u32-le]...
+/// ~50% smaller than JSON for typical payloads.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct V2Encoder;
+
+impl TokenEncoder for V2Encoder {
+    fn encode(&self, tokens: &[u32]) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(4 + tokens.len() * 4);
+        buf.extend_from_slice(&(tokens.len() as u32).to_le_bytes());
+        for token in tokens {
+            buf.extend_from_slice(&token.to_le_bytes());
+        }
+        buf
+    }
+
+    fn decode(&self, bytes: &[u8]) -> Result<Vec<u32>, ProtocolError> {
+        if bytes.len() < 4 {
+            return Err(ProtocolError::InvalidFormat("V2: too short".into()));
+        }
+        let count = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as usize;
+        let expected_len = 4 + count * 4;
+        if bytes.len() != expected_len {
+            return Err(ProtocolError::InvalidFormat(
+                format!("V2: expected {} bytes, got {}", expected_len, bytes.len())
+            ));
+        }
+        let mut tokens = Vec::with_capacity(count);
+        for i in 0..count {
+            let offset = 4 + i * 4;
+            let token = u32::from_le_bytes([
+                bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]
+            ]);
+            tokens.push(token);
+        }
+        Ok(tokens)
+    }
+}
+
 /// Get encoder for a given protocol version.
 pub fn get_encoder(version: super::protocol::ProtocolVersion) -> Box<dyn TokenEncoder + Send + Sync> {
     match version {
         super::protocol::ProtocolVersion::V1 => Box::new(V1Encoder),
-        // V2 encoder will be added in Phase 3
-        super::protocol::ProtocolVersion::V2 => Box::new(V1Encoder), // Fallback until implemented
+        super::protocol::ProtocolVersion::V2 => Box::new(V2Encoder),
     }
 }
 

@@ -7,7 +7,27 @@
       "Skill(ql-judge-persona:*)",
       "Skill(ql-specialist-persona)",
       "Skill(ql-specialist-persona:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo test:*)",
+      "Bash(for f in src/engine/config.rs src/engine/input.rs src/engine/output.rs src/engine/error.rs src/models/manifest.rs tests/inference_types_test.rs src/engine/mod.rs)",
+      "Bash(wc:*)",
+      "Bash(for f in src/engine/onnx/*.rs src/engine/gguf/*.rs src/engine/filter.rs src/memory/limits.rs src/sandbox/*.rs)",
+      "Skill(ql-plan)",
+      "Skill(ql-plan:*)",
+      "Bash(cargo clean:*)",
+      "Bash(pushd:*)",
+      "Bash(popd)",
+      "Bash(cargo build:*)",
+      "Bash(for f in src/memory/paged.rs src/scheduler/continuous.rs src/engine/quantize.rs src/engine/prefill.rs src/engine/decode.rs tests/tier4_test.rs)",
+      "Bash(bc:*)",
+      "Skill(ql-implement)",
+      "Skill(ql-implement:*)",
+      "Skill(ql-substantiate)",
+      "Skill(ql-substantiate:*)",
+      "Bash(python -c:*)",
+      "Skill(ql-audit)",
+      "Skill(ql-audit:*)"
     ]
   }
 }

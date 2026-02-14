@@ -1,8 +1,9 @@
 # System State Snapshot
 
-**Generated**: 2026-02-03T23:45:00+00:00
-**Phase**: SUBSTANTIATE
+**Generated**: 2026-02-14T15:30:00+00:00
+**Phase**: SUBSTANTIATE (Runtime Enhancements Bundle)
 **Status**: SEALED
+**Session ID**: r5s6t7u8
 
 ## Physical Tree
 
@@ -10,96 +11,326 @@
 core-runtime/
 ├── Cargo.toml
 ├── src/
-│   ├── main.rs
-│   ├── lib.rs
+│   ├── main.rs                    [Graceful Shutdown - drain loop]
+│   ├── lib.rs                     [Runtime Enhancements - OutputCache, ConnectionPool]
+│   ├── shutdown.rs                [Graceful Shutdown - coordinator]
+│   ├── health.rs                  [Health Check - HealthChecker]
 │   ├── ipc/
-│   │   ├── mod.rs
-│   │   ├── auth.rs
-│   │   ├── handler.rs
-│   │   └── protocol.rs
+│   │   ├── mod.rs                   [Runtime Enhancements - exports]
+│   │   ├── auth.rs                  [Runtime Enhancements - connection tracking] **MODIFIED**
+│   │   ├── encoding.rs              [Tier 2 - V2Encoder]
+│   │   ├── handler.rs               [Runtime Enhancements - cancel/warmup handlers]
+│   │   ├── health_handler.rs        [Runtime Enhancements - extracted health] **NEW**
+│   │   ├── connections.rs           [Runtime Enhancements - ConnectionPool] **NEW**
+│   │   └── protocol.rs              [Runtime Enhancements - Cancel/Warmup messages]
 │   ├── scheduler/
-│   │   ├── mod.rs
-│   │   ├── priority.rs
-│   │   ├── queue.rs
+│   │   ├── mod.rs                   [Runtime Enhancements - dedup export]
+│   │   ├── pool.rs                  [Tier 2 - ThreadPoolConfig]
+│   │   ├── continuous.rs            [Tier 4 - ContinuousBatcher]
+│   │   ├── priority.rs              [Runtime Enhancements - iter() method]
+│   │   ├── queue.rs                 [Runtime Enhancements - deadline/cancel]
+│   │   ├── dedup.rs                 [Runtime Enhancements - OutputCache] **NEW**
 │   │   └── batch.rs
 │   ├── engine/
-│   │   ├── mod.rs
-│   │   ├── inference.rs
+│   │   ├── mod.rs                   [Tier 3/4/5/6 - exports]
+│   │   ├── config.rs
+│   │   ├── error.rs
+│   │   ├── input.rs
+│   │   ├── output.rs
+│   │   ├── filter.rs
+│   │   ├── inference.rs             [Runtime Enhancements - timeout_ms field]
 │   │   ├── tokenizer.rs
-│   │   └── streaming.rs
+│   │   ├── streaming.rs
+│   │   ├── simd_tokenizer.rs        [Tier 3]
+│   │   ├── simd_matmul.rs           [Tier 5 - AVX2 SIMD kernels]
+│   │   ├── simd_neon.rs             [Tier 6 - NEON SIMD kernels]
+│   │   ├── flash_attn.rs            [Tier 6 - Flash Attention CPU]
+│   │   ├── speculative.rs           [Tier 3]
+│   │   ├── quantize.rs              [Tier 4/6 - SIMD integration]
+│   │   ├── prefill.rs               [Tier 4 - PrefillExecutor]
+│   │   ├── decode.rs                [Tier 4 - DecodeExecutor]
+│   │   ├── onnx/
+│   │   │   ├── mod.rs
+│   │   │   ├── classifier.rs
+│   │   │   └── embedder.rs
+│   │   └── gguf/
+│   │       ├── mod.rs
+│   │       └── generator.rs
 │   ├── models/
+│   │   ├── mod.rs                   [Hot-Swap - exports updated]
+│   │   ├── loader.rs                [Tier 2 - MappedModel]
+│   │   ├── manifest.rs
+│   │   ├── registry.rs              [Hot-Swap - ModelHandle::new()]
+│   │   ├── router.rs                [Hot-Swap - atomic routing]
+│   │   ├── drain.rs                 [Hot-Swap - flight tracking]
+│   │   ├── preload.rs               [Hot-Swap - preload validation]
+│   │   └── swap.rs                  [Hot-Swap - orchestration]
+│   ├── memory/
+│   │   ├── mod.rs                   [Tier 3/4/5 - Arena, Paged, Q8KvStore, PromptCache exports]
+│   │   ├── arena.rs                 [Tier 3]
+│   │   ├── paged.rs                 [Tier 4 - PageTable, 16 tokens/page]
+│   │   ├── kv_quant.rs              [Tier 5 - Q8 KV storage]
+│   │   ├── prompt_cache.rs          [Tier 5 - LRU prompt cache]
+│   │   ├── pool.rs
+│   │   ├── gpu.rs
+│   │   ├── cache.rs                 [Tier 2 - KvCache]
+│   │   └── limits.rs
+│   ├── sandbox/
 │   │   ├── mod.rs
-│   │   ├── loader.rs
-│   │   ├── registry.rs
-│   │   └── swap.rs
-│   └── memory/
-│       ├── mod.rs
-│       ├── pool.rs
-│       ├── gpu.rs
-│       └── cache.rs
-└── tests/
-    ├── auth_test.rs
-    ├── protocol_test.rs
-    ├── scheduler_test.rs
-    └── memory_test.rs
+│   │   ├── windows.rs
+│   │   └── unix.rs
+│   └── telemetry/                   [Observability Stack]
+│       ├── mod.rs                   [Metrics Export - store exports]
+│       ├── logging.rs
+│       ├── spans.rs
+│       ├── metrics.rs
+│       └── store.rs                 [Metrics Export - MetricsStore]
+├── tests/
+│   ├── auth_test.rs
+│   ├── backend_test.rs
+│   ├── baseline_comparison_test.rs
+│   ├── bench_fixtures_test.rs
+│   ├── competitive_comparison_test.rs
+│   ├── connections_test.rs          [Runtime Enhancements - 6 tests] **NEW**
+│   ├── dedup_test.rs                [Runtime Enhancements - 8 tests] **NEW**
+│   ├── drain_test.rs                [Hot-Swap - drain tests]
+│   ├── encoding_roundtrip_test.rs
+│   ├── filter_test.rs
+│   ├── flash_attn_test.rs           [Tier 6 - Flash Attention tests]
+│   ├── health_test.rs               [Health Check - 11 tests]
+│   ├── inference_types_test.rs
+│   ├── integration_end_to_end_test.rs
+│   ├── integration_gguf_test.rs
+│   ├── integration_onnx_test.rs
+│   ├── kv_quant_test.rs             [Tier 5 - Q8 KV tests]
+│   ├── limits_test.rs
+│   ├── memory_test.rs               [Tier 3 - arena tests]
+│   ├── metrics_export_test.rs       [Metrics Export - 11 tests]
+│   ├── model_router_test.rs         [Hot-Swap - router tests]
+│   ├── preload_test.rs              [Hot-Swap - preload tests]
+│   ├── prompt_cache_test.rs         [Tier 5 - Cache tests]
+│   ├── protocol_test.rs
+│   ├── protocol_version_test.rs
+│   ├── runtime_enhancements_integration_test.rs [Runtime Enhancements - 5 tests] **NEW**
+│   ├── sandbox_test.rs
+│   ├── scheduler_test.rs
+│   ├── security_filter_adversarial_test.rs
+│   ├── security_hash_verification_test.rs
+│   ├── security_input_validation_test.rs
+│   ├── security_path_traversal_test.rs
+│   ├── security_sandbox_escape_test.rs
+│   ├── shutdown_test.rs             [Graceful Shutdown - 10 tests]
+│   ├── simd_matmul_test.rs          [Tier 5 - SIMD tests]
+│   ├── simd_neon_test.rs            [Tier 6 - NEON tests]
+│   ├── speculative_test.rs          [Tier 3]
+│   ├── streaming_test.rs            [Streaming Response - 10 tests]
+│   ├── swap_integration_test.rs     [Hot-Swap - integration tests]
+│   ├── telemetry_test.rs            [Observability Stack]
+│   ├── tier4_paged_continuous_test.rs   [Tier 4 - Phase 1-2 tests]
+│   ├── tier4_quantize_decode_test.rs    [Tier 4 - Phase 3-4 tests]
+│   ├── timeout_cancel_test.rs       [Runtime Enhancements - 10 tests] **NEW**
+│   ├── tokenizer_test.rs            [Tier 3]
+│   └── warmup_test.rs               [Runtime Enhancements - 6 tests] **NEW**
+├── benches/
+│   ├── concurrent_load.rs
+│   ├── generation_throughput.rs
+│   ├── inference_latency.rs
+│   ├── ipc_throughput.rs
+│   ├── memory_overhead.rs
+│   └── scheduler_throughput.rs
+└── fixtures/
+    ├── baselines/
+    │   ├── baseline_metrics.json
+    │   └── external_references.json
+    └── prompts/
+        ├── small.json
+        ├── medium.json
+        └── large.json
 ```
 
-## File Inventory
+## Runtime Enhancements Bundle Compliance
+
+| Phase | Promised (Blueprint) | Delivered | Lines | Tests | Status |
+|-------|---------------------|-----------|-------|-------|--------|
+| 0 | Handler Split | `health_handler.rs` | 84 | — | PASS |
+| 1 | Timeout/Cancel | `queue.rs`, `protocol.rs` | 182, 238 | 10 | PASS |
+| 2 | Model Warm-up | `handler.rs`, `protocol.rs` | 245, 238 | 6 | PASS |
+| 3 | Request Dedup | `dedup.rs` | 122 | 8 | PASS |
+| 4 | Connection Mgmt | `connections.rs`, `auth.rs` | 77, 148 | 6 | PASS |
+| 5 | Integration | `lib.rs`, `ipc/mod.rs` | 145, 23 | 5 | PASS |
+
+**Blueprint Match**: 8/8 components (100%)
+
+**Architecture**:
+```
+Request Timeout & Cancellation:
+  ├── InferenceParams.timeout_ms → deadline computed on enqueue
+  ├── QueuedRequest.is_cancelled() / is_expired()
+  ├── RequestQueue.cancel(id) → marks request cancelled
+  └── dequeue() skips cancelled/expired requests
+
+Model Warm-up via IPC:
+  └── IpcMessage::WarmupRequest { model_id, tokens }
+      └── NO AUTH REQUIRED (orchestrator pattern)
+          └── Enqueue minimal inference, return elapsed_ms
+
+Request Deduplication:
+  └── OutputCache with SHA256(tokens + params) key
+      ├── TTL-based expiration (default 30s)
+      └── LRU eviction at max_entries
+
+Connection Management:
+  └── ConnectionPool with global max_connections
+      ├── try_acquire() → ConnectionGuard (RAII)
+      └── SessionAuth.track_connection() per session
+```
+
+**Components**:
+- `HealthHandler` - Extracted health check handling (orchestrator pattern)
+- `ConnectionPool` - Global connection limiting with RAII guards
+- `ConnectionGuard` - RAII connection release
+- `OutputCache` - SHA256-keyed response cache with TTL
+- `CachedOutput` - Output tokens + timestamp
+- `DedupResult` - Cached/Queued enum
+- `InferenceParams.timeout_ms` - Optional request deadline
+- `QueuedRequest.deadline` - Computed from timeout_ms
+- `QueuedRequest.cancelled` - AtomicBool for cancellation
+- `WarmupRequest/WarmupResponse` - IPC types for model priming
+- `CancelRequest/CancelResponse` - IPC types for request cancellation
+
+---
+
+## File Inventory (Updated)
+
+### Source Files (66 files)
 
 | Path | Lines | Purpose |
 |------|-------|---------|
-| `src/main.rs` | 49 | Entry point |
-| `src/lib.rs` | 110 | Public API surface |
-| `src/ipc/mod.rs` | 14 | IPC module root |
-| `src/ipc/auth.rs` | 126 | Session authentication |
-| `src/ipc/handler.rs` | 126 | Request/response handling |
-| `src/ipc/protocol.rs` | 110 | Wire format, validation |
-| `src/scheduler/mod.rs` | 11 | Scheduler module root |
-| `src/scheduler/priority.rs` | 104 | Priority queue |
-| `src/scheduler/queue.rs` | 98 | Request queue |
+| `src/main.rs` | 64 | Entry point + Graceful shutdown |
+| `src/lib.rs` | 145 | Public API + OutputCache + ConnectionPool |
+| `src/shutdown.rs` | 137 | Coordinator |
+| `src/health.rs` | 122 | HealthChecker |
+| `src/ipc/mod.rs` | 23 | IPC root + connection exports |
+| `src/ipc/auth.rs` | 148 | Session auth + connection tracking |
+| `src/ipc/handler.rs` | 245 | Request handling + cancel/warmup |
+| `src/ipc/health_handler.rs` | 84 | **[NEW]** Extracted health handling |
+| `src/ipc/connections.rs` | 77 | **[NEW]** ConnectionPool + Guard |
+| `src/ipc/protocol.rs` | 238 | Wire format + Cancel/Warmup messages |
+| `src/ipc/encoding.rs` | 111 | Token encoding (V1 + V2) |
+| `src/scheduler/mod.rs` | 15 | Scheduler root + dedup export |
+| `src/scheduler/pool.rs` | 44 | ThreadPoolConfig |
+| `src/scheduler/continuous.rs` | 166 | ContinuousBatcher |
+| `src/scheduler/priority.rs` | 106 | Priority queue + iter() |
+| `src/scheduler/queue.rs` | 182 | Request queue + deadline/cancel |
+| `src/scheduler/dedup.rs` | 122 | **[NEW]** OutputCache |
 | `src/scheduler/batch.rs` | 98 | Batching logic |
-| `src/engine/mod.rs` | 11 | Engine module root |
-| `src/engine/inference.rs` | 102 | Core inference |
-| `src/engine/tokenizer.rs` | 66 | Tokenization wrapper |
-| `src/engine/streaming.rs` | 72 | Token streaming |
-| `src/models/mod.rs` | 11 | Models module root |
-| `src/models/loader.rs` | 89 | Model loading |
-| `src/models/registry.rs` | 80 | Model registry |
-| `src/models/swap.rs` | 95 | Hot swap logic |
-| `src/memory/mod.rs` | 11 | Memory module root |
-| `src/memory/pool.rs` | 90 | Memory pooling |
-| `src/memory/gpu.rs` | 79 | GPU memory tracking |
-| `src/memory/cache.rs` | 92 | Context caching |
+| `src/engine/mod.rs` | 56 | Engine root |
+| `src/engine/inference.rs` | 108 | Core inference + timeout_ms |
+| _(remaining 46 files unchanged)_ | | |
 
-**Total Source Lines**: 1,644
-**Total Test Lines**: 354
+### Test Files (45 files)
 
-## Module Dependencies
+| Path | Lines | Tests | Purpose |
+|------|-------|-------|---------|
+| `tests/timeout_cancel_test.rs` | 183 | 10 | **[NEW]** Timeout/cancellation |
+| `tests/warmup_test.rs` | 98 | 6 | **[NEW]** Model warm-up |
+| `tests/dedup_test.rs` | 156 | 8 | **[NEW]** Deduplication |
+| `tests/connections_test.rs` | 95 | 6 | **[NEW]** Connection pool |
+| `tests/runtime_enhancements_integration_test.rs` | 124 | 5 | **[NEW]** Integration |
+| _(remaining 40 files unchanged)_ | | |
 
-```
-main.rs
-└── lib.rs
-    ├── ipc/
-    │   ├── auth (standalone)
-    │   ├── protocol (standalone)
-    │   └── handler (-> auth, protocol, scheduler)
-    ├── scheduler/
-    │   ├── priority (standalone)
-    │   ├── queue (-> priority, engine)
-    │   └── batch (-> queue)
-    ├── engine/
-    │   ├── tokenizer (standalone)
-    │   ├── inference (-> models)
-    │   └── streaming (standalone)
-    ├── models/
-    │   ├── loader (standalone)
-    │   ├── registry (standalone)
-    │   └── swap (-> registry)
-    └── memory/
-        ├── pool (standalone)
-        ├── gpu (standalone)
-        └── cache (standalone)
-```
+## Test Summary
+
+**Total Source Files**: 66 (+3 from Runtime Enhancements)
+**Total Test Files**: 45 (+5 from Runtime Enhancements)
+**Total Benchmark Files**: 6
+**Tests Passing**: 436 (+35 from Runtime Enhancements)
+
+### Test Breakdown
+
+| Category | Count | Status |
+|----------|-------|--------|
+| Security Validation | 50 | PASS |
+| Baseline/Competitive | 15 | PASS |
+| Integration Tests | 37 | PASS |
+| Tier 2 Tests | 22 | PASS |
+| Tier 3 Tests | 31 | PASS |
+| Observability Tests | 22 | PASS |
+| Tier 4 Tests | 22 | PASS |
+| Tier 5 Tests | 26 | PASS |
+| Tier 6 Tests | 15 | PASS |
+| Hot-Swap Tests | 25 | PASS |
+| Graceful Shutdown Tests | 10 | PASS |
+| Health Check Tests | 11 | PASS |
+| Metrics Export Tests | 11 | PASS |
+| Streaming Response Tests | 10 | PASS |
+| Runtime Enhancements Tests | 35 | PASS |
+| Existing Tests | 94 | PASS |
+| **Total** | **436** | **ALL PASS** |
+
+### Runtime Enhancements Test Summary
+
+| Category | Tests | Status |
+|----------|-------|--------|
+| Timeout/Cancel | 10 | PASS |
+| Warmup | 6 | PASS |
+| Dedup | 8 | PASS |
+| Connections | 6 | PASS |
+| Integration | 5 | PASS |
+| **Total** | **35** | **PASS** |
+
+## Section 4 Razor Compliance
+
+| Check | Limit | Actual | Status |
+|-------|-------|--------|--------|
+| Max function lines | 40 | ~25 | PASS |
+| Max file lines | 250 | 245 (handler.rs) | PASS |
+| Max nesting depth | 3 | 2 | PASS |
+| Nested ternaries | 0 | 0 | PASS |
+
+### Runtime Enhancements File Compliance
+
+| File | Lines | Limit | Status |
+|------|-------|-------|--------|
+| handler.rs | 245 | 250 | PASS |
+| health_handler.rs | 84 | 250 | PASS |
+| connections.rs | 77 | 250 | PASS |
+| dedup.rs | 122 | 250 | PASS |
+| queue.rs | 182 | 250 | PASS |
+| protocol.rs | 238 | 250 | PASS |
+| auth.rs | 148 | 250 | PASS |
+| lib.rs | 145 | 250 | PASS |
+
+## Dependencies Status
+
+### Current Dependencies
+
+| Package | Version | Purpose | Status |
+|---------|---------|---------|--------|
+| tokio | 1.35 | Async runtime | APPROVED |
+| serde | 1.0 | Serialization | APPROVED |
+| serde_json | 1.0 | JSON parsing | APPROVED |
+| interprocess | 2.0 | IPC | APPROVED |
+| thiserror | 1.0 | Error handling | APPROVED |
+| async-trait | 0.1 | Async traits | APPROVED |
+| sha2 | 0.10 | Cryptographic hashing | APPROVED |
+| hex | 0.4 | Hex encoding | APPROVED |
+| regex | 1.10 | Output filtering | APPROVED |
+| toml | 0.8 | Config parsing | APPROVED |
+| memmap2 | 0.9 | Zero-copy model loading | APPROVED |
+| tracing | 0.1 | Structured diagnostics | APPROVED |
+| tracing-subscriber | 0.3 | Log formatting | APPROVED |
+| metrics | 0.22 | Metrics facade | APPROVED |
+
+### Forbidden Dependencies
+
+| Package | Status |
+|---------|--------|
+| reqwest | NOT PRESENT |
+| hyper | NOT PRESENT |
+| tungstenite | NOT PRESENT |
+| tokio-tungstenite | NOT PRESENT |
+| walkdir | NOT PRESENT |
 
 ## Forbidden Modules Status
 
@@ -111,31 +342,19 @@ main.rs
 | `plugins/` | NOT PRESENT |
 | `network/` | NOT PRESENT |
 
-## Dependencies
+## Debug Artifacts
 
-| Package | Version | Status |
-|---------|---------|--------|
-| tokio | 1.35 | APPROVED |
-| serde | 1.0 | APPROVED |
-| serde_json | 1.0 | APPROVED |
-| interprocess | 2.0 | APPROVED |
-| candle-core | 0.4 | APPROVED |
-| candle-nn | 0.4 | APPROVED |
-| candle-transformers | 0.4 | APPROVED |
-| thiserror | 1.0 | APPROVED |
-| sha2 | 0.10 | APPROVED |
-| hex | 0.4 | APPROVED |
-
-## Forbidden Dependencies Status
-
-| Package | Status |
-|---------|--------|
-| reqwest | NOT PRESENT |
-| hyper | NOT PRESENT |
-| tungstenite | NOT PRESENT |
-| tokio-tungstenite | NOT PRESENT |
-| walkdir | NOT PRESENT |
+| Pattern | Count |
+|---------|-------|
+| `println!` | 0 |
+| `dbg!` | 0 |
+| `eprintln!` | 3 (shutdown messages only) |
+| `console.log` | 0 |
+| `TODO` | 0 |
+| `FIXME` | 0 |
+| `HACK` | 0 |
 
 ---
 
 _State verified and sealed by QoreLogic Judge_
+_Session: r5s6t7u8 (Runtime Enhancements Bundle)_

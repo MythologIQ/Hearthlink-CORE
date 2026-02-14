@@ -1,6 +1,5 @@
 //! Token streaming output for incremental responses.
 
-use std::sync::Arc;
 use tokio::sync::mpsc;
 
 /// A single streamed token output.
@@ -51,7 +50,7 @@ impl TokenStreamSender {
         self.sender
             .send(StreamingOutput { token, is_final })
             .await
-            .map_err(|_| StreamSendError::Closed)
+            .map_err(|_| StreamSendError)
     }
 
     /// Close the stream by dropping the sender.

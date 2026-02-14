@@ -12,6 +12,11 @@ use super::loader::ModelMetadata;
 pub struct ModelHandle(u64);
 
 impl ModelHandle {
+    /// Create a new handle with the given ID (primarily for testing).
+    pub fn new(id: u64) -> Self {
+        Self(id)
+    }
+
     pub fn id(&self) -> u64 {
         self.0
     }

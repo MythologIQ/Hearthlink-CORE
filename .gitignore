@@ -8,3 +8,7 @@
 # OS files
 .DS_Store
 Thumbs.db
+.failsafe/
+
+# Private/Proprietary documents
+PRIVATE/

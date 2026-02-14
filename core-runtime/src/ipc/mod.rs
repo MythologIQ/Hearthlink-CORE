@@ -4,14 +4,20 @@
 //! This is the ONLY external interface - no HTTP/REST/WebSocket allowed.
 
 mod auth;
+mod connections;
 pub mod encoding;
 mod handler;
+mod health_handler;
 pub mod protocol;
 
 pub use auth::{AuthError, SessionAuth, SessionToken};
-pub use encoding::{get_encoder, TokenEncoder, V1Encoder};
-pub use handler::{IpcHandler, IpcHandlerConfig};
+pub use connections::{ConnectionConfig, ConnectionGuard, ConnectionPool};
+pub use encoding::{get_encoder, TokenEncoder, V1Encoder, V2Encoder};
+pub use handler::{IpcHandler, IpcHandlerConfig, StreamSender};
 pub use protocol::{
-    decode_message, encode_message, InferenceRequest, InferenceResponse, IpcMessage,
-    ProtocolError, ProtocolVersion, RequestId,
+    decode_message, encode_message, HealthCheckResponse, HealthCheckType, InferenceRequest,
+    InferenceResponse, IpcMessage, ProtocolError, ProtocolVersion, RequestId, StreamChunk,
+    WarmupRequest, WarmupResponse,
 };
+// Re-export MetricsSnapshot for IPC consumers
+pub use crate::telemetry::MetricsSnapshot;

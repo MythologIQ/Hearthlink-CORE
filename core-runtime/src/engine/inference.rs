@@ -20,12 +20,18 @@ pub enum InferenceError {
 }
 
 /// Parameters controlling inference behavior.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct InferenceParams {
     pub max_tokens: usize,
     pub temperature: f32,
     pub top_p: f32,
     pub top_k: usize,
+    /// Enable token-by-token streaming response.
+    #[serde(default)]
+    pub stream: bool,
+    /// Request timeout in milliseconds. None = no timeout.
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
 }
 
 impl Default for InferenceParams {
@@ -35,6 +41,8 @@ impl Default for InferenceParams {
             temperature: 0.7,
             top_p: 0.9,
             top_k: 40,
+            stream: false,
+            timeout_ms: None,
         }
     }
 }

@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use core_runtime::{Runtime, RuntimeConfig};
+use core_runtime::shutdown::ShutdownResult;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -40,6 +41,20 @@ async fn run_ipc_server(runtime: Runtime) -> Result<(), Box<dyn std::error::Erro
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {
+                eprintln!("Shutdown signal received, draining...");
+
+                let result = runtime.shutdown.initiate(
+                    runtime.config.shutdown_timeout
+                ).await;
+
+                match result {
+                    ShutdownResult::Complete => {
+                        eprintln!("Shutdown complete");
+                    }
+                    ShutdownResult::Timeout { remaining } => {
+                        eprintln!("Shutdown timeout, {} requests remaining", remaining);
+                    }
+                }
                 break;
             }
         }

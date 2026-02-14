@@ -3,8 +3,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
 use core_runtime::engine::InferenceParams;
-use core_runtime::scheduler::priority::{Priority, PriorityQueue};
-use core_runtime::scheduler::queue::{QueuedRequest, RequestQueue, RequestQueueConfig};
+use core_runtime::scheduler::{Priority, PriorityQueue, QueuedRequest};
 
 fn create_test_request(id: u64, token_count: usize) -> QueuedRequest {
     QueuedRequest {
