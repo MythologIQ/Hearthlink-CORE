@@ -1,0 +1,45 @@
+{
+  "test_name": "Tier 2 - Competitive",
+  "description": "Match typical CPU-only runtimes with optimizations",
+  "performance_targets": {
+    "generation_tok_per_sec": 25,
+    "classification_p95_ms": 20,
+    "embedding_p95_ms": 10,
+    "memory_ratio": 1.35
+  },
+  "models": {
+    "onnx": {
+      "tinybert_classifier": {
+        "file": "tinybert-classifier.onnx",
+        "size_mb": 60,
+        "purpose": "classification latency tests"
+      },
+      "minilm_embedder": {
+        "file": "minilm-embedder.onnx",
+        "size_mb": 80,
+        "purpose": "embedding tests"
+      }
+    },
+    "gguf": {
+      "phi3_mini_q4": {
+        "file": "phi3-mini-q4km.gguf",
+        "size_gb": 2.2,
+        "purpose": "generation throughput"
+      },
+      "smollm_360m_q8": {
+        "file": "smollm-360m-q8.gguf",
+        "size_mb": 400,
+        "purpose": "fast inference baseline"
+      }
+    }
+  },
+  "benchmarks": {
+    "inference_latency": true,
+    "generation_throughput": true,
+    "memory_overhead": true,
+    "concurrent_load": true,
+    "ipc_throughput": true,
+    "scheduler_throughput": true
+  },
+  "features": ["onnx", "gguf", "benchmarks", "v2_encoding", "mmap_loading", "kv_cache", "thread_pool"]
+}

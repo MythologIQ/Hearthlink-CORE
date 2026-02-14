@@ -1,0 +1,43 @@
+{
+  "test_name": "Tier 1 - Minimum Viable",
+  "description": "Baseline targets for initial release validation",
+  "performance_targets": {
+    "generation_tok_per_sec": 10,
+    "classification_p95_ms": 100,
+    "embedding_p95_ms": 50,
+    "memory_ratio": 1.5
+  },
+  "models": {
+    "onnx": {
+      "tinybert_classifier": {
+        "file": "tinybert-classifier.onnx",
+        "size_mb": 60,
+        "purpose": "classification latency tests"
+      },
+      "minilm_embedder": {
+        "file": "minilm-embedder.onnx",
+        "size_mb": 80,
+        "purpose": "embedding tests"
+      }
+    },
+    "gguf": {
+      "phi3_mini_q4": {
+        "file": "phi3-mini-q4km.gguf",
+        "size_gb": 2.2,
+        "purpose": "generation throughput"
+      },
+      "smollm_360m_q8": {
+        "file": "smollm-360m-q8.gguf",
+        "size_mb": 400,
+        "purpose": "fast inference baseline"
+      }
+    }
+  },
+  "benchmarks": {
+    "inference_latency": true,
+    "generation_throughput": true,
+    "memory_overhead": true,
+    "concurrent_load": true
+  },
+  "features": ["onnx", "gguf", "benchmarks"]
+}
