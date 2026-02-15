@@ -1,8 +1,11 @@
 //! Memory pooling for efficient buffer reuse.
+//!
+//! Uses parking_lot::Mutex for fast synchronous locking.
+//! No async overhead or tokio runtime requirement.
 
 use std::collections::VecDeque;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use parking_lot::Mutex;
 
 /// Configuration for memory pool.
 #[derive(Debug, Clone)]
@@ -47,15 +50,13 @@ impl PooledBuffer {
 impl Drop for PooledBuffer {
     fn drop(&mut self) {
         let data = std::mem::take(&mut self.data);
-        let pool = self.pool.clone();
-        tokio::spawn(async move {
-            let mut guard = pool.lock().await;
-            guard.push_back(data);
-        });
+        // Synchronous return to pool - no tokio::spawn needed
+        self.pool.lock().push_back(data);
     }
 }
 
 /// Thread-safe memory pool for buffer reuse.
+/// Uses synchronous locking for minimal overhead.
 pub struct MemoryPool {
     buffers: Arc<Mutex<VecDeque<Vec<u8>>>>,
     config: MemoryPoolConfig,
@@ -70,12 +71,11 @@ impl MemoryPool {
     }
 
     /// Acquire a buffer from the pool, or allocate a new one.
-    pub async fn acquire(&self) -> PooledBuffer {
-        let mut guard = self.buffers.lock().await;
-        let data = guard.pop_front().unwrap_or_else(|| {
+    /// Synchronous - no async overhead.
+    pub fn acquire(&self) -> PooledBuffer {
+        let data = self.buffers.lock().pop_front().unwrap_or_else(|| {
             vec![0u8; self.config.buffer_size]
         });
-        drop(guard);
 
         PooledBuffer {
             data,
@@ -83,8 +83,13 @@ impl MemoryPool {
         }
     }
 
+    /// Async version for compatibility with async code paths.
+    pub async fn acquire_async(&self) -> PooledBuffer {
+        self.acquire()
+    }
+
     /// Current number of available buffers in pool.
-    pub async fn available(&self) -> usize {
-        self.buffers.lock().await.len()
+    pub fn available(&self) -> usize {
+        self.buffers.lock().len()
     }
 }

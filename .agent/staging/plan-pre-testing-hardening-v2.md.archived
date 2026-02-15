@@ -1,0 +1,235 @@
+# Plan: Pre-Testing Hardening Bundle (Revised)
+
+**Revision**: Addresses VETO from Entry #65 - removed hallucinated Phase 2 test specifications.
+
+## Open Questions
+
+1. **Unicode normalization depth**: NFC vs NFKC? NFC is standard and sufficient for most bypass vectors.
+
+---
+
+## Phase 1: OutputFilter Security Hardening
+
+### Why
+
+Z.ai Report: *"the lack of Unicode normalization before filtering could allow bypass through homoglyphs or different Unicode encodings of blocked content"*
+
+### Affected Files
+
+- `Cargo.toml` - Add `unicode-normalization = "0.1"`
+- `src/engine/filter.rs` - Add NFC normalization, pre-compute lowercase blocklist
+- `tests/security_filter_adversarial_test.rs` - Add Unicode normalization tests
+
+### Changes
+
+#### 1.1 Add Dependency
+
+```toml
+# Cargo.toml (add to [dependencies])
+unicode-normalization = "0.1"
+```
+
+#### 1.2 Update OutputFilter Struct
+
+```rust
+// src/engine/filter.rs - add field to struct
+
+use unicode_normalization::UnicodeNormalization;
+
+pub struct OutputFilter {
+    config: FilterConfig,
+    compiled_patterns: Vec<Regex>,
+    /// Pre-normalized, pre-lowercased blocklist for O(1) lookup per entry.
+    normalized_blocklist: Vec<String>,
+}
+```
+
+#### 1.3 Update Constructor
+
+```rust
+// src/engine/filter.rs - update new()
+
+impl OutputFilter {
+    pub fn new(config: FilterConfig) -> Result<Self, InferenceError> {
+        let compiled = config
+            .regex_patterns
+            .iter()
+            .map(|p| Regex::new(p))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| InferenceError::InputValidation(format!("invalid regex: {}", e)))?;
+
+        // Pre-compute normalized lowercase blocklist (avoids per-call allocations)
+        let normalized_blocklist = config
+            .blocklist
+            .iter()
+            .map(|s| s.nfc().collect::<String>().to_lowercase())
+            .collect();
+
+        Ok(Self {
+            config,
+            compiled_patterns: compiled,
+            normalized_blocklist,
+        })
+    }
+}
+```
+
+#### 1.4 Update filter() and contains_blocked()
+
+```rust
+// src/engine/filter.rs - update methods
+
+pub fn filter(&self, text: &str) -> Result<String, InferenceError> {
+    let mut result = text.to_string();
+
+    // Normalize input for comparison (NFC handles composed/decomposed equivalence)
+    let normalized: String = result.nfc().collect();
+    let lower = normalized.to_lowercase();
+
+    // Apply blocklist with pre-computed normalized entries
+    for (i, normalized_blocked) in self.normalized_blocklist.iter().enumerate() {
+        if lower.contains(normalized_blocked) {
+            result = result.replace(&self.config.blocklist[i], &self.config.replacement);
+        }
+    }
+
+    // Apply regex patterns (on original, not normalized)
+    for pattern in &self.compiled_patterns {
+        result = pattern
+            .replace_all(&result, &self.config.replacement)
+            .to_string();
+    }
+
+    // Apply length limit
+    if self.config.max_output_chars > 0 && result.len() > self.config.max_output_chars {
+        result.truncate(self.config.max_output_chars);
+    }
+
+    Ok(result)
+}
+
+pub fn contains_blocked(&self, text: &str) -> bool {
+    let normalized: String = text.nfc().collect();
+    let lower = normalized.to_lowercase();
+
+    for normalized_blocked in &self.normalized_blocklist {
+        if lower.contains(normalized_blocked) {
+            return true;
+        }
+    }
+    for pattern in &self.compiled_patterns {
+        if pattern.is_match(text) {
+            return true;
+        }
+    }
+    false
+}
+```
+
+#### 1.5 Update Default impl
+
+```rust
+// src/engine/filter.rs - update Default
+
+impl Default for OutputFilter {
+    fn default() -> Self {
+        Self {
+            config: FilterConfig::default(),
+            compiled_patterns: Vec::new(),
+            normalized_blocklist: Vec::new(),
+        }
+    }
+}
+```
+
+### Unit Tests
+
+- `tests/security_filter_adversarial_test.rs`
+  - `unicode_nfc_blocks_decomposed_form` - "café" (decomposed é) matches "café" in blocklist
+  - `unicode_nfc_blocks_composed_form` - "café" (composed é) matches "café" in blocklist
+  - `precomputed_blocklist_no_per_call_allocation` - Verify blocklist is normalized at construction
+  - `filter_mixed_unicode_normalization` - Mixed NFC/NFD input all normalized correctly
+
+---
+
+## Phase 2: V2 Encoding Verification (NO NEW TESTS REQUIRED)
+
+### Status
+
+**COMPLETE** - V2 encoder tests already exist in `tests/encoding_roundtrip_test.rs`:
+
+| Test | Line | Status |
+|------|------|--------|
+| `v2_encode_empty` | 107 | EXISTS |
+| `v2_encode_single` | 116 | EXISTS |
+| `v2_roundtrip` | 128 | EXISTS |
+| `v2_decode_truncated` | 137 | EXISTS |
+| `v2_decode_length_mismatch` | 145 | EXISTS |
+| `v2_vs_v1_size_comparison` | 155 | EXISTS |
+| `v2_roundtrip_large_sequence` | 172 | EXISTS |
+| `v2_encoding_is_deterministic` | 183 | EXISTS |
+
+**Total: 8 V2 encoder tests already implemented.**
+
+### Optional: V1 vs V2 Benchmark Comparison
+
+If explicit benchmark comparison is desired, add to `benches/ipc_throughput.rs`:
+
+```rust
+// benches/ipc_throughput.rs - optional addition
+
+fn bench_v1_vs_v2_encoding(c: &mut Criterion) {
+    use core_runtime::ipc::{V1Encoder, V2Encoder, TokenEncoder};
+
+    let mut group = c.benchmark_group("v1_vs_v2");
+    let tokens: Vec<u32> = (0..1000).collect();
+
+    group.throughput(Throughput::Elements(1000));
+
+    group.bench_function("v1_encode", |b| {
+        let encoder = V1Encoder;
+        b.iter(|| encoder.encode(black_box(&tokens)))
+    });
+
+    group.bench_function("v2_encode", |b| {
+        let encoder = V2Encoder;
+        b.iter(|| encoder.encode(black_box(&tokens)))
+    });
+
+    group.finish();
+}
+```
+
+This is **optional** - existing tests validate correctness. Benchmarks are for optimization validation.
+
+---
+
+## Phase 3: Session Storage Optimization (Optional - Deferred)
+
+### Status
+
+**DEFERRED** - Only implement if Tier 2 benchmarks show session storage contention.
+
+Z.ai Report notes RwLock "may become a bottleneck under high concurrency" but current workload may not trigger this.
+
+### If Needed Later
+
+- Add `dashmap = { version = "5.5", optional = true }` to Cargo.toml
+- Feature-gate with `concurrent-sessions`
+- Replace `Arc<RwLock<HashMap<>>>` with `DashMap`
+
+---
+
+## Summary
+
+| Phase | Focus | Action Required |
+|-------|-------|-----------------|
+| 1 | Unicode Normalization | **IMPLEMENT** - Security fix |
+| 2 | V2 Encoding Tests | **NONE** - Already complete (8 tests exist) |
+| 3 | DashMap Sessions | **DEFERRED** - Only if benchmarks show need |
+
+**Net Change**: Phase 1 only (4 files modified, 4 new tests)
+
+---
+
+_Plan follows Simple Made Easy principles. Hallucination removed per Entry #65 VETO._

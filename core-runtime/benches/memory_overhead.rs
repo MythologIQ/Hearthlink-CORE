@@ -3,25 +3,21 @@
 //! Measures memory pool and resource limit operations.
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use tokio::runtime::Runtime;
 
 use core_runtime::memory::{MemoryPool, MemoryPoolConfig, ResourceLimits, ResourceLimitsConfig};
 
 fn bench_memory_pool_acquire(c: &mut Criterion) {
     let mut group = c.benchmark_group("memory_pool_acquire");
-    let rt = Runtime::new().unwrap();
 
     let config = MemoryPoolConfig::default();
     let pool = MemoryPool::new(config);
 
-    // Benchmark async buffer acquisition
+    // Benchmark synchronous buffer acquisition (no async overhead)
     group.throughput(Throughput::Elements(1));
     group.bench_function("acquire", |b| {
         b.iter(|| {
-            rt.block_on(async {
-                let buffer = pool.acquire().await;
-                black_box(buffer)
-            })
+            let buffer = pool.acquire();
+            black_box(buffer.len())
         })
     });
 

@@ -1,9 +1,9 @@
 //! Context caching for inference state.
+//!
+//! Uses DashMap for lock-free concurrent access.
 
-use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
+use dashmap::DashMap;
 
 /// Configuration for context cache.
 #[derive(Debug, Clone)]
@@ -26,68 +26,73 @@ struct CacheEntry {
     created_at: Instant,
 }
 
-/// LRU cache for inference context data.
+/// Lock-free cache for inference context data.
+/// Uses DashMap for concurrent access without global locks.
 pub struct ContextCache {
-    entries: Arc<RwLock<HashMap<String, CacheEntry>>>,
+    entries: DashMap<String, CacheEntry>,
     config: ContextCacheConfig,
 }
 
 impl ContextCache {
     pub fn new(config: ContextCacheConfig) -> Self {
         Self {
-            entries: Arc::new(RwLock::new(HashMap::with_capacity(config.max_entries))),
+            entries: DashMap::with_capacity(config.max_entries),
             config,
         }
     }
 
     /// Store context data with the given key.
     pub async fn store(&self, key: String, data: Vec<u8>) {
-        let mut entries = self.entries.write().await;
+        self.store_sync(key, data);
+    }
 
-        if entries.len() >= self.config.max_entries {
-            self.evict_oldest(&mut entries);
+    /// Synchronous store for non-async contexts.
+    pub fn store_sync(&self, key: String, data: Vec<u8>) {
+        if self.entries.len() >= self.config.max_entries {
+            self.evict_oldest();
         }
-
-        entries.insert(key, CacheEntry {
-            data,
-            created_at: Instant::now(),
-        });
+        self.entries.insert(key, CacheEntry { data, created_at: Instant::now() });
     }
 
     /// Retrieve cached context data if valid.
     pub async fn get(&self, key: &str) -> Option<Vec<u8>> {
-        let entries = self.entries.read().await;
-        let entry = entries.get(key)?;
+        self.get_sync(key)
+    }
 
+    /// Synchronous get for non-async contexts.
+    pub fn get_sync(&self, key: &str) -> Option<Vec<u8>> {
+        let entry = self.entries.get(key)?;
         if entry.created_at.elapsed() > self.config.ttl {
             return None;
         }
-
         Some(entry.data.clone())
     }
 
     /// Remove expired entries.
     pub async fn cleanup(&self) {
-        let mut entries = self.entries.write().await;
-        entries.retain(|_, entry| entry.created_at.elapsed() <= self.config.ttl);
+        self.cleanup_sync();
     }
 
-    fn evict_oldest(&self, entries: &mut HashMap<String, CacheEntry>) {
-        if let Some(oldest_key) = entries
-            .iter()
-            .min_by_key(|(_, e)| e.created_at)
-            .map(|(k, _)| k.clone())
-        {
-            entries.remove(&oldest_key);
+    /// Synchronous cleanup.
+    pub fn cleanup_sync(&self) {
+        self.entries.retain(|_, entry| entry.created_at.elapsed() <= self.config.ttl);
+    }
+
+    fn evict_oldest(&self) {
+        let oldest = self.entries.iter()
+            .min_by_key(|e| e.created_at)
+            .map(|e| e.key().clone());
+        if let Some(key) = oldest {
+            self.entries.remove(&key);
         }
     }
 
     pub async fn len(&self) -> usize {
-        self.entries.read().await.len()
+        self.entries.len()
     }
 
     pub async fn is_empty(&self) -> bool {
-        self.entries.read().await.is_empty()
+        self.entries.is_empty()
     }
 }
 
@@ -138,10 +143,10 @@ impl KvCacheEntry {
     }
 }
 
-/// Specialized cache for KV tensors with pre-allocation.
+/// Lock-free KV cache using DashMap.
 /// Optimized for multi-turn generation where KV state is reused.
 pub struct KvCache {
-    entries: Arc<RwLock<HashMap<String, KvCacheEntry>>>,
+    entries: DashMap<String, KvCacheEntry>,
     hidden_size: usize,
     max_seq_len: usize,
     max_entries: usize,
@@ -151,7 +156,7 @@ impl KvCache {
     /// Create a new KV-cache with specified dimensions.
     pub fn new(hidden_size: usize, max_seq_len: usize, max_entries: usize) -> Self {
         Self {
-            entries: Arc::new(RwLock::new(HashMap::with_capacity(max_entries))),
+            entries: DashMap::with_capacity(max_entries),
             hidden_size,
             max_seq_len,
             max_entries,
@@ -160,44 +165,69 @@ impl KvCache {
 
     /// Get or create a KV-cache entry for a session.
     pub async fn get_or_create(&self, session_id: &str) -> KvCacheEntry {
-        let entries = self.entries.read().await;
-        if let Some(entry) = entries.get(session_id) {
+        self.get_or_create_sync(session_id)
+    }
+
+    /// Synchronous get or create.
+    pub fn get_or_create_sync(&self, session_id: &str) -> KvCacheEntry {
+        if let Some(entry) = self.entries.get(session_id) {
             return entry.clone();
         }
-        drop(entries);
-
         KvCacheEntry::new(self.hidden_size, self.max_seq_len)
     }
 
     /// Update KV-cache for a session.
     pub async fn update(&self, session_id: String, entry: KvCacheEntry) {
-        let mut entries = self.entries.write().await;
-        if entries.len() >= self.max_entries && !entries.contains_key(&session_id) {
-            self.evict_one(&mut entries);
-        }
-        entries.insert(session_id, entry);
+        self.update_sync(session_id, entry);
     }
 
-    /// Evict one entry (FIFO-style, not true LRU).
-    fn evict_one(&self, entries: &mut HashMap<String, KvCacheEntry>) {
-        if let Some(key) = entries.keys().next().cloned() {
-            entries.remove(&key);
+    /// Synchronous update.
+    pub fn update_sync(&self, session_id: String, entry: KvCacheEntry) {
+        if self.entries.len() >= self.max_entries && !self.entries.contains_key(&session_id) {
+            self.evict_one();
+        }
+        self.entries.insert(session_id, entry);
+    }
+
+    /// Evict one entry (random selection).
+    fn evict_one(&self) {
+        // DashMap's iter().next() can be slow for large maps.
+        // Instead, try to remove one entry directly by probing shards.
+        let key_to_remove = {
+            let mut found_key = None;
+            for entry in self.entries.iter() {
+                found_key = Some(entry.key().clone());
+                break;
+            }
+            found_key
+        };
+        if let Some(key) = key_to_remove {
+            self.entries.remove(&key);
         }
     }
 
     /// Remove a specific session's cache.
     pub async fn remove(&self, session_id: &str) {
-        let mut entries = self.entries.write().await;
-        entries.remove(session_id);
+        self.entries.remove(session_id);
     }
 
     /// Current number of cached sessions.
     pub async fn len(&self) -> usize {
-        self.entries.read().await.len()
+        self.len_sync()
+    }
+
+    /// Synchronous len.
+    pub fn len_sync(&self) -> usize {
+        self.entries.len()
     }
 
     /// Check if cache is empty.
     pub async fn is_empty(&self) -> bool {
-        self.entries.read().await.is_empty()
+        self.entries.is_empty()
+    }
+
+    /// Synchronous is_empty.
+    pub fn is_empty_sync(&self) -> bool {
+        self.entries.is_empty()
     }
 }

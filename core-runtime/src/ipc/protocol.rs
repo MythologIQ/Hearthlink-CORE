@@ -236,3 +236,29 @@ pub fn decode_message(bytes: &[u8]) -> Result<IpcMessage, ProtocolError> {
     }
     Ok(serde_json::from_slice(bytes)?)
 }
+
+/// Encode message to binary (bincode) for high-performance IPC.
+/// ~10-100x faster than JSON for same-machine communication.
+pub fn encode_message_binary(message: &IpcMessage) -> Result<Vec<u8>, ProtocolError> {
+    let bytes = bincode::serialize(message)
+        .map_err(|e| ProtocolError::InvalidFormat(e.to_string()))?;
+    if bytes.len() > MAX_MESSAGE_SIZE {
+        return Err(ProtocolError::MessageTooLarge {
+            size: bytes.len(),
+            max: MAX_MESSAGE_SIZE,
+        });
+    }
+    Ok(bytes)
+}
+
+/// Decode message from binary (bincode) bytes.
+/// ~10-100x faster than JSON for same-machine communication.
+pub fn decode_message_binary(bytes: &[u8]) -> Result<IpcMessage, ProtocolError> {
+    if bytes.len() > MAX_MESSAGE_SIZE {
+        return Err(ProtocolError::MessageTooLarge {
+            size: bytes.len(),
+            max: MAX_MESSAGE_SIZE,
+        });
+    }
+    bincode::deserialize(bytes).map_err(|e| ProtocolError::InvalidFormat(e.to_string()))
+}

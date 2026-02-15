@@ -1,9 +1,9 @@
 # System State Snapshot
 
-**Generated**: 2026-02-14T15:30:00+00:00
-**Phase**: SUBSTANTIATE (Runtime Enhancements Bundle)
+**Generated**: 2026-02-14T17:45:00+00:00
+**Phase**: SUBSTANTIATE (Pre-Testing Hardening Bundle)
 **Status**: SEALED
-**Session ID**: r5s6t7u8
+**Session ID**: p8t9h0b1
 
 ## Physical Tree
 
@@ -37,7 +37,7 @@ core-runtime/
 │   │   ├── error.rs
 │   │   ├── input.rs
 │   │   ├── output.rs
-│   │   ├── filter.rs
+│   │   ├── filter.rs               [Pre-Testing - NFC normalization] **MODIFIED**
 │   │   ├── inference.rs             [Runtime Enhancements - timeout_ms field]
 │   │   ├── tokenizer.rs
 │   │   ├── streaming.rs
@@ -114,7 +114,7 @@ core-runtime/
 │   ├── runtime_enhancements_integration_test.rs [Runtime Enhancements - 5 tests] **NEW**
 │   ├── sandbox_test.rs
 │   ├── scheduler_test.rs
-│   ├── security_filter_adversarial_test.rs
+│   ├── security_filter_adversarial_test.rs  [Pre-Testing - NFC tests] **MODIFIED**
 │   ├── security_hash_verification_test.rs
 │   ├── security_input_validation_test.rs
 │   ├── security_path_traversal_test.rs
@@ -200,6 +200,27 @@ Connection Management:
 
 ---
 
+## Pre-Testing Hardening Bundle Compliance
+
+| Phase | Promised (Blueprint) | Delivered | Lines | Tests | Status |
+|-------|---------------------|-----------|-------|-------|--------|
+| 1 | Unicode NFC Normalization | `filter.rs` | 127 (+22) | 4 | PASS |
+| 2 | V2 Encoding Tests | Already exists | — | 8 (existing) | SKIPPED |
+| 3 | DashMap Sessions | Deferred | — | — | DEFERRED |
+
+**Blueprint Match**: 1/1 required phases (100%)
+
+**Changes Applied**:
+- `Cargo.toml` - Added `unicode-normalization = "0.1"`
+- `src/engine/filter.rs` - NFC normalization, pre-computed blocklist (127 lines)
+- `tests/security_filter_adversarial_test.rs` - 4 new Unicode tests (208 lines)
+
+**Security Finding Addressed**:
+- Z.ai Report: "lack of Unicode normalization before filtering could allow bypass"
+- Solution: NFC normalization applied to both blocklist (at construction) and input (at comparison)
+
+---
+
 ## File Inventory (Updated)
 
 ### Source Files (66 files)
@@ -244,13 +265,13 @@ Connection Management:
 **Total Source Files**: 66 (+3 from Runtime Enhancements)
 **Total Test Files**: 45 (+5 from Runtime Enhancements)
 **Total Benchmark Files**: 6
-**Tests Passing**: 436 (+35 from Runtime Enhancements)
+**Tests Passing**: 440 (+4 from Pre-Testing Hardening)
 
 ### Test Breakdown
 
 | Category | Count | Status |
 |----------|-------|--------|
-| Security Validation | 50 | PASS |
+| Security Validation | 54 | PASS |
 | Baseline/Competitive | 15 | PASS |
 | Integration Tests | 37 | PASS |
 | Tier 2 Tests | 22 | PASS |
@@ -266,7 +287,7 @@ Connection Management:
 | Streaming Response Tests | 10 | PASS |
 | Runtime Enhancements Tests | 35 | PASS |
 | Existing Tests | 94 | PASS |
-| **Total** | **436** | **ALL PASS** |
+| **Total** | **440** | **ALL PASS** |
 
 ### Runtime Enhancements Test Summary
 
@@ -316,6 +337,7 @@ Connection Management:
 | sha2 | 0.10 | Cryptographic hashing | APPROVED |
 | hex | 0.4 | Hex encoding | APPROVED |
 | regex | 1.10 | Output filtering | APPROVED |
+| unicode-normalization | 0.1 | NFC normalization (security) | APPROVED |
 | toml | 0.8 | Config parsing | APPROVED |
 | memmap2 | 0.9 | Zero-copy model loading | APPROVED |
 | tracing | 0.1 | Structured diagnostics | APPROVED |
@@ -357,4 +379,4 @@ Connection Management:
 ---
 
 _State verified and sealed by QoreLogic Judge_
-_Session: r5s6t7u8 (Runtime Enhancements Bundle)_
+_Session: p8t9h0b1 (Pre-Testing Hardening Bundle)_

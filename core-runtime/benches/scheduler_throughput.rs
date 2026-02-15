@@ -6,17 +6,19 @@ use core_runtime::engine::InferenceParams;
 use core_runtime::scheduler::{Priority, PriorityQueue, QueuedRequest};
 
 fn create_test_request(id: u64, token_count: usize) -> QueuedRequest {
-    QueuedRequest {
+    QueuedRequest::new(
         id,
-        model_id: "test-model".to_string(),
-        prompt_tokens: (0..token_count as u32).collect(),
-        params: InferenceParams {
+        "test-model".to_string(),
+        (0..token_count as u32).collect(),
+        InferenceParams {
             max_tokens: 256,
             temperature: 0.7,
             top_p: 1.0,
             top_k: 50,
+            stream: false,
+            timeout_ms: None,
         },
-    }
+    )
 }
 
 fn bench_priority_queue_push(c: &mut Criterion) {

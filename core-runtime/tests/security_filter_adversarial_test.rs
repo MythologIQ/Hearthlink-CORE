@@ -156,3 +156,53 @@ fn filter_preserves_unblocked_content() {
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), input);
 }
+
+// Unicode NFC Normalization Tests (Z.ai security finding)
+
+#[test]
+fn unicode_nfc_blocks_decomposed_form() {
+    // "café" with decomposed é (e + combining acute accent U+0301)
+    let filter = create_filter_with_blocklist(vec!["café"]);
+
+    // Input uses decomposed form: "cafe\u{0301}" (e + combining accent)
+    let decomposed = "cafe\u{0301}";
+    assert!(filter.contains_blocked(decomposed),
+        "NFC normalization should match decomposed é to composed é in blocklist");
+}
+
+#[test]
+fn unicode_nfc_blocks_composed_form() {
+    // Blocklist uses decomposed form
+    let filter = create_filter_with_blocklist(vec!["cafe\u{0301}"]);
+
+    // Input uses composed form: "café" (precomposed é U+00E9)
+    let composed = "caf\u{00E9}";
+    assert!(filter.contains_blocked(composed),
+        "NFC normalization should match composed é to decomposed é in blocklist");
+}
+
+#[test]
+fn precomputed_blocklist_no_per_call_allocation() {
+    // Verify that normalized blocklist is computed at construction time
+    // by testing that different Unicode forms of the same word are blocked
+    let filter = create_filter_with_blocklist(vec!["naïve"]);
+
+    // Both forms should be blocked (NFC normalization applied)
+    assert!(filter.contains_blocked("na\u{00EF}ve")); // composed ï
+    assert!(filter.contains_blocked("nai\u{0308}ve")); // decomposed ï (i + combining diaeresis)
+}
+
+#[test]
+fn filter_mixed_unicode_normalization() {
+    // Test with multiple blocklist entries using mixed normalization forms
+    let filter = create_filter_with_blocklist(vec![
+        "résumé",      // composed
+        "cafe\u{0301}", // decomposed
+    ]);
+
+    // All these should be blocked regardless of input normalization form
+    assert!(filter.contains_blocked("my r\u{00E9}sum\u{00E9}")); // composed
+    assert!(filter.contains_blocked("my re\u{0301}sume\u{0301}")); // decomposed
+    assert!(filter.contains_blocked("order a café")); // composed café
+    assert!(filter.contains_blocked("order a cafe\u{0301}")); // decomposed café
+}

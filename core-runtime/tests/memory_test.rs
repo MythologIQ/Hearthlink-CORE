@@ -6,20 +6,20 @@ use core_runtime::memory::{
 };
 use std::time::Duration;
 
-#[tokio::test]
-async fn memory_pool_acquire_returns_buffer() {
+#[test]
+fn memory_pool_acquire_returns_buffer() {
     let pool = MemoryPool::new(MemoryPoolConfig {
         buffer_size: 1024,
         max_buffers: 4,
     });
 
-    let buffer = pool.acquire().await;
+    let buffer = pool.acquire();
 
     assert_eq!(buffer.len(), 1024);
 }
 
-#[tokio::test]
-async fn memory_pool_reuses_returned_buffers() {
+#[test]
+fn memory_pool_reuses_returned_buffers() {
     let pool = MemoryPool::new(MemoryPoolConfig {
         buffer_size: 1024,
         max_buffers: 4,
@@ -27,13 +27,11 @@ async fn memory_pool_reuses_returned_buffers() {
 
     // Acquire and drop a buffer
     {
-        let _buffer = pool.acquire().await;
+        let _buffer = pool.acquire();
     }
 
-    // Give time for async drop to complete
-    tokio::time::sleep(Duration::from_millis(10)).await;
-
-    let available = pool.available().await;
+    // Buffer is now synchronously returned to pool
+    let available = pool.available();
     assert_eq!(available, 1);
 }
 
@@ -171,20 +169,20 @@ async fn kv_cache_update_stores_entry() {
     assert_eq!(retrieved.keys.len(), 64);
 }
 
-#[tokio::test]
-async fn kv_cache_evicts_when_full() {
+#[test]
+fn kv_cache_evicts_when_full() {
     let cache = KvCache::new(64, 128, 2);
 
     let entry1 = KvCacheEntry::new(64, 128);
     let entry2 = KvCacheEntry::new(64, 128);
     let entry3 = KvCacheEntry::new(64, 128);
 
-    cache.update("session_1".to_string(), entry1).await;
-    cache.update("session_2".to_string(), entry2).await;
-    cache.update("session_3".to_string(), entry3).await;
+    cache.update_sync("session_1".to_string(), entry1);
+    cache.update_sync("session_2".to_string(), entry2);
+    cache.update_sync("session_3".to_string(), entry3);
 
     // Should have evicted one entry
-    assert_eq!(cache.len().await, 2);
+    assert_eq!(cache.len_sync(), 2);
 }
 
 #[test]

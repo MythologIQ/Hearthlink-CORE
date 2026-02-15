@@ -27,7 +27,27 @@
       "Skill(ql-substantiate:*)",
       "Bash(python -c:*)",
       "Skill(ql-audit)",
-      "Skill(ql-audit:*)"
+      "Skill(ql-audit:*)",
+      "Bash(cargo bench:*)",
+      "Bash(where:*)",
+      "Bash(clang:*)",
+      "Bash(\"/c/program files/llvm/bin/clang.exe\" --version)",
+      "Bash(7z x:*)",
+      "Bash(/g/MythologIQ/CORE/tools/llvm16/bin/clang.exe:*)",
+      "Bash(LIBCLANG_PATH=\"G:/MythologIQ/CORE/tools/llvm16/bin\" cargo build:*)",
+      "Bash(cmake --version:*)",
+      "Bash(cmd.exe /c \"\"\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Community\\\\VC\\\\Auxiliary\\\\Build\\\\vcvarsall.bat\"\" x64 && set LIBCLANG_PATH=G:\\\\MythologIQ\\\\CORE\\\\tools\\\\llvm16\\\\bin && cd /d G:\\\\MythologIQ\\\\CORE\\\\core-runtime && cargo build --features gguf\")",
+      "Bash(cmd.exe:*)",
+      "Bash(G:)",
+      "Bash(set LIBCLANG_PATH=G:MythologIQCOREtoolsllvm16bin:*)",
+      "Bash(cmd /c \"cd /d G:\\\\MythologIQ\\\\CORE\\\\core-runtime && set LIBCLANG_PATH=G:\\\\MythologIQ\\\\CORE\\\\tools\\\\llvm16\\\\bin && cargo test --features gguf 2>&1\")",
+      "Bash(taskkill:*)",
+      "Bash(tasklist:*)",
+      "Bash(LIBCLANG_PATH=G:/MythologIQ/CORE/tools/llvm16/bin cargo test:*)",
+      "Bash(LIBCLANG_PATH=G:/MythologIQ/CORE/tools/llvm16/bin CMAKE_GENERATOR=Ninja cargo test:*)",
+      "Bash(PATH=\"G:/MythologIQ/CORE/bin:$PATH\" LIBCLANG_PATH=G:/MythologIQ/CORE/tools/llvm16/bin CMAKE_GENERATOR=Ninja cargo test:*)",
+      "Bash(del /Q \"G:\\\\MythologIQ\\\\CORE\\\\core-runtime\\\\target\\\\debug\\\\deps\\\\memory_test*\")",
+      "Bash(ls:*)"
     ]
   }
 }

@@ -62,6 +62,8 @@ fn bench_params_creation(c: &mut Criterion) {
                 temperature: black_box(0.7),
                 top_p: black_box(1.0),
                 top_k: black_box(50),
+                stream: false,
+                timeout_ms: None,
             }
         })
     });
