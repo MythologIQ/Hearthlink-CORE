@@ -4,7 +4,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
-use core_runtime::engine::{ChatMessage, ChatRole, InferenceInput, InferenceParams};
+use veritas_sdr::engine::{ChatMessage, ChatRole, InferenceInput, InferenceParams};
 
 fn create_text_input(length: usize) -> InferenceInput {
     let text = "a".repeat(length);

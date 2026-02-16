@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use core_runtime::ipc::{ConnectionConfig, ConnectionPool, SessionAuth};
+use veritas_sdr::ipc::{ConnectionConfig, ConnectionPool, SessionAuth};
 
 #[test]
 fn test_acquire_within_limit() {

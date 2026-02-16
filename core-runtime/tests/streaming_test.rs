@@ -1,7 +1,7 @@
 //! Tests for streaming response functionality.
 
-use core_runtime::engine::InferenceParams;
-use core_runtime::ipc::{
+use veritas_sdr::engine::InferenceParams;
+use veritas_sdr::ipc::{
     decode_message, encode_message, InferenceRequest, IpcMessage, RequestId, StreamChunk,
 };
 

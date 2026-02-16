@@ -1,7 +1,7 @@
 //! Tier 4 tests: Paged KV-Cache and Continuous Batching.
 
-use core_runtime::memory::paged::{Page, PageId, PageTable, PAGE_TOKENS};
-use core_runtime::scheduler::continuous::{
+use veritas_sdr::memory::paged::{Page, PageId, PageTable, PAGE_TOKENS};
+use veritas_sdr::scheduler::continuous::{
     BatchSlot, ContinuousBatcher, PendingRequest, RequestId, RequestPhase,
 };
 

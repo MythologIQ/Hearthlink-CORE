@@ -1,6 +1,6 @@
 //! Tests for model warm-up functionality.
 
-use core_runtime::ipc::{
+use veritas_sdr::ipc::{
     decode_message, encode_message, IpcMessage, WarmupRequest, WarmupResponse,
 };
 

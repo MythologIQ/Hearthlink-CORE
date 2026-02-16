@@ -1,7 +1,7 @@
 //! TDD-Light tests for scheduler module.
 
-use core_runtime::engine::InferenceParams;
-use core_runtime::scheduler::{
+use veritas_sdr::engine::InferenceParams;
+use veritas_sdr::scheduler::{
     BatchConfig, BatchProcessor, Priority, PriorityQueue, RequestQueue,
     RequestQueueConfig, ThreadPoolConfig,
 };
@@ -99,8 +99,8 @@ fn batch_processor_respects_token_limit() {
 fn create_test_request(
     id: u64,
     token_count: usize,
-) -> core_runtime::scheduler::QueuedRequest {
-    core_runtime::scheduler::QueuedRequest::new(
+) -> veritas_sdr::scheduler::QueuedRequest {
+    veritas_sdr::scheduler::QueuedRequest::new(
         id,
         "test".to_string(),
         vec![0; token_count],

@@ -1,6 +1,6 @@
 //! Telemetry module tests for CORE Runtime.
 
-use core_runtime::telemetry::{
+use veritas_sdr::telemetry::{
     init_metrics, record_memory_pool, record_queue_depth, record_request_failure,
     record_request_success, record_speculative_cycle, LogConfig, LogError, LogFormat, RequestSpan,
     SpanExt,

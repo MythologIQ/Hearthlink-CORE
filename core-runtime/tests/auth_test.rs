@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use core_runtime::ipc::{AuthError, SessionAuth};
+use veritas_sdr::ipc::{AuthError, SessionAuth};
 
 #[tokio::test]
 async fn valid_token_creates_session() {

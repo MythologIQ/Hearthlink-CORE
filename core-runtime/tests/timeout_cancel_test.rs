@@ -2,9 +2,9 @@
 
 use std::time::{Duration, Instant};
 
-use core_runtime::engine::InferenceParams;
-use core_runtime::ipc::{decode_message, encode_message, IpcMessage, RequestId};
-use core_runtime::scheduler::{Priority, RequestQueue, RequestQueueConfig};
+use veritas_sdr::engine::InferenceParams;
+use veritas_sdr::ipc::{decode_message, encode_message, IpcMessage, RequestId};
+use veritas_sdr::scheduler::{Priority, RequestQueue, RequestQueueConfig};
 
 #[test]
 fn test_request_with_timeout() {

@@ -2,7 +2,7 @@
 //!
 //! Tests that model loading rejects attempts to escape the allowed directories.
 
-use core_runtime::models::ModelLoader;
+use veritas_sdr::models::ModelLoader;
 
 fn create_test_loader() -> ModelLoader {
     // Use a temporary directory as base for tests
@@ -81,7 +81,7 @@ fn accept_valid_model_path() {
 
     // Create loader with canonicalized base path to match validation behavior
     let canonical_base = base.canonicalize().unwrap_or(base.clone());
-    let loader = core_runtime::models::ModelLoader::new(canonical_base);
+    let loader = veritas_sdr::models::ModelLoader::new(canonical_base);
 
     // Create a valid model file in the allowed directory
     let model_path = base.join("models").join("test_model.bin");

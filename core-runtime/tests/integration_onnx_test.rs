@@ -2,12 +2,12 @@
 //!
 //! Tests ONNX model configuration and inference output structures.
 
-use core_runtime::engine::{
+use veritas_sdr::engine::{
     ClassificationResult, EmbeddingResult, InferenceInput, InferenceOutput,
     OnnxConfig,
 };
-use core_runtime::engine::onnx::OnnxDevice;
-use core_runtime::models::ModelLoader;
+use veritas_sdr::engine::onnx::OnnxDevice;
+use veritas_sdr::models::ModelLoader;
 
 fn create_test_loader() -> ModelLoader {
     let base = std::env::temp_dir().join("core_runtime_onnx_test");

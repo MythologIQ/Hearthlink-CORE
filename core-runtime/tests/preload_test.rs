@@ -1,6 +1,6 @@
 //! Tests for ModelPreloader - preload validation before hot-swap.
 
-use core_runtime::models::{
+use veritas_sdr::models::{
     ModelArchitecture, ModelCapability, ModelHandle, ModelManifest, ModelPreloader,
     ModelRegistry, PreloadError,
 };

@@ -1,6 +1,6 @@
 //! Integration tests for SwapManager - zero-downtime model hot-swap.
 
-use core_runtime::models::{
+use veritas_sdr::models::{
     FlightTracker, ModelArchitecture, ModelCapability, ModelHandle, ModelManifest,
     ModelRegistry, ModelRouter, SwapError, SwapManager,
 };
@@ -35,7 +35,7 @@ async fn test_zero_downtime_swap() {
     // Setup initial model
     let old_handle = registry
         .register(
-            core_runtime::models::ModelMetadata {
+            veritas_sdr::models::ModelMetadata {
                 name: "old-model".to_string(),
                 size_bytes: 1024,
             },
@@ -75,7 +75,7 @@ async fn test_swap_with_drain_timeout() {
     // Setup initial model
     let old_handle = registry
         .register(
-            core_runtime::models::ModelMetadata {
+            veritas_sdr::models::ModelMetadata {
                 name: "old-model".to_string(),
                 size_bytes: 1024,
             },
@@ -120,7 +120,7 @@ async fn test_swap_preload_failure_rollback() {
     // Setup initial model
     let old_handle = registry
         .register(
-            core_runtime::models::ModelMetadata {
+            veritas_sdr::models::ModelMetadata {
                 name: "old-model".to_string(),
                 size_bytes: 1024,
             },
@@ -151,7 +151,7 @@ async fn test_concurrent_swap_rejected() {
     // Setup initial model
     let old_handle = registry
         .register(
-            core_runtime::models::ModelMetadata {
+            veritas_sdr::models::ModelMetadata {
                 name: "old-model".to_string(),
                 size_bytes: 1024,
             },
@@ -194,7 +194,7 @@ async fn test_swap_manager_is_idle_after_completion() {
     // Setup initial model
     let old_handle = registry
         .register(
-            core_runtime::models::ModelMetadata {
+            veritas_sdr::models::ModelMetadata {
                 name: "old-model".to_string(),
                 size_bytes: 1024,
             },

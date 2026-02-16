@@ -9,6 +9,7 @@ pub mod error;
 pub mod filter;
 pub mod flash_attn;
 pub mod gguf;
+pub mod gpu;
 pub mod input;
 pub mod onnx;
 pub mod output;
@@ -17,7 +18,9 @@ pub mod quantize;
 pub mod simd_matmul;
 mod simd_neon;
 pub mod simd_tokenizer;
+pub mod simd_tokenizer_v2;
 pub mod speculative;
+pub mod speculative_v2;
 
 mod inference;
 mod streaming;
@@ -37,12 +40,22 @@ pub use prefill::{PrefillConfig, PrefillExecutor, PrefillResult};
 pub use quantize::{QuantFormat, QuantizedTensor, QUANT_BLOCK_SIZE};
 pub use simd_matmul::{dot_q4, dot_q8, init_simd};
 pub use simd_tokenizer::SimdTokenizer;
-pub use speculative::{DraftModel, SpeculativeConfig, SpeculativeDecoder, TargetModel, VerifyResult};
+pub use simd_tokenizer_v2::{
+    SimdTokenizer as SimdTokenizerV2, TokenizerError as TokenizerV2Error, TokenizerStats,
+};
+pub use speculative::{
+    DraftModel, SpeculativeConfig, SpeculativeDecoder, TargetModel, VerifyResult,
+};
+pub use speculative_v2::{
+    SpeculativeConfig as SpeculativeV2Config, SpeculativeDecoder as SpeculativeV2Decoder,
+    SpeculativeStats,
+};
 pub use streaming::{StreamingOutput, TokenStream};
 pub use tokenizer::{TokenizerError, TokenizerWrapper};
 
 // Backend re-exports
 pub use gguf::{GgufConfig, GgufGenerator, GgufModel};
+pub use gpu::{GpuBackend, GpuConfig, GpuDevice, GpuError, GpuManager, GpuMemory, GpuMemoryPool};
 pub use onnx::{OnnxClassifier, OnnxConfig, OnnxEmbedder, OnnxModel};
 
 /// What a model can do — used by the InferenceModel trait.

@@ -1,6 +1,6 @@
 //! TDD-Light tests for process sandboxing.
 
-use core_runtime::sandbox::{create_sandbox, SandboxConfig};
+use veritas_sdr::sandbox::{create_sandbox, SandboxConfig};
 
 #[test]
 fn sandbox_default_config_is_reasonable() {

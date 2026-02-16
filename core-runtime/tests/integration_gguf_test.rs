@@ -2,11 +2,11 @@
 //!
 //! Tests GGUF model configuration, generation structures, and memory-mapped loading.
 
-use core_runtime::engine::{
+use veritas_sdr::engine::{
     FinishReason, GenerationResult, GgufConfig, InferenceOutput,
     InferenceParams, ChatMessage, ChatRole,
 };
-use core_runtime::models::ModelLoader;
+use veritas_sdr::models::ModelLoader;
 
 fn create_test_loader() -> ModelLoader {
     let base = std::env::temp_dir().join("core_runtime_gguf_test");

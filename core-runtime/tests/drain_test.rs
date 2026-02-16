@@ -1,6 +1,6 @@
 //! Tests for FlightTracker - in-flight request tracking for drain coordination.
 
-use core_runtime::models::{DrainError, FlightTracker, ModelHandle};
+use veritas_sdr::models::{DrainError, FlightTracker, ModelHandle};
 use std::time::Duration;
 
 #[tokio::test]

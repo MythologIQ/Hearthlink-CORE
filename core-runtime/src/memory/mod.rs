@@ -6,6 +6,7 @@
 mod arena;
 mod cache;
 mod gpu;
+pub mod kv_cache;
 pub mod kv_quant;
 mod limits;
 pub mod paged;
@@ -15,6 +16,9 @@ pub mod prompt_cache;
 pub use arena::{Arena, ArenaPool, ArenaSlice};
 pub use cache::{ContextCache, ContextCacheConfig, KvCache, KvCacheEntry};
 pub use gpu::{GpuMemory, GpuMemoryConfig, GpuMemoryError};
+pub use kv_cache::{
+    EvictionPolicy, KvCacheConfig, KvCacheError, KvCacheManager, KvCacheStats, SequenceId,
+};
 pub use kv_quant::{compute_scale, dequantize, quantize_to, Q8KvStore};
 pub use limits::{ResourceLimits, ResourceLimitsConfig};
 pub use paged::{Page, PageId, PageTable, PAGE_TOKENS};

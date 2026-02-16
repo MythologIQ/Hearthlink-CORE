@@ -47,7 +47,21 @@
       "Bash(LIBCLANG_PATH=G:/MythologIQ/CORE/tools/llvm16/bin CMAKE_GENERATOR=Ninja cargo test:*)",
       "Bash(PATH=\"G:/MythologIQ/CORE/bin:$PATH\" LIBCLANG_PATH=G:/MythologIQ/CORE/tools/llvm16/bin CMAKE_GENERATOR=Ninja cargo test:*)",
       "Bash(del /Q \"G:\\\\MythologIQ\\\\CORE\\\\core-runtime\\\\target\\\\debug\\\\deps\\\\memory_test*\")",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(winget search:*)",
+      "Bash(winget install:*)",
+      "Bash(dir \"C:\\\\Program Files\\\\protobuf\\\\bin\")",
+      "Bash(dir \"C:\\\\Users\\\\krkna\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Links\")",
+      "Bash(PROTOC=\"C:/Users/krkna/AppData/Local/Microsoft/WinGet/Packages/Google.Protobuf_Microsoft.Winget.Source_8wekyb3d8bbwe/bin/protoc.exe\" cargo test:*)",
+      "Bash(PROTOC=\"C:/Users/krkna/AppData/Local/Microsoft/WinGet/Packages/Google.Protobuf_Microsoft.Winget.Source_8wekyb3d8bbwe/bin/protoc.exe\" cargo build:*)",
+      "Bash(\"C:/Program Files/LLVM/bin/clang.exe\" --version)",
+      "Bash(curl:*)",
+      "Bash(LIBCLANG_PATH=\"C:/Program Files/llvm15.0.7/bin\" PROTOC=\"C:/Users/krkna/AppData/Local/Microsoft/WinGet/Packages/Google.Protobuf_Microsoft.Winget.Source_8wekyb3d8bbwe/bin/protoc.exe\" cargo build:*)",
+      "Bash(CMAKE_GENERATOR=\"Visual Studio 17 2022\" LIBCLANG_PATH=\"C:/Program Files/llvm15.0.7/bin\" PROTOC=\"C:/Users/krkna/AppData/Local/Microsoft/WinGet/Packages/Google.Protobuf_Microsoft.Winget.Source_8wekyb3d8bbwe/bin/protoc.exe\" cargo build:*)",
+      "Bash(CMAKE_GENERATOR=\"Visual Studio 17 2022\" LIBCLANG_PATH=\"C:/Program Files/llvm15.0.7/bin\" PROTOC=\"C:/Users/krkna/AppData/Local/Microsoft/WinGet/Packages/Google.Protobuf_Microsoft.Winget.Source_8wekyb3d8bbwe/bin/protoc.exe\" cargo test:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell -Command \"Get-Process | Where-Object {$_ProcessName -match ''cargo|rustc|bench''} | Select-Object ProcessName, Id, CPU, WorkingSet64 | Format-Table -AutoSize\")",
+      "Bash(powershell:*)"
     ]
   }
 }

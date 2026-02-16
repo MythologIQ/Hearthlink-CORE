@@ -1,10 +1,10 @@
 //! TDD-Light tests for IPC protocol module.
 
-use core_runtime::ipc::protocol::{
+use veritas_sdr::ipc::protocol::{
     decode_message, encode_message, InferenceRequest, InferenceResponse,
     IpcMessage, RequestId,
 };
-use core_runtime::engine::InferenceParams;
+use veritas_sdr::engine::InferenceParams;
 
 #[test]
 fn handshake_roundtrip() {

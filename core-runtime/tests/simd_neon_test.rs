@@ -3,7 +3,7 @@
 //! These tests verify NEON produces same results as scalar fallback.
 //! Note: Full NEON path only exercised on aarch64 hardware.
 
-use core_runtime::engine::{dot_q4, dot_q8, init_simd};
+use veritas_sdr::engine::{dot_q4, dot_q8, init_simd};
 
 #[test]
 fn neon_init_simd_succeeds() {

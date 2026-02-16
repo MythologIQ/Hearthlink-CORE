@@ -2,8 +2,8 @@
 
 use std::time::Duration;
 
-use core_runtime::engine::InferenceParams;
-use core_runtime::scheduler::{OutputCache, OutputCacheConfig};
+use veritas_sdr::engine::InferenceParams;
+use veritas_sdr::scheduler::{OutputCache, OutputCacheConfig};
 
 #[test]
 fn test_cache_key_deterministic() {

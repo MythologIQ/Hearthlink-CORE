@@ -4,8 +4,8 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
-use core_runtime::engine::InferenceParams;
-use core_runtime::scheduler::{Priority, PriorityQueue, QueuedRequest};
+use veritas_sdr::engine::InferenceParams;
+use veritas_sdr::scheduler::{Priority, PriorityQueue, QueuedRequest};
 
 fn create_request(id: u64, token_count: usize) -> QueuedRequest {
     QueuedRequest::new(

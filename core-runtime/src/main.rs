@@ -1,4 +1,4 @@
-//! CORE Runtime entry point.
+//! Veritas SDR Runtime entry point.
 //!
 //! Bootstraps the sandboxed inference engine with:
 //! - Configuration loading
@@ -8,8 +8,8 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use core_runtime::{Runtime, RuntimeConfig};
-use core_runtime::shutdown::ShutdownResult;
+use veritas_sdr::{Runtime, RuntimeConfig};
+use veritas_sdr::shutdown::ShutdownResult;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -5,12 +5,12 @@
 
 use std::time::Duration;
 
-use core_runtime::engine::InferenceParams;
-use core_runtime::ipc::{
+use veritas_sdr::engine::InferenceParams;
+use veritas_sdr::ipc::{
     decode_message, encode_message, ConnectionConfig, ConnectionPool,
     IpcMessage, WarmupRequest, WarmupResponse,
 };
-use core_runtime::scheduler::{OutputCache, OutputCacheConfig, Priority, RequestQueue, RequestQueueConfig};
+use veritas_sdr::scheduler::{OutputCache, OutputCacheConfig, Priority, RequestQueue, RequestQueueConfig};
 
 #[tokio::test]
 async fn test_cancel_pending_request() {

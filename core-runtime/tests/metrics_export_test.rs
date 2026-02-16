@@ -1,7 +1,7 @@
 //! Tests for metrics export via IPC.
 
-use core_runtime::ipc::{decode_message, encode_message, IpcMessage, MetricsSnapshot};
-use core_runtime::telemetry::{HistogramSummary, MetricsStore};
+use veritas_sdr::ipc::{decode_message, encode_message, IpcMessage, MetricsSnapshot};
+use veritas_sdr::telemetry::{HistogramSummary, MetricsStore};
 
 // ============================================================================
 // MetricsStore Tests

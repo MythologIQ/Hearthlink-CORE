@@ -1,6 +1,6 @@
 //! TDD-Light tests for SIMD tokenizer.
 
-use core_runtime::engine::SimdTokenizer;
+use veritas_sdr::engine::SimdTokenizer;
 
 fn create_test_vocab() -> Vec<u8> {
     // Simple test vocabulary: each line is a token

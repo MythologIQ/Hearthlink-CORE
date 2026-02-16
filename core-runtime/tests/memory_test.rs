@@ -1,6 +1,6 @@
 //! TDD-Light tests for memory module.
 
-use core_runtime::memory::{
+use veritas_sdr::memory::{
     Arena, ArenaPool, ArenaSlice, ContextCache, ContextCacheConfig, GpuMemory,
     GpuMemoryConfig, GpuMemoryError, KvCache, KvCacheEntry, MemoryPool, MemoryPoolConfig,
 };

@@ -1,10 +1,10 @@
 //! Health check tests for CORE Runtime.
 
-use core_runtime::health::{HealthChecker, HealthConfig, HealthState};
-use core_runtime::ipc::{
+use veritas_sdr::health::{HealthChecker, HealthConfig, HealthState};
+use veritas_sdr::ipc::{
     decode_message, encode_message, HealthCheckResponse, HealthCheckType, IpcMessage,
 };
-use core_runtime::shutdown::ShutdownState;
+use veritas_sdr::shutdown::ShutdownState;
 
 // ============================================================================
 // Health Checker Tests

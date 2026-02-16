@@ -1,6 +1,6 @@
 //! Tests for Q8 KV-cache storage.
 
-use core_runtime::memory::kv_quant::{compute_scale, dequantize, quantize_to, Q8KvStore};
+use veritas_sdr::memory::kv_quant::{compute_scale, dequantize, quantize_to, Q8KvStore};
 
 #[test]
 fn q8_roundtrip_within_tolerance() {

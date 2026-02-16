@@ -1,10 +1,10 @@
 //! Tier 4 tests: Quantization and Prefill/Decode.
 
-use core_runtime::engine::quantize::{QuantFormat, QuantizedTensor};
-use core_runtime::engine::prefill::{PrefillConfig, PrefillExecutor};
-use core_runtime::engine::decode::{DecodeConfig, DecodeExecutor};
-use core_runtime::engine::FinishReason;
-use core_runtime::memory::paged::PageTable;
+use veritas_sdr::engine::quantize::{QuantFormat, QuantizedTensor};
+use veritas_sdr::engine::prefill::{PrefillConfig, PrefillExecutor};
+use veritas_sdr::engine::decode::{DecodeConfig, DecodeExecutor};
+use veritas_sdr::engine::FinishReason;
+use veritas_sdr::memory::paged::PageTable;
 
 // ============================================================================
 // Phase 3: Quantization Tests

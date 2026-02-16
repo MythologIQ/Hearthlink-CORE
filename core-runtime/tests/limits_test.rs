@@ -1,7 +1,7 @@
 //! TDD-Light tests for resource limit enforcement.
 
-use core_runtime::engine::InferenceError;
-use core_runtime::memory::{ResourceLimits, ResourceLimitsConfig};
+use veritas_sdr::engine::InferenceError;
+use veritas_sdr::memory::{ResourceLimits, ResourceLimitsConfig};
 
 #[test]
 fn limits_allow_within_bounds() {

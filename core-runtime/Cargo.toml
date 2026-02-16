@@ -1,9 +1,9 @@
 [package]
-name = "core-runtime"
+name = "veritas-sdr"
 version = "0.1.0"
 edition = "2021"
-description = "Hearthlink CORE Runtime - sandboxed offline inference engine"
-license = "MIT"
+description = "Veritas SDR - Secure, Deterministic, Reliable inference runtime"
+license = "Apache-2.0"
 
 [dependencies]
 # Async runtime
@@ -35,6 +35,9 @@ async-trait = "0.1"
 sha2 = "0.10"
 hex = "0.4"
 
+# Cryptographically secure random number generation
+rand = "0.8"
+
 # Output filtering
 regex = "1.10"
 unicode-normalization = "0.1"
@@ -56,11 +59,38 @@ metrics = "0.22"
 parking_lot = "0.12"
 dashmap = "6.0"
 
+# CPU count detection for thread pool
+num_cpus = "1.16"
+
+# Pattern matching for prompt injection detection
+aho-corasick = "1.1"
+
+# AES encryption for model files
+aes = "0.8"
+
+# Hostname detection for machine ID
+hostname = "0.4"
+
+# Temp files for tests
+tempfile = "3.10"
+
+# Windows API for Job Objects sandboxing (Windows only)
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+    "Win32_Security",
+] }
+
 [features]
 default = []
 onnx = ["candle-core", "candle-onnx"]
 gguf = ["llama-cpp-2"]
+cuda = []  # GPU support via CUDA (requires CUDA toolkit)
+metal = []  # GPU support via Metal (macOS only)
 full = ["onnx", "gguf"]
+gpu = ["cuda"]  # GPU support alias
 
 [dev-dependencies]
 tokio-test = "0.4"
@@ -88,6 +118,10 @@ harness = false
 
 [[bench]]
 name = "concurrent_load"
+harness = false
+
+[[bench]]
+name = "llama_cpp_comparison"
 harness = false
 
 [profile.release]

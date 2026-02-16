@@ -1,11 +1,11 @@
 //! TDD-Light tests for inference backends (ONNX and GGUF).
 
-use core_runtime::engine::{
+use veritas_sdr::engine::{
     InferenceCapability, InferenceConfig, InferenceError, InferenceInput,
     InferenceOutput,
 };
-use core_runtime::engine::onnx::{OnnxClassifier, OnnxEmbedder, OnnxModel};
-use core_runtime::engine::gguf::{GgufGenerator, GgufModel};
+use veritas_sdr::engine::onnx::{OnnxClassifier, OnnxEmbedder, OnnxModel};
+use veritas_sdr::engine::gguf::{GgufGenerator, GgufModel};
 
 // ============================================================================
 // ONNX Classifier Tests
@@ -154,7 +154,7 @@ async fn gguf_generator_generates_text() {
 
 #[tokio::test]
 async fn gguf_generator_handles_chat_messages() {
-    use core_runtime::engine::{ChatMessage, ChatRole};
+    use veritas_sdr::engine::{ChatMessage, ChatRole};
 
     let generator = GgufGenerator::new("test-generator".to_string(), 2048);
 

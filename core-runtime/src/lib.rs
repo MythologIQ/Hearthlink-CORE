@@ -1,14 +1,15 @@
-//! Hearthlink CORE Runtime
+//! Veritas SDR - Secure Deterministic Runtime
+//!
+//! **Veritas** (Truth, Integrity, Correctness) + **SDR** (Secure Deterministic Runtime)
 //!
 //! A sandboxed, offline inference engine that performs model execution only.
 //! No authority over data, tools, or system actions.
 //!
-//! # Design Principles (C.O.R.E.)
+//! # Design Principles
 //!
-//! - **Contained**: Sandbox with no ambient privileges
-//! - **Offline**: Zero network access (inbound/outbound blocked)
-//! - **Restricted**: IPC-only communication with authenticated callers
-//! - **Execution**: Pure compute, no business logic or decision authority
+//! - **Secure**: Sandbox with no ambient privileges, comprehensive input/output validation
+//! - **Deterministic**: No GC pauses, predictable latency, reproducible results
+//! - **Veritas**: Truth in outputs, integrity in execution, correctness in behavior
 //!
 //! # Security Boundaries
 //!
@@ -24,6 +25,7 @@ pub mod memory;
 pub mod models;
 pub mod sandbox;
 pub mod scheduler;
+pub mod security;
 pub mod shutdown;
 pub mod telemetry;
 
@@ -34,9 +36,13 @@ use std::time::Duration;
 use engine::InferenceEngine;
 use health::{HealthChecker, HealthConfig};
 use ipc::{ConnectionConfig, ConnectionPool, IpcHandler, IpcHandlerConfig, SessionAuth};
-use memory::{ContextCache, ContextCacheConfig, GpuMemory, GpuMemoryConfig, MemoryPool, MemoryPoolConfig};
+use memory::{
+    ContextCache, ContextCacheConfig, GpuMemory, GpuMemoryConfig, MemoryPool, MemoryPoolConfig,
+};
 use models::{ModelLoader, ModelRegistry};
-use scheduler::{BatchConfig, BatchProcessor, OutputCache, OutputCacheConfig, RequestQueue, RequestQueueConfig};
+use scheduler::{
+    BatchConfig, BatchProcessor, OutputCache, OutputCacheConfig, RequestQueue, RequestQueueConfig,
+};
 use shutdown::ShutdownCoordinator;
 use telemetry::MetricsStore;
 use tokio::sync::Mutex;

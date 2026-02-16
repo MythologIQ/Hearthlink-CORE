@@ -2,11 +2,11 @@
 //!
 //! Tests the complete flow: IPC → Scheduler → Engine → Response.
 
-use core_runtime::engine::{FilterConfig, InferenceParams};
-use core_runtime::ipc::protocol::{
+use veritas_sdr::engine::{FilterConfig, InferenceParams};
+use veritas_sdr::ipc::protocol::{
     decode_message, encode_message, InferenceRequest, IpcMessage, RequestId,
 };
-use core_runtime::scheduler::{Priority, PriorityQueue, QueuedRequest, RequestQueueConfig};
+use veritas_sdr::scheduler::{Priority, PriorityQueue, QueuedRequest, RequestQueueConfig};
 
 #[test]
 fn ipc_request_roundtrip() {
@@ -69,7 +69,7 @@ fn scheduler_request_ordering() {
 
 #[test]
 fn error_propagation_model_not_found() {
-    use core_runtime::models::ModelLoader;
+    use veritas_sdr::models::ModelLoader;
 
     let loader = ModelLoader::new(std::env::temp_dir());
 

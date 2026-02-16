@@ -1,6 +1,6 @@
 //! Tests for ModelRouter - atomic model_id → handle routing table.
 
-use core_runtime::models::{ModelHandle, ModelRouter, RouterError};
+use veritas_sdr::models::{ModelHandle, ModelRouter, RouterError};
 
 #[tokio::test]
 async fn test_add_route_success() {

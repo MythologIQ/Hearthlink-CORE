@@ -2,7 +2,7 @@
 //!
 //! Verifies tiled attention produces correct results with reduced memory.
 
-use core_runtime::engine::{FlashAttn, FlashAttnConfig};
+use veritas_sdr::engine::{FlashAttn, FlashAttnConfig};
 
 #[test]
 fn flash_attn_single_position() {
