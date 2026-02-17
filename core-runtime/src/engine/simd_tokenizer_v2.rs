@@ -18,8 +18,8 @@ use std::arch::aarch64::*;
 #[derive(Debug, Clone)]
 struct TokenEntry {
     bytes: Vec<u8>,
-    id: u32,
-    score: f32, // For BPE merge priority
+    _id: u32,
+    _score: f32, // For BPE merge priority
 }
 
 /// SIMD-accelerated tokenizer for fast text processing.
@@ -72,8 +72,8 @@ impl SimdTokenizer {
             vocab_map.insert(token_bytes.clone(), id as u32);
             vocab.push(TokenEntry {
                 bytes: token_bytes,
-                id: id as u32,
-                score,
+                _id: id as u32,
+                _score: score,
             });
         }
 

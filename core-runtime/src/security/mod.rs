@@ -5,16 +5,19 @@
 //! - Output sanitization and PII detection
 //! - Model file encryption
 //! - Secure communication
+//! - Enterprise audit logging
 
+pub mod audit;
 pub mod encryption;
 pub mod output_sanitizer;
 pub mod pii_detector;
 pub mod prompt_injection;
 
+pub use audit::{AuditCategory, AuditEvent, AuditLogger, AuditSeverity};
 pub use encryption::ModelEncryption;
 pub use output_sanitizer::OutputSanitizer;
-pub use pii_detector::PIIDetector;
-pub use prompt_injection::PromptInjectionFilter;
+pub use pii_detector::{PIIDetector, PIIMatch};
+pub use prompt_injection::{InjectionMatch, PromptInjectionFilter};
 
 /// Security configuration
 #[derive(Debug, Clone)]

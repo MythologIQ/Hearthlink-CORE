@@ -377,6 +377,3 @@ Connection Management:
 | `HACK` | 0 |
 
 ---
-
-_State verified and sealed by QoreLogic Judge_
-_Session: p8t9h0b1 (Pre-Testing Hardening Bundle)_

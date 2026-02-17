@@ -29,6 +29,26 @@ pub mod security;
 pub mod shutdown;
 pub mod telemetry;
 
+// Distributed inference module (v0.3.0)
+pub mod distributed;
+
+// A/B testing module (v0.5.0)
+pub mod ab_testing;
+
+// Kubernetes types (v0.5.0)
+pub mod k8s;
+
+// CLI module for health probes (v0.5.0)
+pub mod cli;
+
+// C FFI module (v0.3.1)
+#[cfg(feature = "ffi")]
+pub mod ffi;
+
+// Python bindings module (v0.3.1)
+#[cfg(feature = "python")]
+pub mod python;
+
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;

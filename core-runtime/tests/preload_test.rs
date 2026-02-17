@@ -1,11 +1,9 @@
 //! Tests for ModelPreloader - preload validation before hot-swap.
 
-use veritas_sdr::models::{
-    ModelArchitecture, ModelCapability, ModelHandle, ModelManifest, ModelPreloader,
-    ModelRegistry, PreloadError,
-};
-use std::path::PathBuf;
 use std::sync::Arc;
+use veritas_sdr::models::{
+    ModelArchitecture, ModelCapability, ModelManifest, ModelPreloader, ModelRegistry, PreloadError,
+};
 
 fn test_manifest() -> ModelManifest {
     ModelManifest {

@@ -1,0 +1,52 @@
+[package]
+name = "veritas-sdr-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+
+[dependencies.veritas-sdr]
+path = ".."
+
+# Fuzz targets for IPC protocol parsing
+[[bin]]
+name = "fuzz_ipc_json"
+path = "fuzz_targets/fuzz_ipc_json.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_ipc_binary"
+path = "fuzz_targets/fuzz_ipc_binary.rs"
+test = false
+doc = false
+bench = false
+
+# Fuzz targets for security modules
+[[bin]]
+name = "fuzz_prompt_injection"
+path = "fuzz_targets/fuzz_prompt_injection.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_pii_detection"
+path = "fuzz_targets/fuzz_pii_detection.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_output_sanitizer"
+path = "fuzz_targets/fuzz_output_sanitizer.rs"
+test = false
+doc = false
+bench = false

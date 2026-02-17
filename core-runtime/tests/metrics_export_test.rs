@@ -156,6 +156,7 @@ fn test_metrics_response_roundtrip() {
         counters,
         gauges,
         histograms,
+        bucketed_histograms: std::collections::HashMap::new(),
     };
     let message = IpcMessage::MetricsResponse(snapshot);
 
@@ -183,6 +184,7 @@ fn test_metrics_response_empty_snapshot() {
         counters: std::collections::HashMap::new(),
         gauges: std::collections::HashMap::new(),
         histograms: std::collections::HashMap::new(),
+        bucketed_histograms: std::collections::HashMap::new(),
     };
     let message = IpcMessage::MetricsResponse(snapshot);
 

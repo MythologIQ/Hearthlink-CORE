@@ -1,11 +1,11 @@
 //! Integration tests for SwapManager - zero-downtime model hot-swap.
 
-use veritas_sdr::models::{
-    FlightTracker, ModelArchitecture, ModelCapability, ModelHandle, ModelManifest,
-    ModelRegistry, ModelRouter, SwapError, SwapManager,
-};
 use std::sync::Arc;
 use std::time::Duration;
+use veritas_sdr::models::{
+    FlightTracker, ModelArchitecture, ModelCapability, ModelManifest, ModelRegistry, ModelRouter,
+    SwapError, SwapManager,
+};
 
 fn test_manifest(model_id: &str) -> ModelManifest {
     ModelManifest {
@@ -20,7 +20,12 @@ fn test_manifest(model_id: &str) -> ModelManifest {
     }
 }
 
-async fn setup_swap_manager() -> (SwapManager, Arc<ModelRegistry>, Arc<ModelRouter>, Arc<FlightTracker>) {
+async fn setup_swap_manager() -> (
+    SwapManager,
+    Arc<ModelRegistry>,
+    Arc<ModelRouter>,
+    Arc<FlightTracker>,
+) {
     let registry = Arc::new(ModelRegistry::new());
     let router = Arc::new(ModelRouter::new());
     let flight_tracker = Arc::new(FlightTracker::new());
@@ -169,7 +174,11 @@ async fn test_concurrent_swap_rejected() {
     // First swap (will be blocked waiting for drain)
     let swap1 = tokio::spawn(async move {
         manager1
-            .execute_swap("test-model", test_manifest("test-model"), Duration::from_millis(500))
+            .execute_swap(
+                "test-model",
+                test_manifest("test-model"),
+                Duration::from_millis(500),
+            )
             .await
     });
 
@@ -178,7 +187,11 @@ async fn test_concurrent_swap_rejected() {
 
     // Second swap should be rejected
     let result2 = manager
-        .execute_swap("test-model", test_manifest("test-model"), Duration::from_millis(100))
+        .execute_swap(
+            "test-model",
+            test_manifest("test-model"),
+            Duration::from_millis(100),
+        )
         .await;
 
     assert!(matches!(result2, Err(SwapError::SwapInProgress)));
@@ -206,7 +219,11 @@ async fn test_swap_manager_is_idle_after_completion() {
     assert!(manager.is_idle().await);
 
     let _ = manager
-        .execute_swap("test-model", test_manifest("test-model"), Duration::from_millis(100))
+        .execute_swap(
+            "test-model",
+            test_manifest("test-model"),
+            Duration::from_millis(100),
+        )
         .await;
 
     assert!(manager.is_idle().await);

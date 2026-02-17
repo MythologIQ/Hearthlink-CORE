@@ -6,8 +6,8 @@ use thiserror::Error;
 use super::auth::{AuthError, SessionAuth, SessionToken};
 use super::health_handler::HealthHandler;
 use super::protocol::{
-    decode_message, encode_message, InferenceRequest, InferenceResponse, IpcMessage,
-    ProtocolError, ProtocolVersion, StreamChunk, WarmupResponse,
+    decode_message, encode_message, InferenceRequest, InferenceResponse, IpcMessage, ProtocolError,
+    ProtocolVersion, StreamChunk, WarmupResponse,
 };
 use crate::health::HealthChecker;
 use crate::models::ModelRegistry;
@@ -58,7 +58,8 @@ pub trait StreamSender: Send + Sync {
 
 /// Handles IPC message processing with authentication.
 pub struct IpcHandler {
-    auth: Arc<SessionAuth>,
+    /// Session authentication manager (public for FFI access)
+    pub auth: Arc<SessionAuth>,
     queue: Arc<RequestQueue>,
     config: IpcHandlerConfig,
     shutdown: Arc<ShutdownCoordinator>,
@@ -82,7 +83,14 @@ impl IpcHandler {
             model_registry,
             Arc::clone(&queue),
         );
-        Self { auth, queue, config, shutdown, health_handler, metrics_store }
+        Self {
+            auth,
+            queue,
+            config,
+            shutdown,
+            health_handler,
+            metrics_store,
+        }
     }
 
     /// Process incoming message bytes and return response bytes.
@@ -103,11 +111,16 @@ impl IpcHandler {
         session: Option<&SessionToken>,
     ) -> Result<(IpcMessage, Option<SessionToken>), HandlerError> {
         match message {
-            IpcMessage::Handshake { token, .. } => {
+            IpcMessage::Handshake {
+                token,
+                protocol_version,
+            } => {
                 let session_token = self.auth.authenticate(&token).await?;
+                // Negotiate protocol version with client
+                let negotiated_version = ProtocolVersion::negotiate(protocol_version);
                 let response = IpcMessage::HandshakeAck {
                     session_id: session_token.as_str().to_string(),
-                    protocol_version: ProtocolVersion::default(),
+                    protocol_version: negotiated_version,
                 };
                 Ok((response, Some(session_token)))
             }
@@ -134,7 +147,13 @@ impl IpcHandler {
                 // AUTH REQUIRED for cancellation (session-scoped operation)
                 self.require_auth(session).await?;
                 let cancelled = self.queue.cancel(request_id.0).await;
-                Ok((IpcMessage::CancelResponse { request_id, cancelled }, None))
+                Ok((
+                    IpcMessage::CancelResponse {
+                        request_id,
+                        cancelled,
+                    },
+                    None,
+                ))
             }
 
             IpcMessage::WarmupRequest(request) => {
@@ -179,12 +198,15 @@ impl IpcHandler {
             return InferenceResponse::error(request.request_id, e.to_string());
         }
 
-        let enqueue_result = self.queue.enqueue(
-            request.model_id,
-            request.prompt_tokens,
-            request.parameters,
-            Priority::Normal,
-        ).await;
+        let enqueue_result = self
+            .queue
+            .enqueue(
+                request.model_id,
+                request.prompt_tokens,
+                request.parameters,
+                Priority::Normal,
+            )
+            .await;
 
         match enqueue_result {
             Ok(_) => InferenceResponse::success(request.request_id, Vec::new(), false),
@@ -195,10 +217,15 @@ impl IpcHandler {
 
     async fn handle_warmup(&self, model_id: String, _tokens: usize) -> WarmupResponse {
         let start = std::time::Instant::now();
-        let result = self.queue.enqueue(
-            model_id.clone(), vec![1], // Minimal warmup prompt
-            crate::engine::InferenceParams::default(), Priority::Low,
-        ).await;
+        let result = self
+            .queue
+            .enqueue(
+                model_id.clone(),
+                vec![1], // Minimal warmup prompt
+                crate::engine::InferenceParams::default(),
+                Priority::Low,
+            )
+            .await;
         let elapsed_ms = start.elapsed().as_millis() as u64;
         match result {
             Ok(_) => WarmupResponse::success(model_id, elapsed_ms),
@@ -224,12 +251,15 @@ impl IpcHandler {
         }
 
         // Enqueue for streaming inference
-        let enqueue_result = self.queue.enqueue(
-            request.model_id.clone(),
-            request.prompt_tokens.clone(),
-            request.parameters.clone(),
-            Priority::Normal,
-        ).await;
+        let enqueue_result = self
+            .queue
+            .enqueue(
+                request.model_id.clone(),
+                request.prompt_tokens.clone(),
+                request.parameters.clone(),
+                Priority::Normal,
+            )
+            .await;
 
         if let Err(e) = enqueue_result {
             let chunk = StreamChunk::error(request.request_id, e.to_string());

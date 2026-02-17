@@ -8,15 +8,19 @@ use std::collections::HashMap;
 /// Cached KV entry with LRU tracking.
 #[derive(Debug, Clone)]
 pub struct CachedKv {
-    token_hash: [u8; 32],
+    _token_hash: [u8; 32],
     kv_data: Vec<u8>,
     seq_len: usize,
     last_used: u64,
 }
 
 impl CachedKv {
-    pub fn kv_data(&self) -> &[u8] { &self.kv_data }
-    pub fn seq_len(&self) -> usize { self.seq_len }
+    pub fn kv_data(&self) -> &[u8] {
+        &self.kv_data
+    }
+    pub fn seq_len(&self) -> usize {
+        self.seq_len
+    }
 }
 
 /// LRU prompt cache with hash-based lookup.
@@ -66,12 +70,15 @@ impl PromptCache {
 
         let hash = Self::hash_tokens(tokens);
         self.access_counter += 1;
-        self.entries.insert(hash, CachedKv {
-            token_hash: hash,
-            kv_data,
-            seq_len,
-            last_used: self.access_counter,
-        });
+        self.entries.insert(
+            hash,
+            CachedKv {
+                _token_hash: hash,
+                kv_data,
+                seq_len,
+                last_used: self.access_counter,
+            },
+        );
     }
 
     /// Find longest cached prefix of tokens. Returns (prefix_len, cloned entry).
@@ -92,7 +99,9 @@ impl PromptCache {
 
     /// Evict least recently used entry.
     fn evict_lru(&mut self) {
-        let oldest = self.entries.iter()
+        let oldest = self
+            .entries
+            .iter()
             .min_by_key(|(_, e)| e.last_used)
             .map(|(k, _)| *k);
 
@@ -101,9 +110,15 @@ impl PromptCache {
         }
     }
 
-    pub fn len(&self) -> usize { self.entries.len() }
-    pub fn is_empty(&self) -> bool { self.entries.is_empty() }
-    pub fn clear(&mut self) { self.entries.clear(); }
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+    pub fn clear(&mut self) {
+        self.entries.clear();
+    }
 
     /// Total memory used by cached entries.
     pub fn memory_bytes(&self) -> usize {

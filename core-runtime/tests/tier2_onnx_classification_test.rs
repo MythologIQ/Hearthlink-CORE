@@ -3,11 +3,11 @@
 //! Tests complete inference pipeline with actual ONNX model inference.
 //! Measures end-to-end latency, throughput, and resource utilization.
 
+use std::path::PathBuf;
+use std::time::Instant;
 use veritas_sdr::engine::onnx::OnnxDevice;
 use veritas_sdr::engine::{ClassificationResult, InferenceInput, InferenceOutput, OnnxConfig};
 use veritas_sdr::models::ModelLoader;
-use std::path::PathBuf;
-use std::time::Instant;
 
 /// Get the path to the tinybert-classifier.onnx model
 fn get_tinybert_model_path() -> PathBuf {
@@ -52,7 +52,7 @@ async fn test_classification_input_validation() {
 
     // Test empty input - validation may reject empty strings
     let empty_input = InferenceInput::Text("".to_string());
-    let empty_result = empty_input.validate();
+    let _empty_result = empty_input.validate();
     // Empty input validation behavior depends on implementation
     // Some implementations may reject empty strings
     // assert!(empty_result.is_ok(), "Empty input should be valid");

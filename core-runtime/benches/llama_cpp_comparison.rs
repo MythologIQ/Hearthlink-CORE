@@ -77,49 +77,65 @@ fn bench_veritas_sdr_overhead(c: &mut Criterion) {
     group.throughput(Throughput::Elements(1));
 
     // IPC encoding overhead
+    // IPC encoding overhead
     group.bench_function(BenchmarkId::new("ipc_encode", "overhead"), |b| {
-        use veritas_sdr::ipc::encoding::IpcEncoder;
-        let encoder = IpcEncoder::new();
-        let data = vec![1u8; 1024];
+        use veritas_sdr::ipc::protocol::{
+            encode_message_binary, IpcMessage, RequestId, StreamChunk,
+        };
+        // Create a message roughly equivalent to 1KB of data
+        let data = IpcMessage::StreamChunk(StreamChunk {
+            request_id: RequestId(1),
+            token: 12345,
+            is_final: false,
+            error: Some("x".repeat(1000)), // Simulate 1KB payload
+        });
 
         b.iter(|| {
-            let encoded = encoder.encode(&data).unwrap();
+            let encoded = encode_message_binary(&data).unwrap();
             black_box(encoded);
         });
     });
 
     // IPC decoding overhead
+    // IPC decoding overhead
     group.bench_function(BenchmarkId::new("ipc_decode", "overhead"), |b| {
-        use veritas_sdr::ipc::encoding::{IpcDecoder, IpcEncoder};
-        let encoder = IpcEncoder::new();
-        let decoder = IpcDecoder::new();
-        let data = vec![1u8; 1024];
-        let encoded = encoder.encode(&data).unwrap();
+        use veritas_sdr::ipc::protocol::{
+            decode_message_binary, encode_message_binary, IpcMessage, RequestId, StreamChunk,
+        };
+        let data = IpcMessage::StreamChunk(StreamChunk {
+            request_id: RequestId(1),
+            token: 12345,
+            is_final: false,
+            error: Some("x".repeat(1000)),
+        });
+        let encoded = encode_message_binary(&data).unwrap();
 
         b.iter(|| {
-            let decoded = decoder.decode(&encoded).unwrap();
+            let decoded = decode_message_binary(&encoded).unwrap();
             black_box(decoded);
         });
     });
 
+    // Security scanning overhead
     // Security scanning overhead
     group.bench_function(BenchmarkId::new("security_scan", "overhead"), |b| {
         use veritas_sdr::security::PromptInjectionFilter;
         let filter = PromptInjectionFilter::default();
 
         b.iter(|| {
-            let result = filter.scan(PROMPT).unwrap();
+            let result = filter.scan(PROMPT);
             black_box(result);
         });
     });
 
+    // PII detection overhead
     // PII detection overhead
     group.bench_function(BenchmarkId::new("pii_detect", "overhead"), |b| {
         use veritas_sdr::security::PIIDetector;
         let detector = PIIDetector::new();
 
         b.iter(|| {
-            let result = detector.scan(PROMPT).unwrap();
+            let result = detector.detect(PROMPT);
             black_box(result);
         });
     });
@@ -132,21 +148,26 @@ fn bench_total_overhead(c: &mut Criterion) {
     let mut group = c.benchmark_group("total_overhead");
 
     group.bench_function("infrastructure_total", |b| {
-        use veritas_sdr::ipc::encoding::{IpcDecoder, IpcEncoder};
+        use veritas_sdr::ipc::protocol::{
+            decode_message_binary, encode_message_binary, IpcMessage, RequestId, StreamChunk,
+        };
         use veritas_sdr::security::{PIIDetector, PromptInjectionFilter};
 
-        let encoder = IpcEncoder::new();
-        let decoder = IpcDecoder::new();
         let filter = PromptInjectionFilter::default();
         let detector = PIIDetector::new();
-        let data = vec![1u8; 1024];
+        let data = IpcMessage::StreamChunk(StreamChunk {
+            request_id: RequestId(1),
+            token: 12345,
+            is_final: false,
+            error: Some("x".repeat(1000)),
+        });
 
         b.iter(|| {
             // Simulate full request path
-            let security_result = filter.scan(PROMPT).unwrap();
-            let pii_result = detector.scan(PROMPT).unwrap();
-            let encoded = encoder.encode(&data).unwrap();
-            let decoded = decoder.decode(&encoded).unwrap();
+            let security_result = filter.scan(PROMPT);
+            let pii_result = detector.detect(PROMPT);
+            let encoded = encode_message_binary(&data).unwrap();
+            let decoded = decode_message_binary(&encoded).unwrap();
 
             black_box((security_result, pii_result, decoded));
         });

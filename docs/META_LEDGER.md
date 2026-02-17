@@ -1,4 +1,4 @@
-# QoreLogic Meta Ledger
+# Decision Ledger
 
 ## Chain Status: ACTIVE
 

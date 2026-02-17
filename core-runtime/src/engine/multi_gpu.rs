@@ -426,9 +426,9 @@ impl MultiGpuManager {
 /// Cross-GPU Communication Manager
 pub struct CrossGpuCommunication {
     /// Source GPU
-    source: usize,
+    _source: usize,
     /// Destination GPU
-    destination: usize,
+    _destination: usize,
     /// Whether P2P is enabled
     p2p_enabled: bool,
 }
@@ -437,8 +437,8 @@ impl CrossGpuCommunication {
     /// Create a new cross-GPU communication channel
     pub fn new(source: usize, destination: usize, p2p_enabled: bool) -> Self {
         Self {
-            source,
-            destination,
+            _source: source,
+            _destination: destination,
             p2p_enabled,
         }
     }

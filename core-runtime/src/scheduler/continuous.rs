@@ -85,7 +85,7 @@ pub struct PendingRequest {
 #[derive(Debug)]
 pub struct ContinuousBatcher {
     slots: Vec<Option<BatchSlot>>,
-    max_slots: usize,
+    _max_slots: usize,
     pending: VecDeque<PendingRequest>,
 }
 
@@ -94,7 +94,7 @@ impl ContinuousBatcher {
     pub fn new(max_slots: usize) -> Self {
         Self {
             slots: vec![None; max_slots],
-            max_slots,
+            _max_slots: max_slots,
             pending: VecDeque::new(),
         }
     }
@@ -110,11 +110,8 @@ impl ContinuousBatcher {
         for (idx, slot) in self.slots.iter_mut().enumerate() {
             if slot.is_none() {
                 if let Some(req) = self.pending.pop_front() {
-                    let batch_slot = BatchSlot::new(
-                        req.request_id,
-                        req.prompt_tokens.len(),
-                        req.max_tokens,
-                    );
+                    let batch_slot =
+                        BatchSlot::new(req.request_id, req.prompt_tokens.len(), req.max_tokens);
                     *slot = Some(batch_slot);
                     admitted.push((idx, req));
                 }
@@ -154,9 +151,10 @@ impl ContinuousBatcher {
 
     /// Iterate over active slots.
     pub fn active_slots(&self) -> impl Iterator<Item = (usize, &BatchSlot)> {
-        self.slots.iter().enumerate().filter_map(|(i, s)| {
-            s.as_ref().map(|slot| (i, slot))
-        })
+        self.slots
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| s.as_ref().map(|slot| (i, slot)))
     }
 
     /// Check if batch is empty (no active or pending requests).

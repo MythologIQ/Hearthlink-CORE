@@ -15,9 +15,9 @@ pub use connections::{ConnectionConfig, ConnectionGuard, ConnectionPool};
 pub use encoding::{get_encoder, TokenEncoder, V1Encoder, V2Encoder};
 pub use handler::{IpcHandler, IpcHandlerConfig, StreamSender};
 pub use protocol::{
-    decode_message, encode_message, HealthCheckResponse, HealthCheckType, InferenceRequest,
-    InferenceResponse, IpcMessage, ProtocolError, ProtocolVersion, RequestId, StreamChunk,
-    WarmupRequest, WarmupResponse,
+    decode_message, decode_message_binary, encode_message, encode_message_binary,
+    HealthCheckResponse, HealthCheckType, InferenceRequest, InferenceResponse, IpcMessage,
+    ProtocolError, ProtocolVersion, RequestId, StreamChunk, WarmupRequest, WarmupResponse,
 };
 // Re-export MetricsSnapshot for IPC consumers
 pub use crate::telemetry::MetricsSnapshot;

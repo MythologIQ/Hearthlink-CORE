@@ -1,7 +1,7 @@
 # Veritas SDR Feature Roadmap
 
-**Last Updated:** 2026-02-16  
-**Version:** 0.2.0
+**Last Updated:** 2026-02-17
+**Version:** 0.5.0
 
 ---
 
@@ -87,50 +87,163 @@ Veritas SDR is in pre-production status. Core functionality is complete and test
 
 ---
 
-## In Progress (v0.2.1)
+## Completed Features (v0.2.1)
 
 ### Benchmarking
 
-- [ ] llama.cpp direct comparison
-- [ ] Security overhead measurement
-- [ ] GPU vs CPU comparison
-- [ ] Memory profiling
+- [x] llama.cpp direct comparison
+- [x] Security overhead measurement
+- [x] GPU vs CPU comparison
+- [x] Memory profiling
 
-**Status:** Benchmark scripts created, needs execution
-
----
-
-## Planned Features (v0.3.0)
-
-### Performance
-
-- [ ] Distributed inference
-- [ ] Model parallelism
-- [ ] Pipeline parallelism
-- [ ] Continuous batching improvements
-
-### Model Support
-
-- [ ] Mixture of Experts (MoE) optimization
-- [ ] Multi-modal support
-- [ ] Custom model architectures
-
-### API
-
-- [ ] C API for non-Rust integration
-- [ ] Python bindings
-- [ ] REST API (optional, for compatibility)
+**Status:** Complete
 
 ---
 
-## Planned Features (v0.4.0)
+## Completed Features (v0.3.0)
 
-### Enterprise
+### Distributed Inference
 
-- [ ] Kubernetes operator
-- [ ] Prometheus metrics
-- [ ] OpenTelemetry integration
-- [ ] Health check endpoints
+- [x] Distributed node coordination
+- [x] P2P tensor transfer
+- [x] Model sharding strategies
+- [x] Consensus protocol
+
+### Distributed Architecture
+
+- [`NodeCoordinator`](core-runtime/src/distributed/coordinator.rs) - Cluster coordination
+- [`P2PTransfer`](core-runtime/src/distributed/p2p.rs) - Direct tensor transfer
+- [`Sharding`](core-runtime/src/distributed/sharding.rs) - Model partition strategies
+- [`Consensus`](core-runtime/src/distributed/consensus.rs) - State synchronization
+
+**Status:** Complete
+
+---
+
+## Completed Features (v0.3.1)
+
+### C FFI API
+
+- [x] Opaque runtime and session handles
+- [x] Error codes with thread-local messages
+- [x] Blocking inference
+- [x] Callback-based streaming
+- [x] Model management
+- [x] Health check API
+- [x] cbindgen header generation
+
+### Python Bindings
+
+- [x] PyO3-based native module
+- [x] Sync and async session support
+- [x] Context manager protocol
+- [x] Iterator-based streaming
+- [x] Exception hierarchy
+- [x] Type stubs (PEP 561)
+
+### API Files
+
+- [`ffi/`](core-runtime/src/ffi/) - C API implementation (8 files)
+- [`python/`](core-runtime/src/python/) - Python bindings (6 files)
+- [`include/veritas_sdr.h`](core-runtime/include/veritas_sdr.h) - Generated C header
+- [`python/`](core-runtime/python/) - Python package structure
+
+**Status:** Complete
+
+---
+
+## Completed Features (v0.4.0)
+
+### Observability
+
+- [x] Prometheus-compatible metrics export (text format)
+- [x] Bucketed histograms with configurable boundaries
+- [x] OpenTelemetry span export via IPC
+- [x] Span collector with buffer management
+
+### Observability Architecture
+
+- [`BucketedHistogram`](core-runtime/src/telemetry/buckets.rs) - Prometheus-style bucketed histograms
+- [`PrometheusEncoder`](core-runtime/src/telemetry/prometheus.rs) - Text format export
+- [`SpanCollector`](core-runtime/src/telemetry/span_export.rs) - OpenTelemetry span collection
+- [`MetricsStore`](core-runtime/src/telemetry/store.rs) - Enhanced with bucketed histogram support
+
+### Mixture of Experts (MoE)
+
+- [x] MoE configuration (Mixtral/DeepSeek presets)
+- [x] Linear router with top-k selection
+- [x] Expert output combination with weighted sum
+- [x] Load balancing statistics and auxiliary loss
+- [x] Sequential and parallel execution support
+
+### MoE Architecture
+
+- [`MoeConfig`](core-runtime/src/engine/moe/config.rs) - Configuration for MoE layers
+- [`LinearRouter`](core-runtime/src/engine/moe/router.rs) - Gating network for expert selection
+- [`ExpertCombiner`](core-runtime/src/engine/moe/combiner.rs) - Output combination
+- [`MoeExecutor`](core-runtime/src/engine/moe/executor.rs) - Expert execution orchestration
+
+**Status:** Complete
+
+---
+
+## Completed Features (v0.5.0)
+
+### CLI Health Probes (Alcatraz-compliant)
+
+- [x] Exec-based health probes for K8s (NO HTTP)
+- [x] `veritas-sdr health|live|ready` subcommands
+- [x] IPC client for CLI-to-runtime communication
+
+### CLI Architecture
+
+- [`cli/mod.rs`](core-runtime/src/cli/mod.rs) - CLI module with socket path config
+- [`cli/ipc_client.rs`](core-runtime/src/cli/ipc_client.rs) - IPC client for CLI
+- [`cli/health.rs`](core-runtime/src/cli/health.rs) - Health check commands
+
+### Model Registry Enhancements
+
+- [x] Semantic versioning with range matching
+- [x] Model query builder pattern
+- [x] JSON-based registry persistence
+- [x] Version history tracking for rollback
+
+### Registry Architecture
+
+- [`models/version.rs`](core-runtime/src/models/version.rs) - ModelVersion, VersionRange
+- [`models/search.rs`](core-runtime/src/models/search.rs) - ModelQuery, ModelSearchResult
+- [`models/persistence.rs`](core-runtime/src/models/persistence.rs) - RegistryPersistence
+- [`models/history.rs`](core-runtime/src/models/history.rs) - VersionHistory
+
+### A/B Testing Foundation
+
+- [x] Variant labels and definitions
+- [x] Traffic splitting with sticky sessions
+- [x] Per-variant metrics collection
+
+### A/B Testing Architecture
+
+- [`ab_testing/variant.rs`](core-runtime/src/ab_testing/variant.rs) - VariantLabel, Variant
+- [`ab_testing/traffic.rs`](core-runtime/src/ab_testing/traffic.rs) - TrafficConfig, TrafficSplitter
+- [`ab_testing/metrics.rs`](core-runtime/src/ab_testing/metrics.rs) - VariantStats, VariantMetrics
+
+### Kubernetes Operator Foundation
+
+- [x] VeritasRuntime CRD
+- [x] VeritasModel CRD (with A/B variant support)
+- [x] Helm chart with exec probes (NO HTTP)
+
+### K8s Architecture
+
+- [`k8s/types.rs`](core-runtime/src/k8s/types.rs) - CRD Rust types
+- [`k8s/crds/`](k8s/crds/) - CRD YAML definitions
+- [`k8s/helm/veritas-sdr/`](k8s/helm/veritas-sdr/) - Helm chart
+
+**Status:** Complete
+
+---
+
+## Planned Features (v0.6.0)
 
 ### Security
 
@@ -140,9 +253,8 @@ Veritas SDR is in pre-production status. Core functionality is complete and test
 
 ### Operations
 
-- [ ] Model registry
-- [ ] A/B testing support
-- [ ] Canary deployments
+- [ ] Canary deployment automation
+- [ ] Blue-green deployment support
 
 ---
 
@@ -164,13 +276,17 @@ Veritas SDR is in pre-production status. Core functionality is complete and test
 
 ## Release Timeline
 
-| Version   | Target  | Focus                              |
-| --------- | ------- | ---------------------------------- |
-| **0.1.0** | Current | Core functionality, security       |
-| **0.2.0** | Q2 2026 | GPU support, benchmarking          |
-| **0.3.0** | Q3 2026 | Distributed inference, multi-modal |
-| **0.4.0** | Q4 2026 | Enterprise features, compliance    |
-| **1.0.0** | 2027    | Production stable release          |
+| Version   | Status    | Focus                              |
+| --------- | --------- | ---------------------------------- |
+| **0.1.0** | Complete  | Core functionality, security       |
+| **0.2.0** | Complete  | GPU support (CUDA/Metal)           |
+| **0.2.1** | Complete  | Benchmarking, comparison           |
+| **0.3.0** | Complete  | Distributed inference              |
+| **0.3.1** | Complete  | C FFI & Python bindings            |
+| **0.4.0** | Complete  | Observability, MoE                 |
+| **0.5.0** | Complete  | Enterprise features                |
+| **0.6.0** | Planned   | Security audit, deployments        |
+| **1.0.0** | Planned   | Production stable release          |
 
 ---
 

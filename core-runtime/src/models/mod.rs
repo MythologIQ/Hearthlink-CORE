@@ -11,10 +11,20 @@ mod registry;
 mod router;
 mod swap;
 
+// v0.5.0: Model registry enhancements
+pub mod history;
+pub mod persistence;
+pub mod search;
+pub mod version;
+
 pub use drain::{DrainError, FlightGuard, FlightTracker};
+pub use history::{VersionHistory, VersionHistoryEntry, VersionSource};
 pub use loader::{LoadError, MappedModel, ModelLoader, ModelMetadata, ModelPath};
 pub use manifest::{ModelArchitecture, ModelCapability, ModelManifest};
+pub use persistence::{PersistenceError, PersistedModel, RegistryPersistence, RegistryState};
 pub use preload::{ModelPreloader, PreloadError, PreloadedModel};
 pub use registry::{ModelHandle, ModelRegistry};
 pub use router::{ModelRouter, RouterError};
+pub use search::{ModelQuery, ModelQueryBuilder, ModelSearchResult};
 pub use swap::{SwapError, SwapManager, SwapResult};
+pub use version::{ModelVersion, VersionRange};

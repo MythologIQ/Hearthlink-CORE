@@ -28,9 +28,10 @@ pub mod speculative_v2;
 pub mod cuda;
 #[cfg(all(feature = "metal", target_os = "macos"))]
 pub mod metal;
+pub mod moe;
 pub mod multi_gpu;
 
-mod inference;
+pub mod inference;
 mod streaming;
 mod tokenizer;
 
@@ -84,6 +85,12 @@ pub use metal::{
 pub use multi_gpu::{
     CrossGpuCommunication, GpuPartition, MultiGpuConfig, MultiGpuError, MultiGpuManager,
     MultiGpuStrategy,
+};
+
+// Mixture of Experts support
+pub use moe::{
+    ExpertCombiner, ExpertDeviceAssignment, ExpertOutput, LinearRouter, MoeConfig, MoeError,
+    MoeExecutor, MoeRouter, RoutingDecision,
 };
 
 /// What a model can do — used by the InferenceModel trait.

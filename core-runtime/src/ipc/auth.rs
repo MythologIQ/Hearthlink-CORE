@@ -292,3 +292,255 @@ fn generate_session_id() -> String {
     // Encode as hex for a 64-character session ID
     hex::encode(random_bytes)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test that constant_time_compare returns true for equal slices
+    #[test]
+    fn test_constant_time_compare_equal() {
+        let a = [1u8, 2, 3, 4, 5];
+        let b = [1u8, 2, 3, 4, 5];
+        assert!(constant_time_compare(&a, &b));
+    }
+
+    /// Test that constant_time_compare returns false for different slices
+    #[test]
+    fn test_constant_time_compare_different() {
+        let a = [1u8, 2, 3, 4, 5];
+        let b = [1u8, 2, 3, 4, 6];
+        assert!(!constant_time_compare(&a, &b));
+    }
+
+    /// Test that constant_time_compare returns false for different lengths
+    #[test]
+    fn test_constant_time_compare_different_lengths() {
+        let a = [1u8, 2, 3];
+        let b = [1u8, 2, 3, 4];
+        assert!(!constant_time_compare(&a, &b));
+    }
+
+    /// Test that constant_time_compare returns true for empty slices
+    #[test]
+    fn test_constant_time_compare_empty() {
+        let a: [u8; 0] = [];
+        let b: [u8; 0] = [];
+        assert!(constant_time_compare(&a, &b));
+    }
+
+    /// Test that generate_session_id produces 64-character hex strings
+    #[test]
+    fn test_generate_session_id_length() {
+        let id = generate_session_id();
+        assert_eq!(id.len(), 64); // 32 bytes = 64 hex chars
+    }
+
+    /// Test that generate_session_id produces unique IDs
+    #[test]
+    fn test_generate_session_id_unique() {
+        let id1 = generate_session_id();
+        let id2 = generate_session_id();
+        assert_ne!(id1, id2);
+    }
+
+    /// Test that generate_session_id only contains hex characters
+    #[test]
+    fn test_generate_session_id_hex() {
+        let id = generate_session_id();
+        assert!(id.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    /// Test SessionToken creation and as_str
+    #[test]
+    fn test_session_token() {
+        let token = SessionToken("test-session-id".to_string());
+        assert_eq!(token.as_str(), "test-session-id");
+    }
+
+    /// Test SessionToken traits
+    #[test]
+    fn test_session_token_traits() {
+        let token1 = SessionToken("abc".to_string());
+        let token2 = SessionToken("abc".to_string());
+        let token3 = SessionToken("def".to_string());
+
+        // Clone
+        let cloned = token1.clone();
+        assert_eq!(token1, cloned);
+
+        // PartialEq
+        assert_eq!(token1, token2);
+        assert_ne!(token1, token3);
+
+        // Hash (can be used in HashMap)
+        let mut map = std::collections::HashMap::new();
+        map.insert(token1, 1);
+        assert_eq!(map.get(&token2), Some(&1)); // token2 has same hash
+    }
+
+    /// Test AuthError display
+    #[test]
+    fn test_auth_error_display() {
+        assert!(AuthError::InvalidToken.to_string().contains("Invalid"));
+        assert!(AuthError::SessionNotFound.to_string().contains("not found"));
+        assert!(AuthError::SessionExpired.to_string().contains("expired"));
+        assert!(AuthError::NotAuthenticated.to_string().contains("required"));
+        assert!(AuthError::RateLimited.to_string().contains("try again"));
+    }
+
+    /// Test RateLimiter initial state
+    #[test]
+    fn test_rate_limiter_initial() {
+        let limiter = RateLimiter::new();
+        assert!(!limiter.is_rate_limited());
+    }
+
+    /// Test RateLimiter reset
+    #[test]
+    fn test_rate_limiter_reset() {
+        let limiter = RateLimiter::new();
+        limiter.record_failure();
+        limiter.reset();
+        assert!(!limiter.is_rate_limited());
+    }
+
+    // === Async tests with tokio runtime ===
+
+    /// Test successful authentication
+    #[tokio::test]
+    async fn test_authenticate_success() {
+        let auth = SessionAuth::new("test-token", Duration::from_secs(3600));
+        let result = auth.authenticate("test-token").await;
+        assert!(result.is_ok());
+        let session = result.unwrap();
+        assert_eq!(session.as_str().len(), 64); // 32 bytes hex-encoded
+    }
+
+    /// Test authentication with wrong token
+    #[tokio::test]
+    async fn test_authenticate_wrong_token() {
+        let auth = SessionAuth::new("correct-token", Duration::from_secs(3600));
+        let result = auth.authenticate("wrong-token").await;
+        assert!(matches!(result, Err(AuthError::InvalidToken)));
+    }
+
+    /// Test session validation
+    #[tokio::test]
+    async fn test_validate_session() {
+        let auth = SessionAuth::new("test-token", Duration::from_secs(3600));
+        let session = auth.authenticate("test-token").await.unwrap();
+        let result = auth.validate(&session).await;
+        assert!(result.is_ok());
+    }
+
+    /// Test validation of invalid session
+    #[tokio::test]
+    async fn test_validate_invalid_session() {
+        let auth = SessionAuth::new("test-token", Duration::from_secs(3600));
+        let fake_session = SessionToken("nonexistent-session-id".to_string());
+        let result = auth.validate(&fake_session).await;
+        assert!(matches!(result, Err(AuthError::SessionNotFound)));
+    }
+
+    /// Test session expiration
+    #[tokio::test]
+    async fn test_session_expiration() {
+        // Very short timeout for testing
+        let auth = SessionAuth::new("test-token", Duration::from_millis(1));
+        let session = auth.authenticate("test-token").await.unwrap();
+
+        // Wait for expiration
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        let result = auth.validate(&session).await;
+        assert!(matches!(result, Err(AuthError::SessionExpired)));
+    }
+
+    /// Test cleanup removes expired sessions
+    #[tokio::test]
+    async fn test_cleanup_expired_sessions() {
+        let auth = SessionAuth::new("test-token", Duration::from_millis(1));
+        let session = auth.authenticate("test-token").await.unwrap();
+
+        // Wait for expiration
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        // Cleanup should remove the expired session
+        auth.cleanup().await;
+
+        // Session should now be not found (removed by cleanup)
+        let result = auth.validate(&session).await;
+        assert!(matches!(result, Err(AuthError::SessionNotFound)));
+    }
+
+    /// Test connection tracking
+    #[tokio::test]
+    async fn test_connection_tracking() {
+        let auth = SessionAuth::new("test-token", Duration::from_secs(3600));
+        let session = auth.authenticate("test-token").await.unwrap();
+
+        // Track connections
+        let count1 = auth.track_connection(&session).await.unwrap();
+        assert_eq!(count1, 1);
+
+        let count2 = auth.track_connection(&session).await.unwrap();
+        assert_eq!(count2, 2);
+
+        // Release a connection
+        auth.release_connection(&session).await;
+
+        let current = auth.connection_count(&session).await.unwrap();
+        assert_eq!(current, 1);
+    }
+
+    /// Test rate limiting after multiple failures
+    #[tokio::test]
+    async fn test_rate_limiting() {
+        let auth = SessionAuth::new("correct-token", Duration::from_secs(3600));
+
+        // Make multiple failed attempts
+        for _ in 0..5 {
+            let _ = auth.authenticate("wrong-token").await;
+        }
+
+        // Should now be rate limited
+        let result = auth.authenticate("correct-token").await;
+        assert!(matches!(result, Err(AuthError::RateLimited)));
+    }
+
+    /// Test rate limit resets after successful auth
+    #[tokio::test]
+    async fn test_rate_limit_reset_on_success() {
+        let auth = SessionAuth::new("correct-token", Duration::from_secs(3600));
+
+        // Make some failed attempts (but not enough to trigger rate limiting)
+        for _ in 0..3 {
+            let _ = auth.authenticate("wrong-token").await;
+        }
+
+        // Successful auth should reset the rate limiter
+        let result = auth.authenticate("correct-token").await;
+        assert!(result.is_ok());
+
+        // Should be able to continue authenticating
+        let result = auth.authenticate("correct-token").await;
+        assert!(result.is_ok());
+    }
+
+    /// Test multiple sessions
+    #[tokio::test]
+    async fn test_multiple_sessions() {
+        let auth = SessionAuth::new("test-token", Duration::from_secs(3600));
+
+        let session1 = auth.authenticate("test-token").await.unwrap();
+        let session2 = auth.authenticate("test-token").await.unwrap();
+
+        // Sessions should be different
+        assert_ne!(session1, session2);
+
+        // Both should be valid
+        assert!(auth.validate(&session1).await.is_ok());
+        assert!(auth.validate(&session2).await.is_ok());
+    }
+}

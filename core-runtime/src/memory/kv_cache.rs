@@ -3,11 +3,43 @@
 //! Combines paged memory allocation with Q8 quantization for efficient
 //! KV-cache storage during inference. Provides 4x memory reduction
 //! and efficient memory management through page-based allocation.
+//!
+//! # Panic Safety
+//! This module uses poison-recovering lock guards to maintain cache availability
+//! even if a thread panics while holding a lock. A poisoned lock logs a warning
+//! but continues operation rather than propagating the panic.
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::time::Instant;
+
+/// Acquire a mutex lock, recovering from poison if a thread panicked.
+#[inline]
+fn lock_or_recover<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(|poisoned| {
+        tracing::warn!("KV cache mutex poisoned, recovering");
+        poisoned.into_inner()
+    })
+}
+
+/// Acquire a read lock, recovering from poison if a thread panicked.
+#[inline]
+fn read_or_recover<T>(rwlock: &RwLock<T>) -> RwLockReadGuard<'_, T> {
+    rwlock.read().unwrap_or_else(|poisoned| {
+        tracing::warn!("KV cache RwLock poisoned, recovering for read");
+        poisoned.into_inner()
+    })
+}
+
+/// Acquire a write lock, recovering from poison if a thread panicked.
+#[inline]
+fn write_or_recover<T>(rwlock: &RwLock<T>) -> RwLockWriteGuard<'_, T> {
+    rwlock.write().unwrap_or_else(|poisoned| {
+        tracing::warn!("KV cache RwLock poisoned, recovering for write");
+        poisoned.into_inner()
+    })
+}
 
 use super::kv_quant::Q8KvStore;
 use super::paged::{PageId, PageTable, PAGE_TOKENS};
@@ -151,8 +183,8 @@ impl KvCacheManager {
             quant_store,
         };
 
-        self.sequences.write().unwrap().insert(id, entry);
-        self.access_order.lock().unwrap().push_back(id);
+        write_or_recover(&self.sequences).insert(id, entry);
+        lock_or_recover(&self.access_order).push_back(id);
 
         id
     }
@@ -164,7 +196,7 @@ impl KvCacheManager {
         keys: &[f32],
         values: &[f32],
     ) -> Result<(), KvCacheError> {
-        let mut sequences = self.sequences.write().unwrap();
+        let mut sequences = write_or_recover(&self.sequences);
         let entry = sequences
             .get_mut(&seq_id)
             .ok_or(KvCacheError::SequenceNotFound(seq_id.0))?;
@@ -177,7 +209,7 @@ impl KvCacheManager {
 
         // Allocate new page if needed
         if slot == 0 || entry.page_ids.is_empty() {
-            let mut page_table = self.page_table.write().unwrap();
+            let mut page_table = write_or_recover(&self.page_table);
 
             // Try to allocate, evict if necessary
             let page_id = match page_table.allocate(seq_pos) {
@@ -185,9 +217,7 @@ impl KvCacheManager {
                 None => {
                     drop(page_table);
                     self.evict_lru()?;
-                    self.page_table
-                        .write()
-                        .unwrap()
+                    write_or_recover(&self.page_table)
                         .allocate(seq_pos)
                         .ok_or(KvCacheError::MemoryExhausted)?
                 }
@@ -198,7 +228,7 @@ impl KvCacheManager {
 
         // Write to page with mutable access
         {
-            let mut page_table = self.page_table.write().unwrap();
+            let mut page_table = write_or_recover(&self.page_table);
             if let Some(page) = page_table.get_mut(seq_pos) {
                 page.write(slot, keys, values);
             }
@@ -225,7 +255,7 @@ impl KvCacheManager {
         keys_out: &mut [f32],
         values_out: &mut [f32],
     ) -> Result<(), KvCacheError> {
-        let mut sequences = self.sequences.write().unwrap();
+        let mut sequences = write_or_recover(&self.sequences);
         let entry = sequences
             .get_mut(&seq_id)
             .ok_or(KvCacheError::SequenceNotFound(seq_id.0))?;
@@ -250,7 +280,7 @@ impl KvCacheManager {
         }
 
         // Fall back to page table
-        let page_table = self.page_table.read().unwrap();
+        let page_table = read_or_recover(&self.page_table);
         if let Some(page) = page_table.get(pos) {
             let slot = pos % PAGE_TOKENS;
             keys_out.copy_from_slice(page.read_keys(slot));
@@ -268,7 +298,7 @@ impl KvCacheManager {
         query: &[f32],
         scores_out: &mut [f32],
     ) -> Result<(), KvCacheError> {
-        let sequences = self.sequences.read().unwrap();
+        let sequences = read_or_recover(&self.sequences);
         let entry = sequences
             .get(&seq_id)
             .ok_or(KvCacheError::SequenceNotFound(seq_id.0))?;
@@ -286,7 +316,7 @@ impl KvCacheManager {
         drop(sequences);
 
         // Fall back to page-by-page computation
-        let page_table = self.page_table.read().unwrap();
+        let page_table = read_or_recover(&self.page_table);
         for pos in 0..seq_len {
             if let Some(page) = page_table.get(pos) {
                 let slot = pos % PAGE_TOKENS;
@@ -301,13 +331,13 @@ impl KvCacheManager {
 
     /// Free a sequence and its pages.
     pub fn free_sequence(&self, seq_id: SequenceId) -> Result<(), KvCacheError> {
-        let mut sequences = self.sequences.write().unwrap();
+        let mut sequences = write_or_recover(&self.sequences);
         let entry = sequences
             .remove(&seq_id)
             .ok_or(KvCacheError::SequenceNotFound(seq_id.0))?;
 
         // Free pages
-        let mut page_table = self.page_table.write().unwrap();
+        let mut page_table = write_or_recover(&self.page_table);
         page_table.free(&entry.page_ids);
 
         // Remove from access order
@@ -336,7 +366,7 @@ impl KvCacheManager {
 
     /// Get sequence length.
     pub fn seq_len(&self, seq_id: SequenceId) -> Result<usize, KvCacheError> {
-        let sequences = self.sequences.read().unwrap();
+        let sequences = read_or_recover(&self.sequences);
         let entry = sequences
             .get(&seq_id)
             .ok_or(KvCacheError::SequenceNotFound(seq_id.0))?;
@@ -345,17 +375,17 @@ impl KvCacheManager {
 
     /// Check if sequence exists.
     pub fn has_sequence(&self, seq_id: SequenceId) -> bool {
-        self.sequences.read().unwrap().contains_key(&seq_id)
+        read_or_recover(&self.sequences).contains_key(&seq_id)
     }
 
     /// Get number of active sequences.
     pub fn active_sequences(&self) -> usize {
-        self.sequences.read().unwrap().len()
+        read_or_recover(&self.sequences).len()
     }
 
     /// Get memory usage in bytes.
     pub fn memory_usage(&self) -> usize {
-        let page_table = self.page_table.read().unwrap();
+        let page_table = read_or_recover(&self.page_table);
         let page_count = page_table.page_count();
         page_count * PAGE_TOKENS * self.config.hidden_dim * 2 * std::mem::size_of::<f32>()
     }
@@ -363,7 +393,7 @@ impl KvCacheManager {
     /// Evict least recently used sequence.
     fn evict_lru(&self) -> Result<(), KvCacheError> {
         let victim_id = {
-            let mut order = self.access_order.lock().unwrap();
+            let mut order = lock_or_recover(&self.access_order);
             order.pop_front()
         };
 
@@ -381,10 +411,10 @@ impl KvCacheManager {
 
     /// Reset all cache state.
     pub fn reset(&self) {
-        let mut sequences = self.sequences.write().unwrap();
+        let mut sequences = write_or_recover(&self.sequences);
         sequences.clear();
 
-        let mut order = self.access_order.lock().unwrap();
+        let mut order = lock_or_recover(&self.access_order);
         order.clear();
     }
 }

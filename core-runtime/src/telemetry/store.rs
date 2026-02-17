@@ -10,12 +10,16 @@ use std::sync::RwLock;
 
 use serde::{Deserialize, Serialize};
 
+use super::buckets::{BucketedHistogram, BucketedHistogramSnapshot};
+
 /// Snapshot of all metrics at a point in time.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetricsSnapshot {
     pub counters: HashMap<String, u64>,
     pub gauges: HashMap<String, f64>,
     pub histograms: HashMap<String, HistogramSummary>,
+    #[serde(default)]
+    pub bucketed_histograms: HashMap<String, BucketedHistogramSnapshot>,
 }
 
 /// Summary statistics for a histogram.
@@ -108,6 +112,7 @@ pub struct MetricsStore {
     counters: RwLock<HashMap<String, AtomicU64>>,
     gauges: RwLock<HashMap<String, AtomicU64>>,
     histograms: RwLock<HashMap<String, HistogramData>>,
+    bucketed_histograms: RwLock<HashMap<String, BucketedHistogram>>,
 }
 
 impl MetricsStore {
@@ -117,6 +122,7 @@ impl MetricsStore {
             counters: RwLock::new(HashMap::new()),
             gauges: RwLock::new(HashMap::new()),
             histograms: RwLock::new(HashMap::new()),
+            bucketed_histograms: RwLock::new(HashMap::new()),
         }
     }
 
@@ -168,11 +174,28 @@ impl MetricsStore {
         histogram.record(value);
     }
 
+    /// Register a bucketed histogram with custom boundaries.
+    pub fn register_bucketed(&self, name: &str, boundaries: &[f64]) {
+        let mut bucketed = self.bucketed_histograms.write().unwrap();
+        bucketed
+            .entry(name.to_string())
+            .or_insert_with(|| BucketedHistogram::new(boundaries));
+    }
+
+    /// Record a bucketed histogram observation.
+    pub fn record_bucketed(&self, name: &str, value: f64) {
+        let bucketed = self.bucketed_histograms.read().unwrap();
+        if let Some(histogram) = bucketed.get(name) {
+            histogram.observe(value);
+        }
+    }
+
     /// Take a snapshot of all metrics.
     pub fn snapshot(&self) -> MetricsSnapshot {
         let counters = self.counters.read().unwrap();
         let gauges = self.gauges.read().unwrap();
         let histograms = self.histograms.read().unwrap();
+        let bucketed = self.bucketed_histograms.read().unwrap();
 
         MetricsSnapshot {
             counters: counters
@@ -186,6 +209,10 @@ impl MetricsStore {
             histograms: histograms
                 .iter()
                 .map(|(k, v)| (k.clone(), v.to_summary()))
+                .collect(),
+            bucketed_histograms: bucketed
+                .iter()
+                .map(|(k, v)| (k.clone(), v.snapshot()))
                 .collect(),
         }
     }

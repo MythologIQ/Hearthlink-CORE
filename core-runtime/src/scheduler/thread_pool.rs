@@ -2,12 +2,36 @@
 //!
 //! Provides work-stealing thread pool with configurable thread counts,
 //! priority queues, and affinity settings for optimal CPU utilization.
+//!
+//! # Panic Safety
+//! This module uses poison-recovering lock guards to maintain availability
+//! even if a worker thread panics. A poisoned lock logs a warning but
+//! continues operation rather than propagating the panic.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Condvar, Mutex, RwLock};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
+
+/// Acquire a mutex lock, recovering from poison if a thread panicked.
+/// Logs a warning but continues operation to maintain availability.
+#[inline]
+fn lock_or_recover<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(|poisoned| {
+        tracing::warn!("Mutex was poisoned, recovering to maintain availability");
+        poisoned.into_inner()
+    })
+}
+
+/// Acquire a read lock, recovering from poison if a thread panicked.
+#[inline]
+fn read_or_recover<T>(rwlock: &RwLock<T>) -> RwLockReadGuard<'_, T> {
+    rwlock.read().unwrap_or_else(|poisoned| {
+        tracing::warn!("RwLock was poisoned, recovering to maintain availability");
+        poisoned.into_inner()
+    })
+}
 
 /// Configuration for the thread pool.
 #[derive(Debug, Clone)]
@@ -123,7 +147,7 @@ pub struct ThreadPool {
     shutdown: Arc<AtomicBool>,
     condvar: Arc<(Mutex<bool>, Condvar)>,
     global_queue: Arc<Mutex<VecDeque<PrioritizedTask>>>,
-    all_queues: Vec<Arc<Mutex<VecDeque<PrioritizedTask>>>>,
+    _all_queues: Vec<Arc<Mutex<VecDeque<PrioritizedTask>>>>,
 }
 
 impl ThreadPool {
@@ -201,7 +225,7 @@ impl ThreadPool {
             shutdown,
             condvar,
             global_queue,
-            all_queues,
+            _all_queues: all_queues,
         }
     }
 
@@ -236,7 +260,7 @@ impl ThreadPool {
         };
 
         {
-            let mut q = queue.lock().unwrap();
+            let mut q = lock_or_recover(&queue);
             if q.len() >= self.config.queue_size {
                 return Err(ThreadPoolError::QueueFull);
             }
@@ -256,7 +280,7 @@ impl ThreadPool {
         // Wake up a worker
         let (lock, cvar) = &*self.condvar;
         {
-            let _guard = lock.lock().unwrap();
+            let _guard = lock_or_recover(lock);
             cvar.notify_one();
         }
 
@@ -268,7 +292,7 @@ impl ThreadPool {
         self.workers
             .iter()
             .enumerate()
-            .min_by_key(|(_, w)| w.queue.lock().unwrap().len())
+            .min_by_key(|(_, w)| lock_or_recover(&w.queue).len())
             .map(|(i, _)| i)
     }
 
@@ -288,13 +312,13 @@ impl ThreadPool {
 
         while !shutdown.load(Ordering::SeqCst) {
             // Try to get a task from local queue
-            let task = queue.lock().unwrap().pop_front();
+            let task = lock_or_recover(&queue).pop_front();
 
             let task = match task {
                 Some(t) => Some(t),
                 None => {
                     // Try global queue
-                    if let Some(t) = global_queue.lock().unwrap().pop_front() {
+                    if let Some(t) = lock_or_recover(&global_queue).pop_front() {
                         Some(t)
                     } else if config.enable_work_stealing {
                         // Try to steal from other workers
@@ -331,9 +355,9 @@ impl ThreadPool {
             } else {
                 // No work available, wait
                 let (lock, cvar) = &*condvar;
-                let _guard = cvar
-                    .wait_timeout(lock.lock().unwrap(), idle_timeout)
-                    .unwrap();
+                let guard = lock_or_recover(lock);
+                // wait_timeout can return Err if mutex was poisoned during wait
+                let _ = cvar.wait_timeout(guard, idle_timeout);
             }
         }
     }
@@ -347,7 +371,7 @@ impl ThreadPool {
             if id == worker_id {
                 continue; // Don't steal from self
             }
-            let mut q = target.lock().unwrap();
+            let mut q = lock_or_recover(target);
             if let Some(task) = q.pop_back() {
                 return Some(task);
             }
@@ -357,7 +381,7 @@ impl ThreadPool {
 
     /// Get current statistics.
     pub fn stats(&self) -> ThreadPoolStats {
-        let mut stats = self.stats.read().unwrap().clone();
+        let mut stats = read_or_recover(&self.stats).clone();
         stats.threads_active = self
             .workers
             .iter()
@@ -382,7 +406,7 @@ impl ThreadPool {
         self.shutdown.store(true, Ordering::SeqCst);
         let (lock, cvar) = &*self.condvar;
         {
-            let _guard = lock.lock().unwrap();
+            let _guard = lock_or_recover(lock);
             cvar.notify_all();
         }
     }
@@ -394,7 +418,7 @@ impl ThreadPool {
         // Wake all workers
         let (lock, cvar) = &*self.condvar;
         {
-            let _guard = lock.lock().unwrap();
+            let _guard = lock_or_recover(lock);
             cvar.notify_all();
         }
 
@@ -412,7 +436,7 @@ impl Drop for ThreadPool {
         self.shutdown.store(true, Ordering::SeqCst);
         let (lock, cvar) = &*self.condvar;
         {
-            let _guard = lock.lock().unwrap();
+            let _guard = lock_or_recover(lock);
             cvar.notify_all();
         }
 
