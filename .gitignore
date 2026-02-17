@@ -12,3 +12,12 @@ Thumbs.db
 
 # Private/Proprietary documents
 PRIVATE/
+
+# Large binary files (use external download)
+*.zip
+llvm*.exe
+tools/llvm16/
+*.onnx
+
+# Model files (download separately)
+core-runtime/fixtures/models/
