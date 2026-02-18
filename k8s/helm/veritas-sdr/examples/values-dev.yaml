@@ -1,0 +1,171 @@
+# Veritas SDR Development Values
+# Minimal configuration for local development and evaluation
+# Suitable for: CPU-only testing, development, CI/CD
+
+---
+# Minimal replicas for development
+replicaCount: 1
+
+# Container image configuration
+image:
+  repository: veritas-sdr/core
+  pullPolicy: IfNotPresent
+  tag: "0.6.0"
+
+# Minimal resource allocation (CPU-only)
+resources:
+  limits:
+    cpu: 2
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# Disable GPU for development
+gpu:
+  enabled: false
+
+# Model configuration
+model:
+  enabled: true
+  # Use smaller quantized model for development
+  name: "llama-2-7b-chat"
+  quantization: "q4_0"
+  # Download location
+  cacheDir: "/models"
+  # Preload on startup
+  preload: true
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+# Ingress disabled for development
+ingress:
+  enabled: false
+
+# Security context (relaxed for development)
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false # Allow writes for development
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 1000
+
+# Node selector (none for development)
+nodeSelector: {}
+
+# Tolerations (none for development)
+tolerations: []
+
+# Affinity (none for development)
+affinity: {}
+
+# Health checks
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Logging configuration
+logging:
+  level: "debug"
+  format: "json"
+  output: "stdout"
+
+# Metrics disabled for simplicity
+metrics:
+  enabled: false
+
+# Tracing disabled for development
+tracing:
+  enabled: false
+
+# Canary deployment disabled
+canary:
+  enabled: false
+
+# Blue-green deployment disabled
+blueGreen:
+  enabled: false
+
+# Environment variables
+env:
+  - name: RUST_LOG
+    value: "debug"
+  - name: VERITAS_ENV
+    value: "development"
+  - name: VERITAS_LOG_FORMAT
+    value: "pretty"
+
+# ConfigMap data
+config:
+  inference:
+    maxTokens: 2048
+    temperature: 0.7
+    topP: 0.9
+  security:
+    inputValidation: true
+    outputFiltering: false # Disabled for development
+    piiDetection: false # Disabled for development
+
+# Persistence disabled for development
+persistence:
+  enabled: false
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# RBAC
+rbac:
+  create: true
+
+# Priority class (none for development)
+priorityClassName: ""
+
+# Pod disruption budget (not needed for single replica)
+podDisruptionBudget:
+  enabled: false
+
+# Horizontal pod autoscaler (not needed for development)
+autoscaling:
+  enabled: false
+
+# Network policies disabled
+networkPolicy:
+  enabled: false
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels: {}
+
+# Additional containers (none for development)
+extraContainers: []
+
+# Additional volumes (none for development)
+extraVolumes: []
+
+# Additional volume mounts (none for development)
+extraVolumeMounts: []
+
+# Init containers (none for development)
+initContainers: []

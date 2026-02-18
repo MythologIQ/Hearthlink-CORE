@@ -1,0 +1,356 @@
+{{- if .Values.monitoring.prometheus.rules.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "veritas-sdr.fullname" . }}-alerts
+  labels:
+    {{- include "veritas-sdr.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.prometheus.rules.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    # === Availability Alerts ===
+    - name: veritas-sdr-availability
+      rules:
+        - alert: VeritasSDRDown
+          expr: |
+            absent(up{job="{{ include "veritas-sdr.fullname" . }}",namespace="{{ .Release.Namespace }}"}) == 1
+          for: 1m
+          labels:
+            severity: critical
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/INCIDENT_RESPONSE.md"
+          annotations:
+            summary: "Veritas SDR instance is down"
+            description: "Veritas SDR has been unreachable for more than 1 minute. Check pod status and logs."
+            
+        - alert: VeritasSDRHighRestartRate
+          expr: |
+            increase(kube_pod_container_status_restarts_total{container="{{ include "veritas-sdr.name" . }}",namespace="{{ .Release.Namespace }}"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/DEPLOYMENT_TROUBLESHOOTING.md"
+          annotations:
+            summary: "Veritas SDR is restarting frequently"
+            description: "Container has restarted {{ "{{" }} $value {{ "}}" }} times in the last hour. Check for crash loops or OOM kills."
+
+        - alert: VeritasSDRPodNotReady
+          expr: |
+            kube_pod_status_ready{pod=~"{{ include "veritas-sdr.fullname" . }}-.*",namespace="{{ .Release.Namespace }}"} == 0
+          for: 5m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/DEPLOYMENT_TROUBLESHOOTING.md"
+          annotations:
+            summary: "Veritas SDR pod not ready"
+            description: "Pod {{ "{{" }} $labels.pod {{ "}}" }} has not been ready for more than 5 minutes."
+
+    # === Latency Alerts ===
+    - name: veritas-sdr-latency
+      rules:
+        - alert: VeritasSDRHighLatencyP95
+          expr: |
+            histogram_quantile(0.95, sum(rate(veritas_sdr_inference_latency_seconds_bucket{namespace="{{ .Release.Namespace }}"}[5m])) by (le)) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/PERFORMANCE_BASELINES.md"
+          annotations:
+            summary: "High inference latency (P95 > 500ms)"
+            description: "P95 inference latency is {{ "{{" }} $value | humanizeDuration {{ "}}" }}. Expected < 500ms."
+            
+        - alert: VeritasSDRHighLatencyP99
+          expr: |
+            histogram_quantile(0.99, sum(rate(veritas_sdr_inference_latency_seconds_bucket{namespace="{{ .Release.Namespace }}"}[5m])) by (le)) > 1.0
+          for: 5m
+          labels:
+            severity: critical
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/PERFORMANCE_BASELINES.md"
+          annotations:
+            summary: "Critical inference latency (P99 > 1s)"
+            description: "P99 inference latency is {{ "{{" }} $value | humanizeDuration {{ "}}" }}. Expected < 1s."
+
+        - alert: VeritasSDRSlowTokenGeneration
+          expr: |
+            rate(veritas_sdr_tokens_generated_total{namespace="{{ .Release.Namespace }}"}[5m]) < 10
+          for: 10m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/PERFORMANCE_BASELINES.md"
+          annotations:
+            summary: "Slow token generation throughput"
+            description: "Token generation rate is {{ "{{" }} $value | printf \"%.1f\" {{ "}}" }} tokens/s. Expected > 10 tok/s."
+
+    # === Error Rate Alerts ===
+    - name: veritas-sdr-errors
+      rules:
+        - alert: VeritasSDRHighErrorRate
+          expr: |
+            sum(rate(veritas_sdr_inference_requests_total{namespace="{{ .Release.Namespace }}",status="error"}[5m])) 
+            / 
+            sum(rate(veritas_sdr_inference_requests_total{namespace="{{ .Release.Namespace }}"}[5m])) 
+            > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/INCIDENT_RESPONSE.md"
+          annotations:
+            summary: "High error rate (> 5%)"
+            description: "Error rate is {{ "{{" }} $value | humanizePercentage {{ "}}" }}. Expected < 5%."
+
+        - alert: VeritasSDRCriticalErrorRate
+          expr: |
+            sum(rate(veritas_sdr_inference_requests_total{namespace="{{ .Release.Namespace }}",status="error"}[5m])) 
+            / 
+            sum(rate(veritas_sdr_inference_requests_total{namespace="{{ .Release.Namespace }}"}[5m])) 
+            > 0.15
+          for: 2m
+          labels:
+            severity: critical
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/INCIDENT_RESPONSE.md"
+          annotations:
+            summary: "Critical error rate (> 15%)"
+            description: "Error rate is {{ "{{" }} $value | humanizePercentage {{ "}}" }}. Immediate investigation required."
+
+        - alert: VeritasSDRAuthFailures
+          expr: |
+            rate(veritas_sdr_auth_failures_total{namespace="{{ .Release.Namespace }}"}[5m]) > 10
+          for: 5m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/security/THREAT_MODEL.md"
+          annotations:
+            summary: "High authentication failure rate"
+            description: "{{ "{{" }} $value | printf \"%.1f\" {{ "}}" }} auth failures per second. Possible attack or misconfiguration."
+
+    # === Memory Alerts ===
+    - name: veritas-sdr-memory
+      rules:
+        - alert: VeritasSDRHighMemoryUsage
+          expr: |
+            process_resident_memory_bytes{namespace="{{ .Release.Namespace }}",app="{{ include "veritas-sdr.name" . }}"} 
+            / 
+            kube_pod_container_resource_limits{container="{{ include "veritas-sdr.name" . }}",namespace="{{ .Release.Namespace }}",resource="memory"} 
+            > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/DEPLOYMENT_TROUBLESHOOTING.md"
+          annotations:
+            summary: "High memory usage (> 85%)"
+            description: "Memory usage is {{ "{{" }} $value | humanizePercentage {{ "}}" }} of limit. Consider increasing memory or investigating leaks."
+
+        - alert: VeritasSDRMemoryNearOOM
+          expr: |
+            process_resident_memory_bytes{namespace="{{ .Release.Namespace }}",app="{{ include "veritas-sdr.name" . }}"} 
+            / 
+            kube_pod_container_resource_limits{container="{{ include "veritas-sdr.name" . }}",namespace="{{ .Release.Namespace }}",resource="memory"} 
+            > 0.95
+          for: 2m
+          labels:
+            severity: critical
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/INCIDENT_RESPONSE.md"
+          annotations:
+            summary: "Memory near OOM limit (> 95%)"
+            description: "Memory usage is {{ "{{" }} $value | humanizePercentage {{ "}}" }} of limit. OOM kill imminent."
+
+        - alert: VeritasSDRHighKvCacheUsage
+          expr: |
+            veritas_sdr_memory_kv_cache_bytes{namespace="{{ .Release.Namespace }}"} 
+            / 
+            process_resident_memory_bytes{namespace="{{ .Release.Namespace }}",app="{{ include "veritas-sdr.name" . }}"} 
+            > 0.7
+          for: 15m
+          labels:
+            severity: info
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/PERFORMANCE_BASELINES.md"
+          annotations:
+            summary: "High KV cache memory usage"
+            description: "KV cache is using {{ "{{" }} $value | humanizePercentage {{ "}}" }} of RSS. Consider adjusting cache settings."
+
+    # === GPU Alerts ===
+    - name: veritas-sdr-gpu
+      rules:
+        - alert: VeritasSDRGPUHighUtilization
+          expr: |
+            veritas_sdr_gpu_utilization_percent{namespace="{{ .Release.Namespace }}"} > 95
+          for: 15m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/PERFORMANCE_BASELINES.md"
+          annotations:
+            summary: "GPU utilization very high (> 95%)"
+            description: "GPU {{ "{{" }} $labels.gpu_id {{ "}}" }} utilization is {{ "{{" }} $value {{ "}}" }}%. Consider scaling or load balancing."
+
+        - alert: VeritasSDRGPUHighMemory
+          expr: |
+            veritas_sdr_gpu_memory_used_bytes{namespace="{{ .Release.Namespace }}"} 
+            / 
+            veritas_sdr_gpu_memory_total_bytes{namespace="{{ .Release.Namespace }}"} 
+            > 0.9
+          for: 10m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/DEPLOYMENT_TROUBLESHOOTING.md"
+          annotations:
+            summary: "GPU memory usage high (> 90%)"
+            description: "GPU {{ "{{" }} $labels.gpu_id {{ "}}" }} memory is {{ "{{" }} $value | humanizePercentage {{ "}}" }} full. May cause OOM errors."
+
+        - alert: VeritasSDRGPUHighTemperature
+          expr: |
+            veritas_sdr_gpu_temperature_celsius{namespace="{{ .Release.Namespace }}"} > 85
+          for: 5m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/INCIDENT_RESPONSE.md"
+          annotations:
+            summary: "GPU temperature high (> 85°C)"
+            description: "GPU {{ "{{" }} $labels.gpu_id {{ "}}" }} temperature is {{ "{{" }} $value {{ "}}" }}°C. Check cooling and airflow."
+
+        - alert: VeritasSDRGPUThermalThrottling
+          expr: |
+            veritas_sdr_gpu_temperature_celsius{namespace="{{ .Release.Namespace }}"} > 90
+          for: 2m
+          labels:
+            severity: critical
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/INCIDENT_RESPONSE.md"
+          annotations:
+            summary: "GPU thermal throttling risk (> 90°C)"
+            description: "GPU {{ "{{" }} $labels.gpu_id {{ "}}" }} temperature is {{ "{{" }} $value {{ "}}" }}°C. Thermal throttling active. Immediate action required."
+
+    # === Queue & Scheduler Alerts ===
+    - name: veritas-sdr-scheduler
+      rules:
+        - alert: VeritasSDRQueueBacklog
+          expr: |
+            sum(veritas_sdr_scheduler_queue_depth{namespace="{{ .Release.Namespace }}"}) > 100
+          for: 10m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/PERFORMANCE_BASELINES.md"
+          annotations:
+            summary: "Request queue backlog growing"
+            description: "{{ "{{" }} $value {{ "}}" }} requests queued. Consider scaling up or adding replicas."
+
+        - alert: VeritasSDRQueueCriticalBacklog
+          expr: |
+            sum(veritas_sdr_scheduler_queue_depth{namespace="{{ .Release.Namespace }}"}) > 500
+          for: 5m
+          labels:
+            severity: critical
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/INCIDENT_RESPONSE.md"
+          annotations:
+            summary: "Critical queue backlog"
+            description: "{{ "{{" }} $value {{ "}}" }} requests queued. System is overloaded. Scale immediately."
+
+        - alert: VeritasSDRHighPendingRequests
+          expr: |
+            veritas_sdr_scheduler_pending_requests{namespace="{{ .Release.Namespace }}"} > 50
+          for: 15m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/PERFORMANCE_BASELINES.md"
+          annotations:
+            summary: "High pending request count"
+            description: "{{ "{{" }} $value {{ "}}" }} requests pending processing. Check batch efficiency."
+
+    # === Canary Deployment Alerts ===
+    - name: veritas-sdr-canary
+      rules:
+        - alert: VeritasSDRCanaryHighErrorRate
+          expr: |
+            veritas_sdr_canary_error_rate_percent{namespace="{{ .Release.Namespace }}"} > 5
+          for: 5m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/DEPLOYMENT_TROUBLESHOOTING.md"
+          annotations:
+            summary: "Canary deployment high error rate"
+            description: "Canary {{ "{{" }} $labels.canary_name {{ "}}" }} error rate is {{ "{{" }} $value {{ "}}" }}%. Consider rollback."
+
+        - alert: VeritasSDRCanaryFailed
+          expr: |
+            veritas_sdr_canary_phase{namespace="{{ .Release.Namespace }}"} == 2
+          for: 1m
+          labels:
+            severity: critical
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/INCIDENT_RESPONSE.md"
+          annotations:
+            summary: "Canary deployment failed"
+            description: "Canary {{ "{{" }} $labels.canary_name {{ "}}" }} has failed. Automatic rollback may be in progress."
+
+        - alert: VeritasSDRCanaryLatencyRegression
+          expr: |
+            (veritas_sdr_canary_latency_p95_ms{namespace="{{ .Release.Namespace }}"} - 
+             veritas_sdr_canary_baseline_latency_p95_ms{namespace="{{ .Release.Namespace }}"}) 
+            / veritas_sdr_canary_baseline_latency_p95_ms{namespace="{{ .Release.Namespace }}"} > 0.2
+          for: 10m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/DEPLOYMENT_TROUBLESHOOTING.md"
+          annotations:
+            summary: "Canary latency regression detected"
+            description: "Canary P95 latency is {{ "{{" }} $value | humanizePercentage {{ "}}" }} higher than baseline. Performance regression detected."
+
+    # === Model Loading Alerts ===
+    - name: veritas-sdr-models
+      rules:
+        - alert: VeritasSDRModelLoadFailure
+          expr: |
+            rate(veritas_sdr_model_load_errors_total{namespace="{{ .Release.Namespace }}"}[5m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/DEPLOYMENT_TROUBLESHOOTING.md"
+          annotations:
+            summary: "Model loading failure"
+            description: "Model {{ "{{" }} $labels.model_name {{ "}}" }} failed to load. Check model files and memory availability."
+
+        - alert: VeritasSDRModelNotLoaded
+          expr: |
+            veritas_sdr_model_loaded{namespace="{{ .Release.Namespace }}"} == 0
+          for: 5m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/DEPLOYMENT_TROUBLESHOOTING.md"
+          annotations:
+            summary: "Expected model not loaded"
+            description: "Model {{ "{{" }} $labels.model_name {{ "}}" }} is not loaded. Service may be degraded."
+
+        - alert: VeritasSDRModelSwapThrashing
+          expr: |
+            rate(veritas_sdr_model_swaps_total{namespace="{{ .Release.Namespace }}"}[5m]) > 2
+          for: 10m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/PERFORMANCE_BASELINES.md"
+          annotations:
+            summary: "Model swap thrashing detected"
+            description: "{{ "{{" }} $value | printf \"%.1f\" {{ "}}" }} model swaps per second. Consider increasing memory or reducing model count."
+
+    # === IPC Alerts ===
+    - name: veritas-sdr-ipc
+      rules:
+        - alert: VeritasSDRIPCHighLatency
+          expr: |
+            histogram_quantile(0.95, sum(rate(veritas_sdr_ipc_latency_seconds_bucket{namespace="{{ .Release.Namespace }}"}[5m])) by (le)) > 0.01
+          for: 10m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/PERFORMANCE_BASELINES.md"
+          annotations:
+            summary: "High IPC latency"
+            description: "P95 IPC latency is {{ "{{" }} $value | humanizeDuration {{ "}}" }}. Expected < 10ms."
+
+        - alert: VeritasSDRIPCConnectionErrors
+          expr: |
+            rate(veritas_sdr_ipc_connection_errors_total{namespace="{{ .Release.Namespace }}"}[5m]) > 5
+          for: 5m
+          labels:
+            severity: warning
+            runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/DEPLOYMENT_TROUBLESHOOTING.md"
+          annotations:
+            summary: "IPC connection errors"
+            description: "{{ "{{" }} $value | printf \"%.1f\" {{ "}}" }} IPC connection errors per second. Check client connections and socket state."
+{{- end }}

@@ -1,0 +1,257 @@
+# Veritas SDR Single GPU Values
+# Configuration for single GPU deployment
+# Suitable for: Production inference with single GPU, small workloads
+
+---
+# Single replica for single GPU
+replicaCount: 1
+
+# Container image configuration
+image:
+  repository: veritas-sdr/core
+  pullPolicy: IfNotPresent
+  tag: "0.6.0"
+
+# GPU resource allocation
+resources:
+  limits:
+    cpu: 4
+    memory: 16Gi
+    nvidia.com/gpu: 1
+  requests:
+    cpu: 2
+    memory: 8Gi
+    nvidia.com/gpu: 1
+
+# GPU configuration
+gpu:
+  enabled: true
+  type: "nvidia"
+  # GPU memory fraction (0.9 = 90% of GPU memory for model)
+  memoryFraction: 0.9
+
+# Model configuration
+model:
+  enabled: true
+  # Model suitable for single GPU (7B or 13B parameter)
+  name: "llama-2-13b-chat"
+  quantization: "q4_0" # 4-bit quantization for memory efficiency
+  cacheDir: "/models"
+  preload: true
+  # Model-specific settings
+  contextLength: 4096
+  batchSize: 32
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  hosts:
+    - host: inference.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: veritas-sdr-tls
+      hosts:
+        - inference.example.com
+
+# Security context (production)
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+# Node selector for GPU nodes
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+# Tolerations for GPU nodes
+tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+# Affinity for GPU node selection
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: nvidia.com/gpu.product
+              operator: In
+              values:
+                - NVIDIA-A100-SXM4-40GB
+                - NVIDIA-A100-PCIE-40GB
+                - NVIDIA-V100
+
+# Health checks
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 120 # Longer for model loading
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Logging configuration
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+
+# Metrics enabled
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    labels:
+      release: prometheus
+
+# Tracing configuration
+tracing:
+  enabled: true
+  endpoint: "jaeger-collector.observability.svc.cluster.local:14268"
+  sampleRate: 0.1
+
+# Canary deployment disabled (single replica)
+canary:
+  enabled: false
+
+# Blue-green deployment disabled (single replica)
+blueGreen:
+  enabled: false
+
+# Environment variables
+env:
+  - name: RUST_LOG
+    value: "info"
+  - name: VERITAS_ENV
+    value: "production"
+  - name: CUDA_VISIBLE_DEVICES
+    value: "0"
+
+# ConfigMap data
+config:
+  inference:
+    maxTokens: 4096
+    temperature: 0.7
+    topP: 0.9
+    repetitionPenalty: 1.1
+  security:
+    inputValidation: true
+    outputFiltering: true
+    piiDetection: true
+    promptInjectionDetection: true
+  performance:
+    kvCacheSize: 1000
+    batchSize: 32
+
+# Persistence for model cache
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 50Gi
+  storageClass: "fast-ssd"
+  mountPath: "/models"
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# RBAC
+rbac:
+  create: true
+
+# Priority class
+priorityClassName: "high-priority"
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false # Not applicable for single replica
+
+# Horizontal pod autoscaler
+autoscaling:
+  enabled: false # Cannot scale beyond GPU count
+
+# Network policies
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: istio-system
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: observability
+      ports:
+        - protocol: TCP
+          port: 14268 # Jaeger
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+
+# Pod labels
+podLabels:
+  app.kubernetes.io/component: inference
+  app.kubernetes.io/part-of: veritas-sdr
+
+# Additional containers
+extraContainers: []
+
+# Additional volumes
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+
+# Additional volume mounts
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
+
+# Init containers for model download
+initContainers:
+  - name: model-downloader
+    image: busybox:1.36
+    command: ["sh", "-c", 'echo "Model preloading handled by main container"']

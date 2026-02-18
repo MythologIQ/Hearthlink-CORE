@@ -3,18 +3,23 @@
 //! This module provides comprehensive security features including:
 //! - Prompt injection protection
 //! - Output sanitization and PII detection
-//! - Model file encryption
+//! - Model file encryption with key rotation (SOC2-2)
+//! - FIPS 140-3 self-tests (FIPS-3)
 //! - Secure communication
 //! - Enterprise audit logging
 
 pub mod audit;
 pub mod encryption;
+pub mod fips_tests;
+pub mod key_rotation;
 pub mod output_sanitizer;
 pub mod pii_detector;
 pub mod prompt_injection;
 
 pub use audit::{AuditCategory, AuditEvent, AuditLogger, AuditSeverity};
 pub use encryption::ModelEncryption;
+pub use fips_tests::{run_power_on_self_tests, SelfTestError, SelfTestResults};
+pub use key_rotation::{KeyRotationError, KeyRotationManager};
 pub use output_sanitizer::OutputSanitizer;
 pub use pii_detector::{PIIDetector, PIIMatch};
 pub use prompt_injection::{InjectionMatch, PromptInjectionFilter};

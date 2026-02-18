@@ -38,6 +38,9 @@ pub mod k8s;
 // CLI module for health probes (v0.5.0)
 pub mod cli;
 
+// Deployment automation (v0.6.0)
+pub mod deployment;
+
 // C FFI module (v0.3.1)
 #[cfg(feature = "ffi")]
 pub mod ffi;
@@ -166,3 +169,4 @@ impl Runtime {
         }
     }
 }
+

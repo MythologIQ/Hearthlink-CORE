@@ -1,0 +1,515 @@
+# Veritas SDR Production Values
+# Full production configuration with security hardening
+# Suitable for: Enterprise production deployments, regulated industries
+
+---
+# Multiple replicas for HA
+replicaCount: 5
+
+# Container image configuration
+image:
+  repository: veritas-sdr/core
+  pullPolicy: Always
+  tag: "0.6.0"
+  # Use private registry
+  pullSecrets:
+    - name: registry-credentials
+
+# Production resource allocation
+resources:
+  limits:
+    cpu: 8
+    memory: 32Gi
+    nvidia.com/gpu: 2
+  requests:
+    cpu: 4
+    memory: 16Gi
+    nvidia.com/gpu: 2
+
+# GPU configuration
+gpu:
+  enabled: true
+  type: "nvidia"
+  memoryFraction: 0.85
+  multiGpu:
+    enabled: true
+    tensorParallelism: 2
+    pipelineParallelism: 1
+
+# Model configuration
+model:
+  enabled: true
+  name: "llama-2-70b-chat"
+  quantization: "q4_0"
+  cacheDir: "/models"
+  preload: true
+  contextLength: 4096
+  batchSize: 64
+  tensorSplit: [1, 1]
+
+# Service configuration
+service:
+  type: LoadBalancer
+  port: 8080
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-internal: "false"
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600
+  # External traffic policy
+  externalTrafficPolicy: Local
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/limit-connections: "100"
+    nginx.ingress.kubernetes.io/limit-rps: "1000"
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-Frame-Options "DENY" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+  hosts:
+    - host: inference.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: veritas-sdr-tls
+      hosts:
+        - inference.example.com
+
+# Security context (hardened)
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
+  seccompProfile:
+    type: RuntimeDefault
+  supplementalGroups:
+    - 1000
+
+# Node selector for GPU nodes
+nodeSelector:
+  nvidia.com/gpu.count: "2"
+  node.kubernetes.io/instance-type: "p4d.24xlarge"
+
+# Tolerations for GPU nodes
+tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+  - key: "dedicated"
+    operator: "Equal"
+    value: "inference"
+    effect: "NoSchedule"
+
+# Anti-affinity for HA
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+                - veritas-sdr
+        topologyKey: kubernetes.io/hostname
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: nvidia.com/gpu.product
+              operator: In
+              values:
+                - NVIDIA-A100-SXM4-80GB
+                - NVIDIA-H100-SXM5
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - us-east-1a
+                - us-east-1b
+                - us-east-1c
+
+# Topology spread constraints
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: veritas-sdr
+
+# Health checks
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 180
+  periodSeconds: 10
+  timeoutSeconds: 10
+  failureThreshold: 3
+  successThreshold: 1
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 120
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+  successThreshold: 1
+
+# Logging configuration
+logging:
+  level: "warn"
+  format: "json"
+  output: "stdout"
+
+# Metrics enabled
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+    scrapeTimeout: 10s
+    labels:
+      release: prometheus
+    relabelings:
+      - sourceLabels: [__meta_kubernetes_pod_node_name]
+        targetLabel: node
+
+# Tracing configuration
+tracing:
+  enabled: true
+  endpoint: "jaeger-collector.observability.svc.cluster.local:14268"
+  sampleRate: 0.05
+
+# Canary deployment enabled
+canary:
+  enabled: true
+  analysis:
+    interval: 60s
+    threshold: 5
+    maxWeight: 30
+    stepWeight: 10
+    metrics:
+      - name: error-rate
+        thresholdRange:
+          max: 0.01
+      - name: latency-p99
+        thresholdRange:
+          max: 500
+  thresholds:
+    errorRate: 0.005
+    p99Latency: 300ms
+    throughput: 98
+
+# Blue-green deployment (alternative)
+blueGreen:
+  enabled: false
+  activeService: veritas-sdr-active
+  previewService: veritas-sdr-preview
+  autoPromotionEnabled: false
+  scaleDownDelaySeconds: 600
+
+# Environment variables
+env:
+  - name: RUST_LOG
+    value: "warn"
+  - name: VERITAS_ENV
+    value: "production"
+  - name: CUDA_VISIBLE_DEVICES
+    value: "0,1"
+  - name: VERITAS_SECURITY_STRICT_MODE
+    value: "true"
+  - name: VERITAS_AUDIT_ENABLED
+    value: "true"
+  # Secrets from Vault
+  - name: VERITAS_ENCRYPTION_KEY
+    valueFrom:
+      secretKeyRef:
+        name: veritas-sdr-secrets
+        key: encryption-key
+  - name: VERITAS_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: veritas-sdr-secrets
+        key: api-key
+
+# ConfigMap data
+config:
+  inference:
+    maxTokens: 4096
+    temperature: 0.7
+    topP: 0.9
+    repetitionPenalty: 1.1
+    # Rate limiting
+    rateLimit:
+      enabled: true
+      requestsPerSecond: 100
+      burstSize: 200
+  security:
+    inputValidation: true
+    outputFiltering: true
+    piiDetection: true
+    promptInjectionDetection: true
+    # Strict mode
+    strictMode: true
+    # Audit logging
+    audit:
+      enabled: true
+      format: "json"
+      includePayload: false
+  performance:
+    kvCacheSize: 2000
+    batchSize: 64
+    tensorParallelSize: 2
+    pipelineParallelSize: 1
+  compliance:
+    soc2:
+      enabled: true
+    dataRetention:
+      enabled: true
+      retentionDays: 90
+
+# Persistence for model cache
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 200Gi
+  storageClass: "encrypted-fast-ssd"
+  mountPath: "/models"
+  # Encryption at rest
+  encrypted: true
+
+# Service account
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/veritas-sdr-role"
+  name: "veritas-sdr"
+
+# RBAC
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["pods", "services", "configmaps", "secrets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps"]
+      resources: ["deployments", "replicasets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["veritas-sdr.io"]
+      resources: ["canaries", "environments"]
+      verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# Priority class
+priorityClassName: "critical"
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 3
+
+# Horizontal pod autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+  metrics:
+    - type: Pods
+      pods:
+        metric:
+          name: veritas_inference_queue_depth
+        target:
+          type: AverageValue
+          averageValue: 5
+    - type: External
+      external:
+        metric:
+          name: veritas_request_latency_p99
+          selector:
+            matchLabels:
+              env: production
+        target:
+          type: Value
+          value: 500m
+
+# Network policies
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: istio-system
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 9090
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: observability
+      ports:
+        - protocol: TCP
+          port: 14268
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: vault
+      ports:
+        - protocol: TCP
+          port: 8200
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  sidecar.istio.io/inject: "true"
+
+# Pod labels
+podLabels:
+  app.kubernetes.io/component: inference
+  app.kubernetes.io/part-of: veritas-sdr
+  veritas-sdr.io/gpu-count: "2"
+  veritas-sdr.io/environment: production
+
+# Additional containers
+extraContainers:
+  - name: log-collector
+    image: fluent/fluent-bit:2.1
+    volumeMounts:
+      - name: varlog
+        mountPath: /var/log
+
+# Additional volumes
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+  - name: dshm
+    emptyDir:
+      medium: Memory
+      sizeLimit: 16Gi
+  - name: varlog
+    emptyDir: {}
+  - name: audit-logs
+    persistentVolumeClaim:
+      claimName: audit-logs-pvc
+
+# Additional volume mounts
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
+  - name: dshm
+    mountPath: /dev/shm
+  - name: audit-logs
+    mountPath: /var/log/veritas
+
+# Init containers
+initContainers:
+  - name: wait-for-vault
+    image: busybox:1.36
+    command:
+      [
+        "sh",
+        "-c",
+        "until nc -z vault.vault.svc.cluster.local 8200; do echo waiting for vault; sleep 2; done",
+      ]
+  - name: set-permissions
+    image: busybox:1.36
+    command: ["sh", "-c", "chmod 755 /models && chown 1000:1000 /models"]
+    volumeMounts:
+      - name: models
+        mountPath: /models
+
+# Termination grace period
+terminationGracePeriodSeconds: 300
+
+# Service mesh settings
+serviceMesh:
+  enabled: true
+  mtls: true
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
+  retention: 30d
+
+# Disaster recovery
+disasterRecovery:
+  enabled: true
+  crossRegion:
+    enabled: true
+    targetRegion: "us-west-2"

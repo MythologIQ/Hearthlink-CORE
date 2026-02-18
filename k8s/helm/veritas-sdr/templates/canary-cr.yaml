@@ -1,0 +1,39 @@
+{{- if .Values.canary.enabled }}
+# VeritasCanary Custom Resource
+# This CR is managed by the Veritas Canary Controller
+apiVersion: veritas.hearthlink.ai/v1alpha1
+kind: VeritasCanary
+metadata:
+  name: {{ include "veritas-sdr.fullname" . }}
+  labels:
+    {{- include "veritas-sdr.labels" . | nindent 4 }}
+spec:
+  stableVersion: {{ .Values.canary.stable.version | default .Values.image.tag | quote }}
+  canaryVersion: {{ .Values.canary.canary.version | quote }}
+  trafficWeight: {{ .Values.canary.trafficWeight }}
+  replicas:
+    stable: {{ .Values.canary.stable.replicas }}
+    canary: {{ .Values.canary.canary.replicas }}
+  analysis:
+    metrics:
+      {{- range .Values.canary.analysis.metrics }}
+      - name: {{ .name }}
+        threshold: {{ .threshold | quote }}
+        {{- if .operator }}
+        operator: {{ .operator }}
+        {{- end }}
+      {{- end }}
+    interval: {{ .Values.canary.analysis.interval | quote }}
+    failureLimit: {{ .Values.canary.analysis.failureLimit }}
+    successLimit: {{ .Values.canary.analysis.successLimit }}
+  promotion:
+    auto: {{ .Values.canary.promotion.auto }}
+    steps:
+      {{- range .Values.canary.promotion.steps }}
+      - weight: {{ .weight }}
+        pause: {{ .pause | quote }}
+      {{- end }}
+  rollback:
+    auto: {{ .Values.canary.rollback.auto }}
+    preserveCanary: {{ .Values.canary.rollback.preserveCanary }}
+{{- end }}

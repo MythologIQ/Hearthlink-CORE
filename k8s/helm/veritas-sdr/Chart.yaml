@@ -2,13 +2,15 @@ apiVersion: v2
 name: veritas-sdr
 description: Veritas SDR - Secure Deterministic Runtime for AI inference
 type: application
-version: 0.5.0
-appVersion: "0.5.0"
+version: 0.6.0
+appVersion: "0.6.0"
 keywords:
   - ai
   - inference
   - runtime
   - secure
+  - canary
+  - bluegreen
 home: https://github.com/MythologIQ/CORE
 maintainers:
   - name: Veritas SDR Contributors

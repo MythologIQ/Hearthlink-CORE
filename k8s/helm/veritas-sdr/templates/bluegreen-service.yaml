@@ -1,0 +1,333 @@
+{{- if .Values.bluegreen.enabled }}
+---
+# Blue Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "veritas-sdr.fullname" . }}-blue
+  labels:
+    {{- include "veritas-sdr.labels" . | nindent 4 }}
+    veritas.hearthlink.ai/environment: blue
+  annotations:
+    veritas.hearthlink.ai/deployment-strategy: bluegreen
+spec:
+  replicas: {{ .Values.bluegreen.blue.replicas | default .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "veritas-sdr.selectorLabels" . | nindent 6 }}
+      veritas.hearthlink.ai/environment: blue
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "veritas-sdr.selectorLabels" . | nindent 8 }}
+        veritas.hearthlink.ai/environment: blue
+        veritas.hearthlink.ai/version: {{ .Values.bluegreen.blue.version | quote }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      serviceAccountName: {{ include "veritas-sdr.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: veritas-sdr
+          image: "{{ .Values.image.repository }}:{{ .Values.bluegreen.blue.version }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - serve
+          env:
+            - name: VERITAS_SOCKET_PATH
+              value: {{ .Values.config.socketPath }}
+            - name: VERITAS_MAX_CONTEXT
+              value: "{{ .Values.config.maxContextLength }}"
+            - name: VERITAS_ENVIRONMENT
+              value: "blue"
+            - name: VERITAS_VERSION
+              value: {{ .Values.bluegreen.blue.version | quote }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          resources:
+            {{- if .Values.bluegreen.blue.resources }}
+            {{- toYaml .Values.bluegreen.blue.resources | nindent 12 }}
+            {{- else }}
+            {{- toYaml .Values.resources | nindent 12 }}
+            {{- end }}
+          {{- if .Values.gpu.enabled }}
+            limits:
+              {{ .Values.gpu.resourceType }}: {{ .Values.gpu.count }}
+          {{- end }}
+          volumeMounts:
+            - name: models
+              mountPath: {{ .Values.models.mountPath }}
+              readOnly: true
+            - name: socket
+              mountPath: /var/run/veritas
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /cache
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - /app/veritas-sdr
+                - live
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            exec:
+              command:
+                - /app/veritas-sdr
+                - ready
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          {{- end }}
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ .Values.models.pvcName }}
+        - name: socket
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+# Green Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "veritas-sdr.fullname" . }}-green
+  labels:
+    {{- include "veritas-sdr.labels" . | nindent 4 }}
+    veritas.hearthlink.ai/environment: green
+  annotations:
+    veritas.hearthlink.ai/deployment-strategy: bluegreen
+spec:
+  replicas: {{ .Values.bluegreen.green.replicas | default .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "veritas-sdr.selectorLabels" . | nindent 6 }}
+      veritas.hearthlink.ai/environment: green
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "veritas-sdr.selectorLabels" . | nindent 8 }}
+        veritas.hearthlink.ai/environment: green
+        veritas.hearthlink.ai/version: {{ .Values.bluegreen.green.version | quote }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      serviceAccountName: {{ include "veritas-sdr.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: veritas-sdr
+          image: "{{ .Values.image.repository }}:{{ .Values.bluegreen.green.version }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - serve
+          env:
+            - name: VERITAS_SOCKET_PATH
+              value: {{ .Values.config.socketPath }}
+            - name: VERITAS_MAX_CONTEXT
+              value: "{{ .Values.config.maxContextLength }}"
+            - name: VERITAS_ENVIRONMENT
+              value: "green"
+            - name: VERITAS_VERSION
+              value: {{ .Values.bluegreen.green.version | quote }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          resources:
+            {{- if .Values.bluegreen.green.resources }}
+            {{- toYaml .Values.bluegreen.green.resources | nindent 12 }}
+            {{- else }}
+            {{- toYaml .Values.resources | nindent 12 }}
+            {{- end }}
+          {{- if .Values.gpu.enabled }}
+            limits:
+              {{ .Values.gpu.resourceType }}: {{ .Values.gpu.count }}
+          {{- end }}
+          volumeMounts:
+            - name: models
+              mountPath: {{ .Values.models.mountPath }}
+              readOnly: true
+            - name: socket
+              mountPath: /var/run/veritas
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /cache
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - /app/veritas-sdr
+                - live
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            exec:
+              command:
+                - /app/veritas-sdr
+                - ready
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          {{- end }}
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ .Values.models.pvcName }}
+        - name: socket
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+# Active Service - Routes to currently active environment (blue or green)
+# This service selector is updated atomically during blue-green switch
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "veritas-sdr.fullname" . }}-active
+  labels:
+    {{- include "veritas-sdr.labels" . | nindent 4 }}
+    veritas.hearthlink.ai/service-type: active
+  annotations:
+    veritas.hearthlink.ai/deployment-strategy: bluegreen
+    veritas.hearthlink.ai/active-environment: {{ .Values.bluegreen.active | quote }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "veritas-sdr.selectorLabels" . | nindent 4 }}
+    veritas.hearthlink.ai/environment: {{ .Values.bluegreen.active }}
+  ports: []
+---
+# Blue Service - Direct access to blue environment
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "veritas-sdr.fullname" . }}-blue
+  labels:
+    {{- include "veritas-sdr.labels" . | nindent 4 }}
+    veritas.hearthlink.ai/service-type: environment
+    veritas.hearthlink.ai/environment: blue
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "veritas-sdr.selectorLabels" . | nindent 4 }}
+    veritas.hearthlink.ai/environment: blue
+  ports: []
+---
+# Green Service - Direct access to green environment
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "veritas-sdr.fullname" . }}-green
+  labels:
+    {{- include "veritas-sdr.labels" . | nindent 4 }}
+    veritas.hearthlink.ai/service-type: environment
+    veritas.hearthlink.ai/environment: green
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "veritas-sdr.selectorLabels" . | nindent 4 }}
+    veritas.hearthlink.ai/environment: green
+  ports: []
+{{- if .Values.bluegreen.preview.enabled }}
+---
+# Preview Service - Access to inactive environment for testing
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "veritas-sdr.fullname" . }}-preview
+  labels:
+    {{- include "veritas-sdr.labels" . | nindent 4 }}
+    veritas.hearthlink.ai/service-type: preview
+  annotations:
+    veritas.hearthlink.ai/preview-environment: {{ eq .Values.bluegreen.active "blue" | ternary "green" "blue" | quote }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "veritas-sdr.selectorLabels" . | nindent 4 }}
+    # Selects the INACTIVE environment for preview
+    veritas.hearthlink.ai/environment: {{ eq .Values.bluegreen.active "blue" | ternary "green" "blue" }}
+  ports: []
+{{- end }}
+---
+# Pod Disruption Budget for Blue
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "veritas-sdr.fullname" . }}-blue-pdb
+  labels:
+    {{- include "veritas-sdr.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.bluegreen.pdb.minAvailable | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "veritas-sdr.selectorLabels" . | nindent 6 }}
+      veritas.hearthlink.ai/environment: blue
+---
+# Pod Disruption Budget for Green
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "veritas-sdr.fullname" . }}-green-pdb
+  labels:
+    {{- include "veritas-sdr.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.bluegreen.pdb.minAvailable | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "veritas-sdr.selectorLabels" . | nindent 6 }}
+      veritas.hearthlink.ai/environment: green
+{{- end }}

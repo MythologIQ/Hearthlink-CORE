@@ -12,13 +12,16 @@
 //! veritas-sdr health   # Full health check, exits 0 on healthy
 //! veritas-sdr live     # Liveness probe, exits 0 if alive
 //! veritas-sdr ready    # Readiness probe, exits 0 if ready
+//! veritas-sdr status   # Show system status and statistics
 //! ```
 
 pub mod health;
 pub mod ipc_client;
+pub mod status;
 
 pub use health::{run_health, run_liveness, run_readiness};
 pub use ipc_client::{CliError, CliIpcClient};
+pub use status::{run_status, SystemStatus};
 
 /// Default socket path for IPC communication.
 #[cfg(unix)]

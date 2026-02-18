@@ -366,6 +366,7 @@ Goal: Override system instructions or extract system prompt
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 0.6.1 | 2026-02-18 | SA-1 Audit: Enhanced trust boundary documentation, updated control matrix |
 | 0.6.0 | 2026-02-17 | Initial threat model, fuzz targets added |
 
 ---

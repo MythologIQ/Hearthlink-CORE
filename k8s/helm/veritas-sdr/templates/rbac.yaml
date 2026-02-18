@@ -13,6 +13,13 @@ rules:
   - apiGroups: ["veritas.io"]
     resources: ["veritasmodels"]
     verbs: ["get", "list", "watch"]
+  # Canary and Blue-Green CRD access (read-only for runtime)
+  - apiGroups: ["veritas.hearthlink.ai"]
+    resources: ["veritascanaries", "veritasenvironments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["veritas.hearthlink.ai"]
+    resources: ["veritascanaries/status", "veritasenvironments/status"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

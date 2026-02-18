@@ -1,0 +1,296 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: veritasenvironments.veritas.hearthlink.ai
+  labels:
+    app.kubernetes.io/name: veritas-sdr
+    app.kubernetes.io/component: bluegreen
+spec:
+  group: veritas.hearthlink.ai
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required:
+            - spec
+          properties:
+            spec:
+              type: object
+              required:
+                - blue
+                - green
+                - active
+              properties:
+                blue:
+                  type: object
+                  description: Blue environment configuration
+                  required:
+                    - version
+                  properties:
+                    version:
+                      type: string
+                      description: Image tag for blue environment
+                    replicas:
+                      type: integer
+                      minimum: 0
+                      default: 3
+                      description: Number of replicas for blue environment
+                    resources:
+                      type: object
+                      description: Resource overrides for blue environment
+                      properties:
+                        requests:
+                          type: object
+                          properties:
+                            memory:
+                              type: string
+                            cpu:
+                              type: string
+                        limits:
+                          type: object
+                          properties:
+                            memory:
+                              type: string
+                            cpu:
+                              type: string
+                green:
+                  type: object
+                  description: Green environment configuration
+                  required:
+                    - version
+                  properties:
+                    version:
+                      type: string
+                      description: Image tag for green environment
+                    replicas:
+                      type: integer
+                      minimum: 0
+                      default: 3
+                      description: Number of replicas for green environment
+                    resources:
+                      type: object
+                      description: Resource overrides for green environment
+                      properties:
+                        requests:
+                          type: object
+                          properties:
+                            memory:
+                              type: string
+                            cpu:
+                              type: string
+                        limits:
+                          type: object
+                          properties:
+                            memory:
+                              type: string
+                            cpu:
+                              type: string
+                active:
+                  type: string
+                  enum:
+                    - blue
+                    - green
+                  description: Currently active environment receiving traffic
+                preview:
+                  type: object
+                  description: Preview service configuration for inactive environment
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: true
+                      description: Enable preview service for testing inactive env
+                    port:
+                      type: integer
+                      default: 8081
+                      description: Preview service port
+                switch:
+                  type: object
+                  description: Traffic switch configuration
+                  properties:
+                    mode:
+                      type: string
+                      enum:
+                        - instant
+                        - gradual
+                      default: instant
+                      description: Switch mode (instant or gradual)
+                    gradualSteps:
+                      type: array
+                      description: Traffic steps for gradual switch
+                      items:
+                        type: object
+                        properties:
+                          weight:
+                            type: integer
+                            minimum: 0
+                            maximum: 100
+                            description: Traffic percentage to new environment
+                          duration:
+                            type: string
+                            description: Duration at this step (e.g., 5m)
+                    healthCheck:
+                      type: object
+                      description: Health check before completing switch
+                      properties:
+                        enabled:
+                          type: boolean
+                          default: true
+                        timeout:
+                          type: string
+                          default: "2m"
+                          description: Health check timeout
+                        minReadySeconds:
+                          type: integer
+                          default: 30
+                          description: Min seconds pods must be ready
+                scaleDown:
+                  type: object
+                  description: Inactive environment scale-down policy
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                      description: Scale down inactive environment
+                    delay:
+                      type: string
+                      default: "30m"
+                      description: Delay before scaling down inactive env
+                    minReplicas:
+                      type: integer
+                      minimum: 0
+                      default: 1
+                      description: Minimum replicas to keep for quick rollback
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum:
+                    - Stable
+                    - Switching
+                    - Verifying
+                    - RollingBack
+                    - Failed
+                  description: Current environment switch phase
+                activeEnvironment:
+                  type: string
+                  enum:
+                    - blue
+                    - green
+                  description: Currently active environment
+                blueStatus:
+                  type: object
+                  description: Blue environment status
+                  properties:
+                    version:
+                      type: string
+                    readyReplicas:
+                      type: integer
+                    availableReplicas:
+                      type: integer
+                    healthy:
+                      type: boolean
+                    lastDeployTime:
+                      type: string
+                      format: date-time
+                greenStatus:
+                  type: object
+                  description: Green environment status
+                  properties:
+                    version:
+                      type: string
+                    readyReplicas:
+                      type: integer
+                    availableReplicas:
+                      type: integer
+                    healthy:
+                      type: boolean
+                    lastDeployTime:
+                      type: string
+                      format: date-time
+                switchProgress:
+                  type: object
+                  description: Progress of ongoing switch operation
+                  properties:
+                    startTime:
+                      type: string
+                      format: date-time
+                    currentStep:
+                      type: integer
+                    currentWeight:
+                      type: integer
+                    targetEnvironment:
+                      type: string
+                lastSwitchTime:
+                  type: string
+                  format: date-time
+                  description: Timestamp of last successful switch
+                lastRollbackTime:
+                  type: string
+                  format: date-time
+                  description: Timestamp of last rollback
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - status
+                    properties:
+                      type:
+                        type: string
+                        description: Condition type
+                        enum:
+                          - BlueReady
+                          - GreenReady
+                          - SwitchInProgress
+                          - Healthy
+                          - Degraded
+                      status:
+                        type: string
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                      reason:
+                        type: string
+                        description: Machine-readable reason
+                      message:
+                        type: string
+                        description: Human-readable message
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                observedGeneration:
+                  type: integer
+                  format: int64
+                  description: Generation observed by controller
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Active
+          type: string
+          jsonPath: .status.activeEnvironment
+        - name: Blue
+          type: string
+          jsonPath: .spec.blue.version
+        - name: Green
+          type: string
+          jsonPath: .spec.green.version
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: veritasenvironments
+    singular: veritasenvironment
+    kind: VeritasEnvironment
+    shortNames:
+      - venv
+      - bluegreen

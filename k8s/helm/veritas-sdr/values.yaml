@@ -74,3 +74,144 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# =============================================================================
+# ADVANCED DEPLOYMENT STRATEGIES
+# =============================================================================
+
+# Canary deployment configuration
+# Enable this to use canary deployments with traffic splitting
+canary:
+  enabled: false
+  # Stable deployment settings
+  stable:
+    version: "" # defaults to image.tag
+    replicas: 3
+  # Canary deployment settings
+  canary:
+    version: "" # required when canary.enabled is true
+    replicas: 1
+  # Traffic weight (0-100) percentage to canary
+  trafficWeight: 0
+  # Analysis configuration for auto-promotion/rollback
+  analysis:
+    # Metrics thresholds
+    metrics:
+      - name: error-rate
+        threshold: "0.01" # 1% max error rate
+        operator: LessThan
+      - name: p99-latency
+        threshold: "500ms"
+        operator: LessThan
+    # Analysis interval
+    interval: "1m"
+    # Number of failed analyses before rollback
+    failureLimit: 3
+    # Number of successful analyses before promotion
+    successLimit: 3
+  # Promotion settings
+  promotion:
+    auto: false
+    # Traffic weight progression steps
+    steps:
+      - weight: 10
+        pause: "5m"
+      - weight: 25
+        pause: "5m"
+      - weight: 50
+        pause: "10m"
+      - weight: 75
+        pause: "10m"
+      - weight: 100
+  # Rollback settings
+  rollback:
+    auto: true
+    preserveCanary: false
+  # Pod disruption budget
+  pdb:
+    minAvailable: 1
+
+# Blue-Green deployment configuration
+# Enable this to use blue-green deployments with atomic traffic switching
+bluegreen:
+  enabled: false
+  # Active environment (blue or green)
+  active: blue
+  # Blue environment settings
+  blue:
+    version: "" # required when bluegreen.enabled is true
+    replicas: 3
+    # Optional resource overrides
+    resources: {}
+  # Green environment settings
+  green:
+    version: "" # required when bluegreen.enabled is true
+    replicas: 3
+    # Optional resource overrides
+    resources: {}
+  # Preview service for testing inactive environment
+  preview:
+    enabled: true
+  # Traffic switch mode
+  switch:
+    mode: instant # instant or gradual
+    # Gradual switch steps (only used when mode is gradual)
+    gradualSteps:
+      - weight: 25
+        duration: "5m"
+      - weight: 50
+        duration: "5m"
+      - weight: 75
+        duration: "5m"
+      - weight: 100
+    # Health check before completing switch
+    healthCheck:
+      enabled: true
+      timeout: "2m"
+      minReadySeconds: 30
+  # Scale down inactive environment
+  scaleDown:
+    enabled: false
+    delay: "30m"
+    minReplicas: 1
+  # Pod disruption budget
+  pdb:
+    minAvailable: 1
+
+# =============================================================================
+# MONITORING CONFIGURATION
+# =============================================================================
+
+# Monitoring configuration for Grafana dashboards and Prometheus alerts
+monitoring:
+  # Grafana dashboard configuration
+  grafana:
+    dashboard:
+      # Enable Grafana dashboard ConfigMap
+      enabled: true
+      # Dashboard labels for Grafana sidecar discovery
+      labels:
+        grafana_dashboard: "1"
+      # Additional annotations
+      annotations: {}
+
+  # Prometheus alert rules configuration
+  prometheus:
+    rules:
+      # Enable PrometheusRule resource
+      enabled: true
+      # Additional labels for PrometheusRule
+      additionalLabels:
+        release: prometheus
+      # Rule namespace (defaults to release namespace)
+      namespace: ""
+
+  # ServiceMonitor for Prometheus scraping (requires Prometheus Operator)
+  serviceMonitor:
+    enabled: false
+    # Interval for scraping metrics
+    interval: "30s"
+    # Path to metrics endpoint (if exposed)
+    path: "/metrics"
+    # Additional labels for ServiceMonitor
+    additionalLabels: {}

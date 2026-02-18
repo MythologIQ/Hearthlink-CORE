@@ -1,0 +1,238 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: veritascanaries.veritas.hearthlink.ai
+  labels:
+    app.kubernetes.io/name: veritas-sdr
+    app.kubernetes.io/component: canary
+spec:
+  group: veritas.hearthlink.ai
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required:
+            - spec
+          properties:
+            spec:
+              type: object
+              required:
+                - stableVersion
+                - canaryVersion
+              properties:
+                stableVersion:
+                  type: string
+                  description: Image tag for stable deployment
+                canaryVersion:
+                  type: string
+                  description: Image tag for canary deployment
+                trafficWeight:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  default: 0
+                  description: Percentage of traffic to route to canary (0-100)
+                replicas:
+                  type: object
+                  properties:
+                    stable:
+                      type: integer
+                      minimum: 1
+                      default: 3
+                      description: Number of stable replicas
+                    canary:
+                      type: integer
+                      minimum: 1
+                      default: 1
+                      description: Number of canary replicas
+                analysis:
+                  type: object
+                  description: Canary analysis configuration
+                  properties:
+                    metrics:
+                      type: array
+                      description: Metrics thresholds for auto-promotion
+                      items:
+                        type: object
+                        required:
+                          - name
+                          - threshold
+                        properties:
+                          name:
+                            type: string
+                            description: Metric name (error-rate, p99-latency, etc.)
+                            enum:
+                              - error-rate
+                              - p99-latency
+                              - p95-latency
+                              - p50-latency
+                              - success-rate
+                              - throughput
+                          threshold:
+                            type: string
+                            description: Threshold value (e.g., "0.01" for 1% error rate)
+                          operator:
+                            type: string
+                            enum:
+                              - LessThan
+                              - LessThanOrEqual
+                              - GreaterThan
+                              - GreaterThanOrEqual
+                            default: LessThan
+                            description: Comparison operator
+                    interval:
+                      type: string
+                      default: "1m"
+                      description: Analysis interval (e.g., 1m, 5m, 30s)
+                    failureLimit:
+                      type: integer
+                      minimum: 0
+                      default: 3
+                      description: Number of failed analyses before rollback
+                    successLimit:
+                      type: integer
+                      minimum: 1
+                      default: 3
+                      description: Number of successful analyses before promotion
+                promotion:
+                  type: object
+                  description: Promotion configuration
+                  properties:
+                    auto:
+                      type: boolean
+                      default: false
+                      description: Enable automatic promotion on success
+                    steps:
+                      type: array
+                      description: Traffic weight progression steps
+                      items:
+                        type: object
+                        properties:
+                          weight:
+                            type: integer
+                            minimum: 0
+                            maximum: 100
+                            description: Traffic weight for this step
+                          pause:
+                            type: string
+                            description: Duration to pause at this step (e.g., 5m)
+                rollback:
+                  type: object
+                  description: Rollback configuration
+                  properties:
+                    auto:
+                      type: boolean
+                      default: true
+                      description: Enable automatic rollback on failure
+                    preserveCanary:
+                      type: boolean
+                      default: false
+                      description: Keep canary pods for debugging after rollback
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum:
+                    - Pending
+                    - Progressing
+                    - Paused
+                    - Promoting
+                    - Complete
+                    - Failed
+                    - RollingBack
+                  description: Current canary deployment phase
+                currentStep:
+                  type: integer
+                  description: Current promotion step index
+                currentWeight:
+                  type: integer
+                  description: Current traffic weight to canary
+                stableReplicas:
+                  type: integer
+                  description: Number of ready stable replicas
+                canaryReplicas:
+                  type: integer
+                  description: Number of ready canary replicas
+                analysisRuns:
+                  type: integer
+                  description: Number of analysis runs completed
+                failedAnalyses:
+                  type: integer
+                  description: Number of failed analysis runs
+                successfulAnalyses:
+                  type: integer
+                  description: Number of successful analysis runs
+                lastAnalysisTime:
+                  type: string
+                  format: date-time
+                  description: Timestamp of last analysis
+                lastTransitionTime:
+                  type: string
+                  format: date-time
+                  description: Timestamp of last phase transition
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - status
+                    properties:
+                      type:
+                        type: string
+                        description: Condition type
+                        enum:
+                          - Available
+                          - Progressing
+                          - Degraded
+                          - AnalysisPassing
+                          - PromotionReady
+                      status:
+                        type: string
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                      reason:
+                        type: string
+                        description: Machine-readable reason
+                      message:
+                        type: string
+                        description: Human-readable message
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                observedGeneration:
+                  type: integer
+                  format: int64
+                  description: Generation observed by controller
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Stable
+          type: string
+          jsonPath: .spec.stableVersion
+        - name: Canary
+          type: string
+          jsonPath: .spec.canaryVersion
+        - name: Weight
+          type: integer
+          jsonPath: .status.currentWeight
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: veritascanaries
+    singular: veritascanary
+    kind: VeritasCanary
+    shortNames:
+      - vcan
+      - canary

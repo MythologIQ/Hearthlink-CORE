@@ -1,0 +1,124 @@
+# Example: VeritasCanary deployment
+# This demonstrates a progressive canary rollout with metrics-based analysis
+#
+# Usage:
+#   kubectl apply -f canary-example.yaml
+#
+# The canary controller will:
+# 1. Deploy the canary version alongside stable
+# 2. Gradually shift traffic according to promotion steps
+# 3. Monitor metrics and auto-promote or rollback based on thresholds
+
+apiVersion: veritas.hearthlink.ai/v1alpha1
+kind: VeritasCanary
+metadata:
+  name: veritas-sdr-canary
+  namespace: veritas-system
+  labels:
+    app.kubernetes.io/name: veritas-sdr
+    app.kubernetes.io/component: canary
+spec:
+  # Current stable version
+  stableVersion: "0.5.0"
+
+  # New canary version to test
+  canaryVersion: "0.6.0"
+
+  # Initial traffic weight to canary (0-100)
+  trafficWeight: 0
+
+  # Replica configuration
+  replicas:
+    stable: 3
+    canary: 1
+
+  # Analysis configuration for auto-promotion/rollback
+  analysis:
+    metrics:
+      # Fail if error rate exceeds 1%
+      - name: error-rate
+        threshold: "0.01"
+        operator: LessThan
+
+      # Fail if p99 latency exceeds 500ms
+      - name: p99-latency
+        threshold: "500ms"
+        operator: LessThan
+
+      # Fail if success rate drops below 99%
+      - name: success-rate
+        threshold: "0.99"
+        operator: GreaterThanOrEqual
+
+    # Run analysis every minute
+    interval: "1m"
+
+    # Rollback after 3 failed analyses
+    failureLimit: 3
+
+    # Promote after 3 successful analyses
+    successLimit: 3
+
+  # Promotion configuration
+  promotion:
+    # Enable automatic promotion when analysis passes
+    auto: true
+
+    # Progressive traffic weight steps
+    steps:
+      - weight: 10
+        pause: "5m"   # Wait 5 minutes at 10%
+      - weight: 25
+        pause: "5m"   # Wait 5 minutes at 25%
+      - weight: 50
+        pause: "10m"  # Wait 10 minutes at 50%
+      - weight: 75
+        pause: "10m"  # Wait 10 minutes at 75%
+      - weight: 100   # Full promotion
+
+  # Rollback configuration
+  rollback:
+    # Automatically rollback on failure
+    auto: true
+    # Delete canary pods after rollback (set true to keep for debugging)
+    preserveCanary: false
+
+---
+# Example: Manual canary with no auto-promotion
+# Use this when you want manual control over promotion
+apiVersion: veritas.hearthlink.ai/v1alpha1
+kind: VeritasCanary
+metadata:
+  name: veritas-sdr-canary-manual
+  namespace: veritas-system
+spec:
+  stableVersion: "0.5.0"
+  canaryVersion: "0.6.0"
+  trafficWeight: 10
+
+  replicas:
+    stable: 3
+    canary: 1
+
+  analysis:
+    metrics:
+      - name: error-rate
+        threshold: "0.01"
+        operator: LessThan
+    interval: "1m"
+    failureLimit: 5
+    successLimit: 5
+
+  promotion:
+    # Disable auto-promotion - require manual intervention
+    auto: false
+    steps:
+      - weight: 10
+        pause: "0"  # No pause, wait for manual promotion
+      - weight: 50
+        pause: "0"
+      - weight: 100
+
+  rollback:
+    auto: true
+    preserveCanary: true  # Keep canary for debugging

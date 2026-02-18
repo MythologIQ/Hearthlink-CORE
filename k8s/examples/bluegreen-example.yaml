@@ -1,0 +1,128 @@
+# Example: VeritasEnvironment blue-green deployment
+# This demonstrates atomic traffic switching between blue and green environments
+#
+# Usage:
+#   kubectl apply -f bluegreen-example.yaml
+#
+# To switch traffic:
+#   kubectl patch veritasenvironment veritas-sdr-bluegreen \
+#     --type=merge -p '{"spec":{"active":"green"}}'
+
+apiVersion: veritas.hearthlink.ai/v1alpha1
+kind: VeritasEnvironment
+metadata:
+  name: veritas-sdr-bluegreen
+  namespace: veritas-system
+  labels:
+    app.kubernetes.io/name: veritas-sdr
+    app.kubernetes.io/component: bluegreen
+spec:
+  # Blue environment (currently active)
+  blue:
+    version: "0.5.0"
+    replicas: 3
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1"
+      limits:
+        memory: "4Gi"
+        cpu: "2"
+
+  # Green environment (staging new version)
+  green:
+    version: "0.6.0"
+    replicas: 3
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1"
+      limits:
+        memory: "4Gi"
+        cpu: "2"
+
+  # Currently active environment
+  active: blue
+
+  # Preview service for testing inactive environment
+  preview:
+    enabled: true
+
+  # Traffic switch configuration
+  switch:
+    # Instant switch (atomic traffic flip)
+    mode: instant
+
+    # Health check before completing switch
+    healthCheck:
+      enabled: true
+      timeout: "2m"
+      minReadySeconds: 30
+
+  # Scale down inactive environment to save resources
+  scaleDown:
+    enabled: false
+    delay: "30m"
+    minReplicas: 1
+
+---
+# Example: Gradual blue-green switch
+# Use this when you want gradual traffic migration instead of instant
+apiVersion: veritas.hearthlink.ai/v1alpha1
+kind: VeritasEnvironment
+metadata:
+  name: veritas-sdr-bluegreen-gradual
+  namespace: veritas-system
+spec:
+  blue:
+    version: "0.5.0"
+    replicas: 3
+
+  green:
+    version: "0.6.0"
+    replicas: 3
+
+  active: blue
+
+  preview:
+    enabled: true
+
+  switch:
+    # Gradual traffic migration
+    mode: gradual
+
+    # Progressive traffic steps
+    gradualSteps:
+      - weight: 25
+        duration: "5m"   # 25% traffic for 5 minutes
+      - weight: 50
+        duration: "5m"   # 50% traffic for 5 minutes
+      - weight: 75
+        duration: "5m"   # 75% traffic for 5 minutes
+      - weight: 100      # Full switch
+
+    healthCheck:
+      enabled: true
+      timeout: "2m"
+      minReadySeconds: 30
+
+  # Enable scale-down after successful switch
+  scaleDown:
+    enabled: true
+    delay: "30m"     # Wait 30 minutes before scaling down
+    minReplicas: 1   # Keep 1 replica for quick rollback
+
+---
+# Example: Minimal blue-green configuration
+# Use this for simple deployments with default settings
+apiVersion: veritas.hearthlink.ai/v1alpha1
+kind: VeritasEnvironment
+metadata:
+  name: veritas-sdr-bluegreen-minimal
+  namespace: veritas-system
+spec:
+  blue:
+    version: "0.5.0"
+  green:
+    version: "0.6.0"
+  active: blue

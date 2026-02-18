@@ -1,0 +1,45 @@
+{{- if .Values.bluegreen.enabled }}
+# VeritasEnvironment Custom Resource
+# This CR is managed by the Veritas Blue-Green Controller
+apiVersion: veritas.hearthlink.ai/v1alpha1
+kind: VeritasEnvironment
+metadata:
+  name: {{ include "veritas-sdr.fullname" . }}
+  labels:
+    {{- include "veritas-sdr.labels" . | nindent 4 }}
+spec:
+  blue:
+    version: {{ .Values.bluegreen.blue.version | quote }}
+    replicas: {{ .Values.bluegreen.blue.replicas }}
+    {{- if .Values.bluegreen.blue.resources }}
+    resources:
+      {{- toYaml .Values.bluegreen.blue.resources | nindent 6 }}
+    {{- end }}
+  green:
+    version: {{ .Values.bluegreen.green.version | quote }}
+    replicas: {{ .Values.bluegreen.green.replicas }}
+    {{- if .Values.bluegreen.green.resources }}
+    resources:
+      {{- toYaml .Values.bluegreen.green.resources | nindent 6 }}
+    {{- end }}
+  active: {{ .Values.bluegreen.active }}
+  preview:
+    enabled: {{ .Values.bluegreen.preview.enabled }}
+  switch:
+    mode: {{ .Values.bluegreen.switch.mode }}
+    {{- if eq .Values.bluegreen.switch.mode "gradual" }}
+    gradualSteps:
+      {{- range .Values.bluegreen.switch.gradualSteps }}
+      - weight: {{ .weight }}
+        duration: {{ .duration | quote }}
+      {{- end }}
+    {{- end }}
+    healthCheck:
+      enabled: {{ .Values.bluegreen.switch.healthCheck.enabled }}
+      timeout: {{ .Values.bluegreen.switch.healthCheck.timeout | quote }}
+      minReadySeconds: {{ .Values.bluegreen.switch.healthCheck.minReadySeconds }}
+  scaleDown:
+    enabled: {{ .Values.bluegreen.scaleDown.enabled }}
+    delay: {{ .Values.bluegreen.scaleDown.delay | quote }}
+    minReplicas: {{ .Values.bluegreen.scaleDown.minReplicas }}
+{{- end }}
