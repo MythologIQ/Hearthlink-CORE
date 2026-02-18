@@ -11,8 +11,6 @@
 //! - Recent events
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
 
 use super::ipc_client::{CliError, CliIpcClient};
 
@@ -190,8 +188,8 @@ pub async fn run_status(socket_path: &str, json_output: bool) -> i32 {
             eprintln!("Error fetching status: {}", e);
             match e {
                 CliError::ConnectionFailed(_) => 3,
-                CliError::Timeout(_) => 3,
-                CliError::ProtocolError(_) => 1,
+                CliError::Timeout => 3,
+                CliError::Protocol(_) => 1,
                 _ => 1,
             }
         }
@@ -200,19 +198,59 @@ pub async fn run_status(socket_path: &str, json_output: bool) -> i32 {
 
 /// Fetch status from the IPC server.
 async fn fetch_status(socket_path: &str) -> Result<SystemStatus, CliError> {
-    let client = CliIpcClient::new(socket_path);
+    let client = CliIpcClient::new(socket_path.to_string());
 
-    // Build status request
-    let request = serde_json::json!({
-        "type": "status",
-        "command": "get_status"
-    });
+    // Get health report from the runtime
+    let health_response = client.get_health_report().await?;
+    let report = health_response.report;
 
-    let response = client.send_request(request).await?;
-
-    // Parse response
-    let status: SystemStatus = serde_json::from_value(response)
-        .map_err(|e| CliError::ProtocolError(format!("Failed to parse status: {}", e)))?;
+    // Build SystemStatus from health report
+    // Note: Full status endpoint to be implemented in future version
+    let status = SystemStatus {
+        health: if health_response.ok {
+            HealthState::Healthy
+        } else {
+            HealthState::Unhealthy
+        },
+        uptime_secs: report.as_ref().map(|r| r.uptime_secs).unwrap_or(0),
+        version: VersionInfo {
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            commit: "unknown".to_string(),
+            build_date: "unknown".to_string(),
+            rust_version: "unknown".to_string(),
+        },
+        models: vec![],
+        requests: RequestStats {
+            total_requests: 0,
+            successful_requests: 0,
+            failed_requests: 0,
+            requests_per_second: 0.0,
+            avg_latency_ms: 0.0,
+            p50_latency_ms: 0.0,
+            p95_latency_ms: 0.0,
+            p99_latency_ms: 0.0,
+            tokens_generated: 0,
+            tokens_per_second: 0.0,
+        },
+        resources: ResourceUtilization {
+            memory_rss_bytes: report.as_ref().map(|r| r.memory_used_bytes as u64).unwrap_or(0),
+            kv_cache_bytes: 0,
+            arena_bytes: 0,
+            memory_limit_bytes: 0,
+            memory_utilization_percent: 0.0,
+            cpu_utilization_percent: 0.0,
+            active_threads: 0,
+        },
+        scheduler: SchedulerStatus {
+            queue_depth: report.as_ref().map(|r| r.queue_depth as u64).unwrap_or(0),
+            active_batches: 0,
+            pending_requests: 0,
+            completed_requests: 0,
+            avg_batch_size: 0.0,
+        },
+        gpus: None,
+        recent_events: vec![],
+    };
 
     Ok(status)
 }
