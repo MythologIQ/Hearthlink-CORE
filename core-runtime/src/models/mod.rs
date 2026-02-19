@@ -5,6 +5,7 @@
 pub mod manifest;
 pub mod pool;
 pub mod smart_loader;
+pub mod tier_synergy;
 
 mod drain;
 mod loader;
@@ -33,4 +34,5 @@ pub use search::{ModelQuery, ModelQueryBuilder, ModelSearchResult};
 pub use smart_loader::{LoadHint, SmartLoader, SmartLoaderConfig, SmartLoaderError, SmartLoaderMetrics, SmartLoaderStatus};
 pub use smart_loader::ModelTier as SmartModelTier;
 pub use swap::{SwapError, SwapManager, SwapResult};
+pub use tier_synergy::{SynergyMode, SynergyResult, SynergyStatus, TierSynergy};
 pub use version::{ModelVersion, VersionRange};
