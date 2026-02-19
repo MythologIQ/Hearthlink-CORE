@@ -315,11 +315,12 @@ async fn fetch_status(socket_path: &str) -> Result<SystemStatus, CliError> {
                 .as_ref()
                 .map(|r| r.memory_used_bytes as u64)
                 .unwrap_or(memory_pool_bytes),
-            // KV cache metrics require IPC protocol extension (v0.7.0+)
+            // DEFERRED v0.7.0: KV cache metrics require IPC protocol extension
             kv_cache_bytes: 0,
             arena_bytes,
-            // Memory limit requires runtime config exposure (v0.7.0+)
+            // DEFERRED v0.7.0: Memory limit requires runtime config exposure
             memory_limit_bytes: 0,
+            // DEFERRED v0.7.0: CPU/memory utilization requires procfs/sysinfo
             memory_utilization_percent: 0.0,
             cpu_utilization_percent: 0.0,
             active_threads: 0,
@@ -329,14 +330,15 @@ async fn fetch_status(socket_path: &str) -> Result<SystemStatus, CliError> {
                 .as_ref()
                 .map(|r| r.queue_depth as u64)
                 .unwrap_or(queue_depth),
+            // DEFERRED v0.7.0: Batch metrics require scheduler instrumentation
             active_batches: 0,
             pending_requests: queue_depth,
             completed_requests: total_requests,
             avg_batch_size: 0.0,
         },
-        // GPU metrics require cuda/metal feature and device enumeration (v0.7.0+)
+        // DEFERRED v0.7.0: GPU metrics require cuda/metal feature
         gpus: None,
-        // Event log requires telemetry event buffer (v0.7.0+)
+        // DEFERRED v0.7.0: Event log requires telemetry event buffer
         recent_events: vec![]
     };
 

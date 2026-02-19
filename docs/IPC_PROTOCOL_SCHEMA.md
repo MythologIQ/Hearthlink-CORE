@@ -295,6 +295,25 @@ All sessions begin with a handshake exchange:
 
 ---
 
+## Deferred Features (v0.7.0+)
+
+The following features are explicitly deferred to v0.7.0:
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **Streaming inference** | Returns error | Use `stream: false` until v0.7.0 |
+| **KV cache metrics** | Returns 0 | Requires IPC protocol extension |
+| **Memory limit/utilization** | Returns 0 | Requires runtime config exposure |
+| **CPU utilization** | Returns 0 | Requires procfs/sysinfo integration |
+| **GPU metrics** | Returns null | Requires cuda/metal feature |
+| **Event log** | Returns empty | Requires telemetry event buffer |
+| **Batch metrics** | Returns 0 | Requires scheduler instrumentation |
+
+These fields are present in `status --json` output but return placeholder values.
+They are NOT bugs - they are explicitly documented deferrals.
+
+---
+
 ## Contract Compliance
 
 This schema is FROZEN for Hearthlink integration. Any breaking changes require:
