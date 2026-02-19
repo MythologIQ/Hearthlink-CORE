@@ -205,20 +205,20 @@ All sessions begin with a handshake exchange:
 }
 ```
 
-### Streaming (Experimental)
+### Streaming (Not Implemented)
 
 ```json
-// Stream chunk
+// Stream chunk (error response in v0.6.7)
 {
   "type": "stream_chunk",
   "request_id": 1234,
-  "token": 12345,
-  "is_final": false,
-  "error": null
+  "token": 0,
+  "is_final": true,
+  "error": "Streaming not implemented. Use stream: false for inference."
 }
 ```
 
-**Note**: Token-based streaming FFI is deprecated in v0.6.5+. Use non-streaming inference with `stream: false`.
+**Status**: Streaming is NOT implemented in v0.6.7. Requests with `stream: true` will receive an error response. Use non-streaming inference (`stream: false`) until v0.7.0+.
 
 ### Error Response
 

@@ -330,6 +330,10 @@ impl IpcHandler {
     }
 
     /// Process streaming inference request. Sends chunks via sender.
+    ///
+    /// NOTE: Streaming is not yet implemented. This method returns an error
+    /// to fail fast rather than silently returning placeholder data.
+    /// Target: v0.7.0+ for real streaming support.
     pub async fn process_streaming(
         &self,
         request: InferenceRequest,
@@ -346,25 +350,13 @@ impl IpcHandler {
             return Ok(());
         }
 
-        // Enqueue for streaming inference
-        let enqueue_result = self
-            .queue
-            .enqueue(
-                request.model_id.clone(),
-                request.prompt.clone(),
-                request.parameters.clone(),
-                Priority::Normal,
-            )
-            .await;
-
-        if let Err(e) = enqueue_result {
-            let chunk = StreamChunk::error(request.request_id, e.to_string());
-            sender.send(IpcMessage::StreamChunk(chunk)).await?;
-            return Ok(());
-        }
-
-        // Send final chunk (actual streaming would integrate with TokenStream)
-        let chunk = StreamChunk::final_token(request.request_id, 0);
+        // FAIL-FAST: Streaming not implemented - return explicit error
+        // Real streaming requires TokenStream integration with inference loop.
+        // Use non-streaming inference (stream: false) until v0.7.0.
+        let chunk = StreamChunk::error(
+            request.request_id,
+            "Streaming not implemented. Use stream: false for inference.".into(),
+        );
         sender.send(IpcMessage::StreamChunk(chunk)).await?;
         Ok(())
     }
