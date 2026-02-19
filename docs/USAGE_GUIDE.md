@@ -1,6 +1,6 @@
 # Veritas SDR Documentation
 
-**Version:** 0.6.0
+**Version:** 0.6.5
 **License:** Apache 2.0
 **Last Updated:** 2026-02-19
 
@@ -546,12 +546,16 @@ let security = SecurityConfig {
 ### Core Types
 
 ```rust
-// Input types
+// Input types (text-based protocol - models handle tokenization internally)
 pub enum InferenceInput {
-    Text(String),
-    Prompt(String),
-    ChatMessages(Vec<ChatMessage>),
-    Tokens(Vec<u32>),
+    Text(String),               // Single text for generation/classification
+    TextBatch(Vec<String>),     // Batch of texts for embedding/classification
+    ChatMessages(Vec<ChatMessage>), // Chat-style messages with roles
+}
+
+pub struct ChatMessage {
+    pub role: ChatRole,    // System, User, or Assistant
+    pub content: String,
 }
 
 // Output types
@@ -559,18 +563,23 @@ pub enum InferenceOutput {
     Classification(ClassificationResult),
     Embedding(EmbeddingResult),
     Generation(GenerationResult),
-    StreamToken(String),
-    Error(InferenceError),
 }
 
-// Parameters
+// IPC Parameters
 pub struct InferenceParams {
-    pub max_tokens: u32,
+    pub max_tokens: usize,
     pub temperature: f32,
     pub top_p: f32,
-    pub top_k: u32,
-    pub stream: bool,
-    pub timeout_ms: u32,
+    pub top_k: usize,
+    pub stream: bool,           // Enable token streaming
+    pub timeout_ms: Option<u64>, // None = no timeout
+}
+
+// Inference result (returned from InferenceEngine.run)
+pub struct InferenceResult {
+    pub output: String,         // Generated text
+    pub tokens_generated: usize,
+    pub finished: bool,
 }
 ```
 
@@ -637,7 +646,7 @@ veritas-sdr-cli status --json
   "health": "healthy",
   "uptime_secs": 3600,
   "version": {
-    "version": "0.6.0",
+    "version": "0.6.5",
     "commit": "abc123",
     "build_date": "2026-02-18",
     "rust_version": "1.75.0"

@@ -20,9 +20,9 @@ async fn test_cancel_pending_request() {
         ..Default::default()
     };
 
-    // Enqueue a request
+    // Enqueue a request (text-based protocol)
     let (id, _pos) = queue
-        .enqueue("model".to_string(), vec![1, 2, 3], params, Priority::Normal)
+        .enqueue("model".to_string(), "test prompt".to_string(), params, Priority::Normal)
         .await
         .unwrap();
 
@@ -46,7 +46,7 @@ async fn test_timeout_during_queue() {
     };
 
     queue
-        .enqueue("model".to_string(), vec![1, 2, 3], params, Priority::Normal)
+        .enqueue("model".to_string(), "test prompt".to_string(), params, Priority::Normal)
         .await
         .unwrap();
 

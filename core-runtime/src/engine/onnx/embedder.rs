@@ -12,6 +12,7 @@ use crate::engine::{
 /// ONNX embedding model using Candle.
 pub struct OnnxEmbedder {
     model_id: String,
+    #[allow(dead_code)]
     embedding_dim: usize,
     memory_bytes: AtomicUsize,
     #[cfg(feature = "onnx")]
@@ -31,19 +32,13 @@ impl OnnxEmbedder {
     }
 
     /// Generate embedding for a single text input.
-    fn embed_text(&self, text: &str) -> Result<EmbeddingResult, InferenceError> {
-        if text.is_empty() {
-            return Err(InferenceError::InputValidation("text cannot be empty".into()));
-        }
-
-        // Stub: Return mock embedding
-        // Real implementation would run candle-onnx inference
-        let vector = vec![0.0f32; self.embedding_dim];
-
-        Ok(EmbeddingResult {
-            vector,
-            dimensions: self.embedding_dim,
-        })
+    fn embed_text(&self, _text: &str) -> Result<EmbeddingResult, InferenceError> {
+        // ONNX model not loaded - fail rather than return mock data
+        // Real implementation requires candle-onnx with loaded model
+        Err(InferenceError::ModelError(format!(
+            "ONNX model '{}' not loaded - enable 'onnx' feature and load model",
+            self.model_id
+        )))
     }
 }
 

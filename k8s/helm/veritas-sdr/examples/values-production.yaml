@@ -10,7 +10,7 @@ replicaCount: 5
 image:
   repository: veritas-sdr/core
   pullPolicy: Always
-  tag: "0.6.0"
+  tag: "0.6.5"
   # Use private registry
   pullSecrets:
     - name: registry-credentials

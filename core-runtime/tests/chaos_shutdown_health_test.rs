@@ -178,7 +178,7 @@ async fn chaos_combined_resource_limits_and_queue() {
         if let Ok(g) = limits.try_acquire(512) {
             guards.push(g);
             if queue.enqueue(
-                "model".into(), vec![i as u32],
+                "model".into(), format!("prompt {}", i),
                 InferenceParams::default(), Priority::Normal,
             ).await.is_ok() { enqueued += 1; }
         }
@@ -191,7 +191,7 @@ async fn chaos_combined_shutdown_and_queue() {
     let shutdown = Arc::new(ShutdownCoordinator::new());
     let queue = Arc::new(RequestQueue::new(RequestQueueConfig { max_pending: 100 }));
     for i in 0..10u32 {
-        queue.enqueue("model".into(), vec![i], InferenceParams::default(), Priority::Normal)
+        queue.enqueue("model".into(), format!("prompt {}", i), InferenceParams::default(), Priority::Normal)
             .await.unwrap();
     }
     let guard = shutdown.track().unwrap();

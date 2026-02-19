@@ -1,6 +1,6 @@
 [package]
 name = "veritas-sdr"
-version = "0.6.0"
+version = "0.6.5"
 edition = "2021"
 description = "Veritas SDR - Secure, Deterministic, Reliable inference runtime"
 license = "Apache-2.0"

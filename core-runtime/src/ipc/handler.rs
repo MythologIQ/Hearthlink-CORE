@@ -228,7 +228,7 @@ impl IpcHandler {
             .queue
             .enqueue(
                 request.model_id.clone(),
-                request.prompt_tokens.clone(),
+                request.prompt.clone(),
                 request.parameters.clone(),
                 Priority::Normal,
             )
@@ -238,26 +238,25 @@ impl IpcHandler {
             return InferenceResponse::error(request.request_id, e.to_string());
         }
 
-        // Run inference synchronously for IPC requests
-        // TODO: Use model_id to look up actual model handle from registry
-        let model_handle = ModelHandle::new(0);
+        // Run inference using model_id to look up the model
         let start = std::time::Instant::now();
 
         match self
             .inference_engine
-            .run(model_handle, &request.prompt_tokens, &request.parameters)
+            .run(&request.model_id, &request.prompt, &request.parameters)
             .await
         {
             Ok(result) => {
-                // Record latency in model registry
+                // Record latency in model registry (using handle 0 for now)
                 let latency_ms = start.elapsed().as_millis() as f64;
                 self.model_registry
-                    .record_request(model_handle, latency_ms)
+                    .record_request(ModelHandle::new(0), latency_ms)
                     .await;
 
                 InferenceResponse::success(
                     request.request_id,
-                    result.output_tokens,
+                    result.output,
+                    result.tokens_generated,
                     result.finished,
                 )
             }
@@ -272,7 +271,7 @@ impl IpcHandler {
             .queue
             .enqueue(
                 model_id.clone(),
-                vec![1], // Minimal warmup prompt
+                "warmup".to_string(), // Minimal warmup prompt
                 crate::engine::InferenceParams::default(),
                 Priority::Low,
             )
@@ -338,7 +337,7 @@ impl IpcHandler {
             .queue
             .enqueue(
                 request.model_id.clone(),
-                request.prompt_tokens.clone(),
+                request.prompt.clone(),
                 request.parameters.clone(),
                 Priority::Normal,
             )

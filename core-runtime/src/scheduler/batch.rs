@@ -64,13 +64,17 @@ impl BatchProcessor {
             return false;
         }
 
-        let new_total = batch.total_tokens + request.prompt_tokens.len();
+        // Estimate token count from prompt bytes (avg ~4 chars per token)
+        let estimated_tokens = (request.prompt.len() + 3) / 4;
+        let new_total = batch.total_tokens + estimated_tokens;
         new_total <= self.config.max_total_tokens
     }
 
     /// Add a request to the batch.
     pub fn add(&self, batch: &mut RequestBatch, request: QueuedRequest) {
-        batch.total_tokens += request.prompt_tokens.len();
+        // Estimate token count from prompt bytes (avg ~4 chars per token)
+        let estimated_tokens = (request.prompt.len() + 3) / 4;
+        batch.total_tokens += estimated_tokens;
         batch.requests.push(request);
     }
 

@@ -81,9 +81,9 @@ fn handle_deeply_nested_json() {
     }
     nested.push_str("null");
     for _ in 0..100 {
-        nested.push(});
+        nested.push('}');
     }
-    nested.push(});
+    nested.push('}');
     let result = decode_message(nested.as_bytes());
     let _ = result;
 }
@@ -94,20 +94,20 @@ fn inference_request_requires_model_id() {
     let request = InferenceRequest {
         request_id: RequestId(1),
         model_id: String::new(),
-        prompt_tokens: vec![1, 2, 3],
+        prompt: "test prompt".to_string(),
         parameters: InferenceParams::default(),
     };
     let result = request.validate();
     assert!(result.is_err());
 }
 
-/// Inference request requires prompt_tokens.
+/// Inference request requires non-empty prompt.
 #[test]
-fn inference_request_requires_tokens() {
+fn inference_request_requires_prompt() {
     let request = InferenceRequest {
         request_id: RequestId(1),
         model_id: "test-model".to_string(),
-        prompt_tokens: vec![],
+        prompt: String::new(),
         parameters: InferenceParams::default(),
     };
     let result = request.validate();
@@ -120,7 +120,7 @@ fn valid_inference_request_passes() {
     let request = InferenceRequest {
         request_id: RequestId(1),
         model_id: "test-model".to_string(),
-        prompt_tokens: vec![1, 2, 3],
+        prompt: "Hello, world!".to_string(),
         parameters: InferenceParams::default(),
     };
     let result = request.validate();
@@ -157,20 +157,21 @@ fn handshake_message_encoding() {
     assert!(matches!(decoded, IpcMessage::Handshake { token, .. } if token == "test-token"));
 }
 
-/// Large token array handled safely.
+/// Large prompt handled safely.
 #[test]
-fn large_token_array() {
+fn large_prompt() {
+    let large_prompt = "x".repeat(50000);
     let request = InferenceRequest {
         request_id: RequestId(1),
         model_id: "test".to_string(),
-        prompt_tokens: (0..10000).collect(),
+        prompt: large_prompt.clone(),
         parameters: InferenceParams::default(),
     };
     let msg = IpcMessage::InferenceRequest(request);
     let encoded = encode_message(&msg).unwrap();
     let decoded = decode_message(&encoded).unwrap();
     if let IpcMessage::InferenceRequest(req) = decoded {
-        assert_eq!(req.prompt_tokens.len(), 10000);
+        assert_eq!(req.prompt.len(), 50000);
     } else {
         panic!("Wrong message type");
     }
@@ -198,8 +199,8 @@ fn error_message_long_string() {
 fn unicode_model_id() {
     let request = InferenceRequest {
         request_id: RequestId(1),
-        model_id: "test-model-\xe4\xb8\xad\xe6\x96\x87".to_string(),
-        prompt_tokens: vec![1, 2, 3],
+        model_id: "test-model-\u{4e2d}\u{6587}".to_string(),
+        prompt: "test prompt".to_string(),
         parameters: InferenceParams::default(),
     };
     let msg = IpcMessage::InferenceRequest(request);
@@ -231,7 +232,7 @@ fn protocol_error_display() {
 /// Negative request ID handled.
 #[test]
 fn negative_request_id() {
-    let json = br#"{"type":"inference_request","request_id":-1,"model_id":"test","prompt_tokens":[1],"parameters":{}}"#;
+    let json = br#"{"type":"inference_request","request_id":-1,"model_id":"test","prompt":"hello","parameters":{}}"#;
     let result = decode_message(json);
     let _ = result;
 }
@@ -242,7 +243,7 @@ fn large_request_id() {
     let request = InferenceRequest {
         request_id: RequestId(u64::MAX),
         model_id: "test".to_string(),
-        prompt_tokens: vec![1],
+        prompt: "test prompt".to_string(),
         parameters: InferenceParams::default(),
     };
     let msg = IpcMessage::InferenceRequest(request);
@@ -261,7 +262,7 @@ fn zero_request_id() {
     let request = InferenceRequest {
         request_id: RequestId(0),
         model_id: "test".to_string(),
-        prompt_tokens: vec![1],
+        prompt: "test prompt".to_string(),
         parameters: InferenceParams::default(),
     };
     let msg = IpcMessage::InferenceRequest(request);

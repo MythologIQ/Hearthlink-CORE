@@ -25,7 +25,8 @@ impl Default for RequestQueueConfig {
 pub struct QueuedRequest {
     pub id: u64,
     pub model_id: String,
-    pub prompt_tokens: Vec<u32>,
+    /// Text prompt for inference.
+    pub prompt: String,
     pub params: InferenceParams,
     pub enqueued_at: Instant,
     pub deadline: Option<Instant>,
@@ -37,7 +38,7 @@ impl Clone for QueuedRequest {
         Self {
             id: self.id,
             model_id: self.model_id.clone(),
-            prompt_tokens: self.prompt_tokens.clone(),
+            prompt: self.prompt.clone(),
             params: self.params.clone(),
             enqueued_at: self.enqueued_at,
             deadline: self.deadline,
@@ -51,7 +52,7 @@ impl QueuedRequest {
     pub fn new(
         id: u64,
         model_id: String,
-        prompt_tokens: Vec<u32>,
+        prompt: String,
         params: InferenceParams,
     ) -> Self {
         let enqueued_at = Instant::now();
@@ -59,7 +60,7 @@ impl QueuedRequest {
         Self {
             id,
             model_id,
-            prompt_tokens,
+            prompt,
             params,
             enqueued_at,
             deadline,
@@ -103,7 +104,7 @@ impl RequestQueue {
     pub async fn enqueue(
         &self,
         model_id: String,
-        prompt_tokens: Vec<u32>,
+        prompt: String,
         params: InferenceParams,
         priority: Priority,
     ) -> Result<(u64, usize), QueueError> {
@@ -119,7 +120,7 @@ impl RequestQueue {
         let request = QueuedRequest {
             id,
             model_id,
-            prompt_tokens,
+            prompt,
             params,
             enqueued_at,
             deadline,

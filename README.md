@@ -6,7 +6,7 @@ A security-first inference runtime for air-gapped and compliance-sensitive envir
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Security](https://img.shields.io/badge/Security-Hardened-brightgreen.svg)](docs/security/THREAT_MODEL.md)
-[![Tests](https://img.shields.io/badge/Tests-1124-blue.svg)](docs/testing/)
+[![Tests](https://img.shields.io/badge/Tests-416-blue.svg)](docs/testing/)
 
 ---
 
@@ -59,7 +59,8 @@ Veritas SDR is a sandboxed, offline inference engine providing comprehensive sec
 | Single binary distribution    | MIT/Apache dependencies, static linking     |
 | Rust memory safety            | Language guarantee, no unsafe in core paths |
 | 361ns infrastructure overhead | Benchmark verified                          |
-| 1,124 tests (100% pass rate)  | Full test suite passing                     |
+| 416 tests (100% pass rate)    | Full test suite passing                     |
+| No mock fallbacks             | All paths require real loaded models        |
 
 ---
 
@@ -252,13 +253,10 @@ See [OPTIMIZATION_VERIFICATION.md](docs/build/OPTIMIZATION_VERIFICATION.md) for 
 ## Usage
 
 ```rust
-use veritas_sdr::{Runtime, RuntimeConfig};
-use veritas_sdr::engine::{InferenceInput, InferenceParams};
+use veritas_sdr::engine::{InferenceEngine, InferenceInput, InferenceParams};
+use veritas_sdr::engine::gguf::{load_gguf_model, GgufConfig};
 use veritas_sdr::security::PromptInjectionFilter;
-
-// Initialize runtime
-let config = RuntimeConfig::default();
-let runtime = Runtime::new(config);
+use std::path::Path;
 
 // Security scan
 let filter = PromptInjectionFilter::default();
@@ -267,10 +265,21 @@ if !is_safe {
     return Err("Prompt blocked by security filter");
 }
 
-// Run inference
-let input = InferenceInput::Prompt("Explain quantum computing.".to_string());
+// Load model (requires 'gguf' feature)
+let model = load_gguf_model(
+    Path::new("models/phi-3-mini.gguf"),
+    "phi-3",
+    &GgufConfig::default(),
+)?;
+
+// Register with inference engine
+let engine = InferenceEngine::new(8192);
+engine.register_model("phi-3".into(), handle, model).await;
+
+// Run inference (text-based, no tokenization needed)
 let params = InferenceParams::default();
-let output = runtime.infer(&model, input, params).await?;
+let result = engine.run("phi-3", "Explain quantum computing.", &params).await?;
+println!("Generated: {}", result.output);
 ```
 
 See [Usage Guide](docs/USAGE_GUIDE.md) for complete API documentation.

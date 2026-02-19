@@ -27,7 +27,7 @@ fn inference_request_roundtrip() {
     let request = InferenceRequest {
         request_id: RequestId(42),
         model_id: "test-model".to_string(),
-        prompt_tokens: vec![1, 2, 3],
+        prompt: "Hello, world!".to_string(),
         parameters: InferenceParams::default(),
     };
 
@@ -39,7 +39,7 @@ fn inference_request_roundtrip() {
         IpcMessage::InferenceRequest(req) => {
             assert_eq!(req.request_id, RequestId(42));
             assert_eq!(req.model_id, "test-model");
-            assert_eq!(req.prompt_tokens, vec![1, 2, 3]);
+            assert_eq!(req.prompt, "Hello, world!");
         }
         _ => panic!("Expected InferenceRequest message"),
     }
@@ -47,10 +47,16 @@ fn inference_request_roundtrip() {
 
 #[test]
 fn inference_response_success() {
-    let response = InferenceResponse::success(RequestId(1), vec![10, 20, 30], true);
+    let response = InferenceResponse::success(
+        RequestId(1),
+        "Generated text output".to_string(),
+        5,
+        true,
+    );
 
     assert_eq!(response.request_id, RequestId(1));
-    assert_eq!(response.output_tokens, vec![10, 20, 30]);
+    assert_eq!(response.output, "Generated text output");
+    assert_eq!(response.tokens_generated, 5);
     assert!(response.finished);
     assert!(response.error.is_none());
 }
@@ -60,7 +66,8 @@ fn inference_response_error() {
     let response = InferenceResponse::error(RequestId(2), "Test error".to_string());
 
     assert_eq!(response.request_id, RequestId(2));
-    assert!(response.output_tokens.is_empty());
+    assert!(response.output.is_empty());
+    assert_eq!(response.tokens_generated, 0);
     assert!(response.finished);
     assert_eq!(response.error, Some("Test error".to_string()));
 }
@@ -70,7 +77,7 @@ fn request_validation_requires_model_id() {
     let request = InferenceRequest {
         request_id: RequestId(1),
         model_id: String::new(), // Empty
-        prompt_tokens: vec![1],
+        prompt: "test".to_string(),
         parameters: InferenceParams::default(),
     };
 
@@ -78,11 +85,11 @@ fn request_validation_requires_model_id() {
 }
 
 #[test]
-fn request_validation_requires_tokens() {
+fn request_validation_requires_prompt() {
     let request = InferenceRequest {
         request_id: RequestId(1),
         model_id: "model".to_string(),
-        prompt_tokens: Vec::new(), // Empty
+        prompt: String::new(), // Empty
         parameters: InferenceParams::default(),
     };
 

@@ -45,9 +45,10 @@ fn chaos_ipc_truncated_json() {
 
 #[test]
 fn chaos_ipc_type_confusion() {
+    // Test type confusion with the text-based protocol
     let confused = vec![
-        br#"{"type":"inference_request","request_id":"not_a_number","model_id":"test","prompt_tokens":[1],"parameters":{}}"#.to_vec(),
-        br#"{"type":"inference_request","request_id":1,"model_id":"test","prompt_tokens":"not_array","parameters":{}}"#.to_vec(),
+        br#"{"type":"inference_request","request_id":"not_a_number","model_id":"test","prompt":"hello","parameters":{}}"#.to_vec(),
+        br#"{"type":"inference_request","request_id":1,"model_id":"test","prompt":123,"parameters":{}}"#.to_vec(),
         br#"{"type":"health_check","check_type":42}"#.to_vec(),
     ];
     for msg in &confused {
@@ -68,7 +69,7 @@ fn chaos_ipc_repeated_fields() {
 fn chaos_ipc_extreme_string_lengths() {
     let long_id = "x".repeat(1_000_000);
     let msg = format!(
-        r#"{{"type":"inference_request","request_id":1,"model_id":"{}","prompt_tokens":[1],"parameters":{{}}}}"#,
+        r#"{{"type":"inference_request","request_id":1,"model_id":"{}","prompt":"test","parameters":{{}}}}"#,
         long_id
     );
     if let Ok(IpcMessage::InferenceRequest(req)) = decode_message(msg.as_bytes()) {
@@ -77,12 +78,13 @@ fn chaos_ipc_extreme_string_lengths() {
 }
 
 #[test]
-fn chaos_ipc_massive_token_array() {
-    let tokens: Vec<u32> = (0..500_000).collect();
+fn chaos_ipc_massive_prompt() {
+    // Test with a very large text prompt
+    let large_prompt = "x".repeat(100_000);
     let request = InferenceRequest {
         request_id: RequestId(1),
         model_id: "test".to_string(),
-        prompt_tokens: tokens,
+        prompt: large_prompt,
         parameters: InferenceParams::default(),
     };
     let msg = IpcMessage::InferenceRequest(request);

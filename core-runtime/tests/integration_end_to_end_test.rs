@@ -13,7 +13,7 @@ fn ipc_request_roundtrip() {
     let request = InferenceRequest {
         request_id: RequestId(12345),
         model_id: "test-model".to_string(),
-        prompt_tokens: vec![1, 2, 3, 4, 5],
+        prompt: "Hello, this is a test prompt".to_string(),
         parameters: InferenceParams {
             max_tokens: 100,
             temperature: 0.7,
@@ -38,7 +38,7 @@ fn ipc_request_roundtrip() {
         IpcMessage::InferenceRequest(req) => {
             assert_eq!(req.request_id, RequestId(12345));
             assert_eq!(req.model_id, "test-model");
-            assert_eq!(req.prompt_tokens, vec![1, 2, 3, 4, 5]);
+            assert_eq!(req.prompt, "Hello, this is a test prompt");
         }
         _ => panic!("Expected InferenceRequest"),
     }
@@ -50,12 +50,12 @@ fn scheduler_request_ordering() {
 
     // Add requests with different priorities
     queue.push(
-        QueuedRequest::new(1, "model-a".to_string(), vec![1, 2, 3], InferenceParams::default()),
+        QueuedRequest::new(1, "model-a".to_string(), "first prompt".to_string(), InferenceParams::default()),
         Priority::Normal,
     );
 
     queue.push(
-        QueuedRequest::new(2, "model-b".to_string(), vec![4, 5, 6], InferenceParams::default()),
+        QueuedRequest::new(2, "model-b".to_string(), "second prompt".to_string(), InferenceParams::default()),
         Priority::Critical,
     );
 
@@ -138,7 +138,7 @@ fn queue_fifo_for_same_priority() {
     // Add multiple requests with same priority
     for i in 1..=5 {
         queue.push(
-            QueuedRequest::new(i, format!("model-{}", i), vec![i as u32], InferenceParams::default()),
+            QueuedRequest::new(i, format!("model-{}", i), format!("prompt-{}", i), InferenceParams::default()),
             Priority::Normal,
         );
     }

@@ -12,6 +12,7 @@ use crate::engine::{
 /// ONNX classification model using Candle.
 pub struct OnnxClassifier {
     model_id: String,
+    #[allow(dead_code)]
     labels: Vec<String>,
     memory_bytes: AtomicUsize,
     #[cfg(feature = "onnx")]
@@ -31,28 +32,13 @@ impl OnnxClassifier {
     }
 
     /// Run classification on a single text input.
-    fn classify_text(&self, text: &str) -> Result<ClassificationResult, InferenceError> {
-        if text.is_empty() {
-            return Err(InferenceError::InputValidation("text cannot be empty".into()));
-        }
-
-        // Stub: Return mock classification result
-        // Real implementation would run candle-onnx inference
-        let all_labels: Vec<(String, f32)> = self
-            .labels
-            .iter()
-            .enumerate()
-            .map(|(i, label)| {
-                let conf = if i == 0 { 0.85 } else { 0.15 / (self.labels.len() - 1) as f32 };
-                (label.clone(), conf)
-            })
-            .collect();
-
-        Ok(ClassificationResult {
-            label: self.labels.first().cloned().unwrap_or_default(),
-            confidence: 0.85,
-            all_labels,
-        })
+    fn classify_text(&self, _text: &str) -> Result<ClassificationResult, InferenceError> {
+        // ONNX model not loaded - fail rather than return mock data
+        // Real implementation requires candle-onnx with loaded model
+        Err(InferenceError::ModelError(format!(
+            "ONNX model '{}' not loaded - enable 'onnx' feature and load model",
+            self.model_id
+        )))
     }
 }
 

@@ -106,9 +106,11 @@ impl DecodeExecutor {
     }
 
     fn sample_token(&self) -> Result<u32, InferenceError> {
-        // Placeholder: actual implementation would run model forward pass
-        // and sample from logits
-        Ok(42) // Stub token
+        // No model loaded - fail rather than return stub data
+        // Real implementation requires model forward pass and sampling
+        Err(InferenceError::ModelError(
+            "decode executor requires integrated model - use InferenceEngine".into(),
+        ))
     }
 
     fn write_kv(&self, page_table: &mut PageTable) -> Result<(), InferenceError> {

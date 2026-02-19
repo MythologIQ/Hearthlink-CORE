@@ -106,7 +106,8 @@ pub struct RequestId(pub u64);
 pub struct InferenceRequest {
     pub request_id: RequestId,
     pub model_id: String,
-    pub prompt_tokens: Vec<u32>,
+    /// Text prompt for inference (tokenization handled by model).
+    pub prompt: String,
     pub parameters: InferenceParams,
 }
 
@@ -115,8 +116,8 @@ impl InferenceRequest {
         if self.model_id.is_empty() {
             return Err(ProtocolError::MissingField("model_id".into()));
         }
-        if self.prompt_tokens.is_empty() {
-            return Err(ProtocolError::MissingField("prompt_tokens".into()));
+        if self.prompt.is_empty() {
+            return Err(ProtocolError::MissingField("prompt".into()));
         }
         Ok(())
     }
@@ -126,16 +127,20 @@ impl InferenceRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InferenceResponse {
     pub request_id: RequestId,
-    pub output_tokens: Vec<u32>,
+    /// Generated text output from model.
+    pub output: String,
+    /// Number of tokens generated.
+    pub tokens_generated: usize,
     pub finished: bool,
     pub error: Option<String>,
 }
 
 impl InferenceResponse {
-    pub fn success(request_id: RequestId, output_tokens: Vec<u32>, finished: bool) -> Self {
+    pub fn success(request_id: RequestId, output: String, tokens_generated: usize, finished: bool) -> Self {
         Self {
             request_id,
-            output_tokens,
+            output,
+            tokens_generated,
             finished,
             error: None,
         }
@@ -144,7 +149,8 @@ impl InferenceResponse {
     pub fn error(request_id: RequestId, error: String) -> Self {
         Self {
             request_id,
-            output_tokens: Vec::new(),
+            output: String::new(),
+            tokens_generated: 0,
             finished: true,
             error: Some(error),
         }
@@ -497,7 +503,7 @@ mod tests {
         let valid = InferenceRequest {
             request_id: RequestId(1),
             model_id: "test-model".to_string(),
-            prompt_tokens: vec![1, 2, 3],
+            prompt: "Hello, world!".to_string(),
             parameters: InferenceParams::default(),
         };
         assert!(valid.validate().is_ok());
@@ -505,24 +511,26 @@ mod tests {
         let invalid_model = InferenceRequest {
             request_id: RequestId(1),
             model_id: "".to_string(),
-            prompt_tokens: vec![1, 2, 3],
+            prompt: "Hello, world!".to_string(),
             parameters: InferenceParams::default(),
         };
         assert!(invalid_model.validate().is_err());
 
-        let invalid_tokens = InferenceRequest {
+        let invalid_prompt = InferenceRequest {
             request_id: RequestId(1),
             model_id: "test".to_string(),
-            prompt_tokens: vec![],
+            prompt: "".to_string(),
             parameters: InferenceParams::default(),
         };
-        assert!(invalid_tokens.validate().is_err());
+        assert!(invalid_prompt.validate().is_err());
     }
 
     #[test]
     fn test_inference_response_success() {
-        let response = InferenceResponse::success(RequestId(1), vec![1, 2, 3], true);
+        let response = InferenceResponse::success(RequestId(1), "Generated text".to_string(), 5, true);
         assert_eq!(response.request_id.0, 1);
+        assert_eq!(response.output, "Generated text");
+        assert_eq!(response.tokens_generated, 5);
         assert!(response.finished);
         assert!(response.error.is_none());
     }
@@ -532,7 +540,7 @@ mod tests {
         let response = InferenceResponse::error(RequestId(1), "test error".to_string());
         assert!(response.finished);
         assert!(response.error.is_some());
-        assert!(response.output_tokens.is_empty());
+        assert!(response.output.is_empty());
     }
 
     #[test]

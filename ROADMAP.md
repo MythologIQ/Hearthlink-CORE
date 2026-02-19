@@ -1,7 +1,7 @@
 # Veritas SDR Feature Roadmap
 
 **Last Updated:** 2026-02-19
-**Version:** 0.6.0
+**Version:** 0.6.5
 
 ---
 
@@ -274,11 +274,12 @@ Veritas SDR is in pre-production status. Core functionality is complete and test
 - [x] Removed bincode (incompatible with internally-tagged enums)
 - [x] Version-pinned llama-cpp-2 to 0.1.133
 - [x] Added encoding_rs for UTF-8 token decoding
-- [x] Readable mock output for development mode
+- [x] Text-based IPC protocol (models handle tokenization internally)
+- [x] **No mock fallbacks** - all paths require real loaded models
 
 **Status:** Complete
 
-**Test Coverage:** 1,124 tests (100% pass rate)
+**Test Coverage:** 416 unit tests (100% pass rate)
 
 ---
 
@@ -324,6 +325,7 @@ Veritas SDR is in pre-production status. Core functionality is complete and test
 | **0.4.0** | Complete  | Observability, MoE                       |
 | **0.5.0** | Complete  | Enterprise features                      |
 | **0.6.0** | Complete  | Functional GGUF backend, IPC server      |
+| **0.6.5** | Complete  | Mock elimination, text-based IPC         |
 | **0.7.0** | Planned   | Security audit, deployments              |
 | **1.0.0** | Planned   | Production stable release                |
 

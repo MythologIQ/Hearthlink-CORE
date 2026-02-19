@@ -39,7 +39,7 @@ async fn request_queue_enqueue_dequeue() {
     let (id, position) = queue
         .enqueue(
             "model".to_string(),
-            vec![1, 2, 3],
+            "test prompt".to_string(),
             InferenceParams::default(),
             Priority::Normal,
         )
@@ -100,10 +100,12 @@ fn create_test_request(
     id: u64,
     token_count: usize,
 ) -> veritas_sdr::scheduler::QueuedRequest {
+    // Create prompt with ~4 chars per token (batch processor estimates tokens from bytes)
+    let prompt = "x".repeat(token_count * 4);
     veritas_sdr::scheduler::QueuedRequest::new(
         id,
         "test".to_string(),
-        vec![0; token_count],
+        prompt,
         InferenceParams::default(),
     )
 }

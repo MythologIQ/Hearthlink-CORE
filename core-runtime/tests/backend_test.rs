@@ -1,8 +1,10 @@
 //! TDD-Light tests for inference backends (ONNX and GGUF).
+//!
+//! Note: Tests that require actual inference return errors since no model is loaded.
+//! This is the correct behavior - no mock fallbacks.
 
 use veritas_sdr::engine::{
     InferenceCapability, InferenceConfig, InferenceError, InferenceInput,
-    InferenceOutput,
 };
 use veritas_sdr::engine::onnx::{OnnxClassifier, OnnxEmbedder, OnnxModel};
 use veritas_sdr::engine::gguf::{GgufGenerator, GgufModel};
@@ -34,7 +36,7 @@ async fn onnx_classifier_returns_model_id() {
 }
 
 #[tokio::test]
-async fn onnx_classifier_infers_text() {
+async fn onnx_classifier_infers_text_requires_loaded_model() {
     let classifier = OnnxClassifier::new(
         "test-classifier".to_string(),
         vec!["positive".to_string(), "negative".to_string()],
@@ -43,16 +45,9 @@ async fn onnx_classifier_infers_text() {
     let input = InferenceInput::Text("This is a test sentence.".to_string());
     let config = InferenceConfig::for_classification();
 
+    // No model loaded - should return error (no mock fallback)
     let result = classifier.infer(&input, &config).await;
-    assert!(result.is_ok());
-
-    match result.unwrap() {
-        InferenceOutput::Classification(cls) => {
-            assert!(!cls.label.is_empty());
-            assert!(cls.confidence > 0.0);
-        }
-        _ => panic!("Expected Classification output"),
-    }
+    assert!(matches!(result, Err(InferenceError::ModelError(_))));
 }
 
 #[tokio::test]
@@ -97,20 +92,15 @@ async fn onnx_embedder_has_correct_capabilities() {
 }
 
 #[tokio::test]
-async fn onnx_embedder_returns_correct_dimensions() {
+async fn onnx_embedder_requires_loaded_model() {
     let embedder = OnnxEmbedder::new("test-embedder".to_string(), 384);
 
     let input = InferenceInput::Text("Test text for embedding.".to_string());
     let config = InferenceConfig::for_embedding();
 
-    let result = embedder.infer(&input, &config).await.unwrap();
-    match result {
-        InferenceOutput::Embedding(emb) => {
-            assert_eq!(emb.dimensions, 384);
-            assert_eq!(emb.vector.len(), 384);
-        }
-        _ => panic!("Expected Embedding output"),
-    }
+    // No model loaded - should return error (no mock fallback)
+    let result = embedder.infer(&input, &config).await;
+    assert!(matches!(result, Err(InferenceError::ModelError(_))));
 }
 
 // ============================================================================
@@ -134,26 +124,19 @@ async fn gguf_generator_returns_model_id() {
 }
 
 #[tokio::test]
-async fn gguf_generator_generates_text() {
+async fn gguf_generator_requires_loaded_model() {
     let generator = GgufGenerator::new("test-generator".to_string(), 2048);
 
     let input = InferenceInput::Text("Once upon a time".to_string());
     let config = InferenceConfig::default();
 
+    // No model loaded - should return error (no mock fallback)
     let result = generator.infer(&input, &config).await;
-    assert!(result.is_ok());
-
-    match result.unwrap() {
-        InferenceOutput::Generation(gen) => {
-            assert!(!gen.text.is_empty());
-            assert!(gen.tokens_generated > 0);
-        }
-        _ => panic!("Expected Generation output"),
-    }
+    assert!(matches!(result, Err(InferenceError::ModelError(_))));
 }
 
 #[tokio::test]
-async fn gguf_generator_handles_chat_messages() {
+async fn gguf_generator_chat_requires_loaded_model() {
     use veritas_sdr::engine::{ChatMessage, ChatRole};
 
     let generator = GgufGenerator::new("test-generator".to_string(), 2048);
@@ -170,8 +153,9 @@ async fn gguf_generator_handles_chat_messages() {
     ]);
     let config = InferenceConfig::default();
 
+    // No model loaded - should return error (no mock fallback)
     let result = generator.infer(&input, &config).await;
-    assert!(result.is_ok());
+    assert!(matches!(result, Err(InferenceError::ModelError(_))));
 }
 
 #[tokio::test]

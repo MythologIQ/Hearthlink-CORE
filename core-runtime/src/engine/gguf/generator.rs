@@ -5,7 +5,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::engine::{
-    FinishReason, GenerationResult, InferenceCapability, InferenceConfig,
+    GenerationResult, InferenceCapability, InferenceConfig,
     InferenceError, InferenceInput, InferenceOutput,
 };
 
@@ -52,7 +52,7 @@ impl GgufGenerator {
     fn generate_text(
         &self,
         prompt: &str,
-        config: &InferenceConfig,
+        _config: &InferenceConfig,
     ) -> Result<GenerationResult, InferenceError> {
         if prompt.is_empty() {
             return Err(InferenceError::InputValidation(
@@ -65,22 +65,11 @@ impl GgufGenerator {
                 return inner.generate(prompt, config);
             }
         }
-        self.mock_generate(prompt, config)
-    }
-
-    fn mock_generate(
-        &self,
-        prompt: &str,
-        config: &InferenceConfig,
-    ) -> Result<GenerationResult, InferenceError> {
-        let max_tokens = config.max_tokens.unwrap_or(256);
-        let preview_len = prompt.len().min(20);
-        let text = format!("[Generated from: {}...]", &prompt[..preview_len]);
-        Ok(GenerationResult {
-            text,
-            tokens_generated: max_tokens.min(10),
-            finish_reason: FinishReason::MaxTokens,
-        })
+        // No model loaded - fail rather than return mock data
+        Err(InferenceError::ModelError(format!(
+            "model '{}' not loaded - cannot generate",
+            self.model_id
+        )))
     }
 
     /// Stream tokens for a prompt, sending each to the channel.

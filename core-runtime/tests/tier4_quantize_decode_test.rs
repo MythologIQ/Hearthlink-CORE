@@ -106,48 +106,38 @@ fn prefill_rejects_empty_prompt() {
 }
 
 #[test]
-fn decode_generates_tokens() {
+fn decode_requires_integrated_model() {
+    // DecodeExecutor.step() requires an integrated model - no mock fallback
     let config = DecodeConfig { hidden_dim: 4, eos_token: 999, speculative: None };
     let mut executor = DecodeExecutor::new(config);
     let mut page_table = PageTable::new(4, 10);
 
     executor.init(0);
-    let result = executor.step(&mut page_table, 10).unwrap();
+    let result = executor.step(&mut page_table, 10);
 
-    assert!(result.token.is_some());
-    assert!(!result.finished);
-    assert_eq!(executor.tokens_generated(), 1);
+    // Should fail because no model is loaded
+    assert!(result.is_err());
 }
 
 #[test]
-fn decode_respects_max_tokens() {
-    let config = DecodeConfig { hidden_dim: 4, eos_token: 999, speculative: None };
-    let mut executor = DecodeExecutor::new(config);
-    let mut page_table = PageTable::new(4, 10);
-
-    executor.init(0);
-
-    for _ in 0..5 {
-        executor.step(&mut page_table, 5).unwrap();
-    }
-
-    let result = executor.step(&mut page_table, 5).unwrap();
-    assert!(result.finished);
-    assert_eq!(result.finish_reason, Some(FinishReason::MaxTokens));
-}
-
-#[test]
-fn decode_uses_prefill_position() {
+fn decode_init_sets_position() {
+    // Test that init() properly sets the starting position
     let config = DecodeConfig { hidden_dim: 4, eos_token: 999, speculative: None };
     let mut executor = DecodeExecutor::new(config);
 
     executor.init(100);
     assert_eq!(executor.current_pos(), 100);
 
-    let mut page_table = PageTable::new(4, 20);
-    executor.step(&mut page_table, 10).unwrap();
+    executor.init(0);
+    assert_eq!(executor.current_pos(), 0);
+}
 
-    assert_eq!(executor.current_pos(), 101);
+#[test]
+fn decode_tokens_generated_starts_at_zero() {
+    let config = DecodeConfig { hidden_dim: 4, eos_token: 999, speculative: None };
+    let executor = DecodeExecutor::new(config);
+
+    assert_eq!(executor.tokens_generated(), 0);
 }
 
 #[test]

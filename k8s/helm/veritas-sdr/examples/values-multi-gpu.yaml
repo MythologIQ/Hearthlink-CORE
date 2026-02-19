@@ -10,7 +10,7 @@ replicaCount: 3
 image:
   repository: veritas-sdr/core
   pullPolicy: IfNotPresent
-  tag: "0.6.0"
+  tag: "0.6.5"
 
 # GPU resource allocation per pod
 resources:

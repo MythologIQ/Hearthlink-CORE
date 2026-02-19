@@ -130,7 +130,7 @@ fn test_inference_request_with_stream_flag() {
     let request = InferenceRequest {
         request_id: RequestId(100),
         model_id: "test-model".into(),
-        prompt_tokens: vec![1, 2, 3],
+        prompt: "test prompt for streaming".into(),
         parameters: params,
     };
 

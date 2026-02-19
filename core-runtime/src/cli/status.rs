@@ -571,7 +571,7 @@ mod tests {
             health: HealthState::Healthy,
             uptime_secs: 3600,
             version: VersionInfo {
-                version: "0.6.0".to_string(),
+                version: "0.6.5".to_string(),
                 commit: "abc123".to_string(),
                 build_date: "2026-02-18".to_string(),
                 rust_version: "1.75.0".to_string(),
