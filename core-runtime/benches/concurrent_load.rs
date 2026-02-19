@@ -8,10 +8,12 @@ use veritas_sdr::engine::InferenceParams;
 use veritas_sdr::scheduler::{Priority, PriorityQueue, QueuedRequest};
 
 fn create_request(id: u64, token_count: usize) -> QueuedRequest {
+    // Generate a prompt string of approximately the specified token count
+    let prompt = "test ".repeat(token_count);
     QueuedRequest::new(
         id,
         "test-model".to_string(),
-        (0..token_count).map(|i| i as u32).collect(),
+        prompt,
         InferenceParams {
             max_tokens: 100,
             temperature: 0.7,

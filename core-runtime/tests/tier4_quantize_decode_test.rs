@@ -3,7 +3,6 @@
 use veritas_sdr::engine::quantize::{QuantFormat, QuantizedTensor};
 use veritas_sdr::engine::prefill::{PrefillConfig, PrefillExecutor};
 use veritas_sdr::engine::decode::{DecodeConfig, DecodeExecutor};
-use veritas_sdr::engine::FinishReason;
 use veritas_sdr::memory::paged::PageTable;
 
 // ============================================================================

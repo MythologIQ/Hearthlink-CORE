@@ -4,9 +4,10 @@
 
 A security-first inference runtime for air-gapped and compliance-sensitive environments.
 
+[![Version](https://img.shields.io/badge/Version-0.6.7-orange.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Security](https://img.shields.io/badge/Security-Hardened-brightgreen.svg)](docs/security/THREAT_MODEL.md)
-[![Tests](https://img.shields.io/badge/Tests-416-blue.svg)](docs/testing/)
+[![Tests](https://img.shields.io/badge/Tests-424-blue.svg)](docs/testing/)
 
 ---
 

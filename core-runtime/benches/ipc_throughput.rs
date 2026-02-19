@@ -17,18 +17,16 @@ fn load_fixture(name: &str) -> serde_json::Value {
 }
 
 fn fixture_to_request(fixture: &serde_json::Value, request_id: u64) -> InferenceRequest {
-    let tokens: Vec<u32> = fixture["prompt_tokens"]
-        .as_array()
-        .expect("prompt_tokens must be array")
-        .iter()
-        .map(|v| v.as_u64().unwrap() as u32)
-        .collect();
+    let prompt = fixture["prompt"]
+        .as_str()
+        .expect("prompt must be a string")
+        .to_string();
 
     let params = &fixture["parameters"];
     InferenceRequest {
         request_id: RequestId(request_id),
         model_id: fixture["model_id"].as_str().unwrap().to_string(),
-        prompt_tokens: tokens,
+        prompt,
         parameters: InferenceParams {
             max_tokens: params["max_tokens"].as_u64().unwrap() as usize,
             temperature: params["temperature"].as_f64().unwrap() as f32,

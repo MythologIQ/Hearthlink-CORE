@@ -315,9 +315,11 @@ async fn fetch_status(socket_path: &str) -> Result<SystemStatus, CliError> {
                 .as_ref()
                 .map(|r| r.memory_used_bytes as u64)
                 .unwrap_or(memory_pool_bytes),
-            kv_cache_bytes: 0, // TODO: Add KV cache metrics
+            // KV cache metrics require IPC protocol extension (v0.7.0+)
+            kv_cache_bytes: 0,
             arena_bytes,
-            memory_limit_bytes: 0, // TODO: Add memory limit config
+            // Memory limit requires runtime config exposure (v0.7.0+)
+            memory_limit_bytes: 0,
             memory_utilization_percent: 0.0,
             cpu_utilization_percent: 0.0,
             active_threads: 0,
@@ -332,8 +334,10 @@ async fn fetch_status(socket_path: &str) -> Result<SystemStatus, CliError> {
             completed_requests: total_requests,
             avg_batch_size: 0.0,
         },
-        gpus: None, // TODO: Add GPU metrics collection
-        recent_events: vec![], // TODO: Add event log query
+        // GPU metrics require cuda/metal feature and device enumeration (v0.7.0+)
+        gpus: None,
+        // Event log requires telemetry event buffer (v0.7.0+)
+        recent_events: vec![]
     };
 
     Ok(status)

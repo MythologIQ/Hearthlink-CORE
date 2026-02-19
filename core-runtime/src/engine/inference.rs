@@ -192,4 +192,89 @@ impl InferenceEngine {
     pub async fn has_model(&self, model_id: &str) -> bool {
         self.models.read().await.contains_key(model_id)
     }
+
+    /// Get the ModelHandle for a model_id (for metrics attribution).
+    pub async fn get_handle(&self, model_id: &str) -> Option<ModelHandle> {
+        let handles = self.handle_to_id.read().await;
+        for (&handle_id, id) in handles.iter() {
+            if id == model_id {
+                return Some(ModelHandle::new(handle_id));
+            }
+        }
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inference_params_default_is_valid() {
+        let params = InferenceParams::default();
+        assert!(params.validate().is_ok());
+    }
+
+    #[test]
+    fn inference_params_rejects_zero_max_tokens() {
+        let params = InferenceParams {
+            max_tokens: 0,
+            ..Default::default()
+        };
+        assert!(params.validate().is_err());
+    }
+
+    #[test]
+    fn inference_params_rejects_negative_temperature() {
+        let params = InferenceParams {
+            temperature: -0.1,
+            ..Default::default()
+        };
+        assert!(params.validate().is_err());
+    }
+
+    #[test]
+    fn inference_params_rejects_invalid_top_p() {
+        let params = InferenceParams {
+            top_p: 0.0,
+            ..Default::default()
+        };
+        assert!(params.validate().is_err());
+
+        let params = InferenceParams {
+            top_p: 1.5,
+            ..Default::default()
+        };
+        assert!(params.validate().is_err());
+    }
+
+    #[tokio::test]
+    async fn engine_new_creates_empty_engine() {
+        let engine = InferenceEngine::new(4096);
+        assert_eq!(engine.max_context_length(), 4096);
+        assert!(!engine.has_model("any-model").await);
+    }
+
+    #[tokio::test]
+    async fn engine_get_handle_returns_none_for_unregistered() {
+        let engine = InferenceEngine::new(4096);
+        assert!(engine.get_handle("nonexistent").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn engine_run_fails_for_unloaded_model() {
+        let engine = InferenceEngine::new(4096);
+        let params = InferenceParams::default();
+        let result = engine.run("missing-model", "test prompt", &params).await;
+        assert!(matches!(result, Err(InferenceError::ModelNotLoaded(_))));
+    }
+
+    #[tokio::test]
+    async fn engine_run_by_handle_fails_for_unknown_handle() {
+        let engine = InferenceEngine::new(4096);
+        let params = InferenceParams::default();
+        let handle = ModelHandle::new(999);
+        let result = engine.run_by_handle(handle, "test", &params).await;
+        assert!(matches!(result, Err(InferenceError::ModelNotLoaded(_))));
+    }
 }

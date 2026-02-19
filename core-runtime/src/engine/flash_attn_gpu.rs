@@ -228,10 +228,10 @@ pub mod cuda_impl {
 
             // ... kernel launch would go here ...
 
-            // For now, return a placeholder
-            let output_size =
-                batch_size * self.config.seq_len * self.config.num_heads * self.config.head_dim;
-            Ok(vec![f16::from_f32(0.0); output_size])
+            // FAIL-FAST: kernel not yet implemented - do not return placeholder data
+            Err(FlashAttnGpuError::KernelLaunchFailed(
+                "CUDA Flash Attention kernel not implemented - production requires real kernel".into(),
+            ))
         }
 
         fn config(&self) -> &FlashAttnGpuConfig {
@@ -326,9 +326,10 @@ pub mod metal_impl {
 
             // ... kernel launch would go here ...
 
-            let output_size =
-                batch_size * self.config.seq_len * self.config.num_heads * self.config.head_dim;
-            Ok(vec![f16::from_f32(0.0); output_size])
+            // FAIL-FAST: kernel not yet implemented - do not return placeholder data
+            Err(FlashAttnGpuError::KernelLaunchFailed(
+                "Metal Flash Attention kernel not implemented - production requires real kernel".into(),
+            ))
         }
 
         fn config(&self) -> &FlashAttnGpuConfig {

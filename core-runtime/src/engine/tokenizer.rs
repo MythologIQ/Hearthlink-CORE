@@ -69,20 +69,21 @@ impl TokenizerWrapper {
     /// Encode text to token IDs.
     ///
     /// When a backend is loaded, uses llama-cpp-2 tokenization
-    /// (BOS is prepended by the backend). Returns empty vec otherwise.
+    /// (BOS is prepended by the backend). Returns error if no backend.
     pub fn encode(&self, text: &str) -> Result<Vec<u32>, TokenizerError> {
         #[cfg(feature = "gguf")]
         if let Some(be) = &self.backend {
             return encode_via_backend(be, text);
         }
+        // FAIL-FAST: no backend loaded - do not silently return empty
         let _ = text;
-        Ok(Vec::new())
+        Err(TokenizerError::NotLoaded)
     }
 
     /// Decode token IDs back to text.
     ///
     /// When a backend is loaded, uses llama-cpp-2 detokenization.
-    /// Returns empty string otherwise.
+    /// Returns error if no backend.
     pub fn decode(&self, tokens: &[u32]) -> Result<String, TokenizerError> {
         self.validate_tokens(tokens)?;
 
@@ -90,7 +91,8 @@ impl TokenizerWrapper {
         if let Some(be) = &self.backend {
             return decode_via_backend(be, tokens);
         }
-        Ok(String::new())
+        // FAIL-FAST: no backend loaded - do not silently return empty
+        Err(TokenizerError::NotLoaded)
     }
 
     pub fn eos_token(&self) -> u32 {
@@ -160,17 +162,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn stub_encode_returns_empty() {
+    fn stub_encode_returns_error() {
         let tw = TokenizerWrapper::new(32000, 2, 1);
-        let tokens = tw.encode("hello world").unwrap();
-        assert!(tokens.is_empty());
+        let result = tw.encode("hello world");
+        assert!(matches!(result, Err(TokenizerError::NotLoaded)));
     }
 
     #[test]
-    fn stub_decode_returns_empty() {
+    fn stub_decode_returns_error() {
         let tw = TokenizerWrapper::new(32000, 2, 1);
-        let text = tw.decode(&[1, 5, 10]).unwrap();
-        assert!(text.is_empty());
+        let result = tw.decode(&[1, 5, 10]);
+        assert!(matches!(result, Err(TokenizerError::NotLoaded)));
     }
 
     #[test]
@@ -207,25 +209,27 @@ mod tests {
     }
 
     #[test]
-    fn decode_empty_tokens_succeeds() {
+    fn decode_empty_tokens_returns_error() {
+        // With fail-fast, even empty tokens fail without backend
         let tw = TokenizerWrapper::new(32000, 2, 1);
-        let text = tw.decode(&[]).unwrap();
-        assert!(text.is_empty());
+        let result = tw.decode(&[]);
+        assert!(matches!(result, Err(TokenizerError::NotLoaded)));
     }
 
     #[test]
-    fn encode_empty_string_succeeds() {
+    fn encode_empty_string_returns_error() {
+        // With fail-fast, even empty string fails without backend
         let tw = TokenizerWrapper::new(32000, 2, 1);
-        let tokens = tw.encode("").unwrap();
-        assert!(tokens.is_empty());
+        let result = tw.encode("");
+        assert!(matches!(result, Err(TokenizerError::NotLoaded)));
     }
 
     #[test]
-    fn decode_boundary_token_valid() {
+    fn decode_boundary_token_returns_error() {
+        // Without backend, decode fails even for valid tokens
         let tw = TokenizerWrapper::new(100, 2, 1);
-        // Token 99 is the last valid ID (vocab_size=100 means 0..99)
         let result = tw.decode(&[99]);
-        assert!(result.is_ok());
+        assert!(matches!(result, Err(TokenizerError::NotLoaded)));
     }
 
     #[test]

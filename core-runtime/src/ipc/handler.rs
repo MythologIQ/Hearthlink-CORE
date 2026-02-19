@@ -11,11 +11,11 @@ use super::protocol::{
 };
 use crate::engine::InferenceEngine;
 use crate::health::HealthChecker;
-use crate::models::{ModelHandle, ModelRegistry};
+use crate::models::ModelRegistry;
 use crate::scheduler::Priority;
 use crate::scheduler::RequestQueue;
 use crate::shutdown::ShutdownCoordinator;
-use crate::telemetry::MetricsStore;
+use crate::telemetry::{self, MetricsStore};
 
 #[derive(Error, Debug)]
 pub enum HandlerError {
@@ -247,11 +247,21 @@ impl IpcHandler {
             .await
         {
             Ok(result) => {
-                // Record latency in model registry (using handle 0 for now)
-                let latency_ms = start.elapsed().as_millis() as f64;
-                self.model_registry
-                    .record_request(ModelHandle::new(0), latency_ms)
-                    .await;
+                let latency_ms = start.elapsed().as_millis() as u64;
+
+                // Record metrics via telemetry facade (Prometheus-compatible)
+                telemetry::record_request_success(
+                    &request.model_id,
+                    latency_ms,
+                    result.tokens_generated as u64,
+                );
+
+                // Also record in model registry with correct handle for per-model stats
+                if let Some(handle) = self.inference_engine.get_handle(&request.model_id).await {
+                    self.model_registry
+                        .record_request(handle, latency_ms as f64)
+                        .await;
+                }
 
                 InferenceResponse::success(
                     request.request_id,
@@ -260,7 +270,11 @@ impl IpcHandler {
                     result.finished,
                 )
             }
-            Err(e) => InferenceResponse::error(request.request_id, e.to_string()),
+            Err(e) => {
+                // Record failure metrics
+                telemetry::record_request_failure(&request.model_id, &e.to_string());
+                InferenceResponse::error(request.request_id, e.to_string())
+            }
         }
         // guard dropped here, decrementing in-flight count
     }

@@ -13,7 +13,6 @@ use super::inference::params_from_c;
 use super::runtime::CoreRuntime;
 use super::types::CoreInferenceParams;
 use crate::engine::TokenStream;
-use crate::models::ModelHandle;
 
 /// Streaming callback signature
 /// Return false to cancel streaming
@@ -91,7 +90,7 @@ pub unsafe extern "C" fn core_infer_streaming(
         return e.into();
     }
 
-    let _model_str = match CStr::from_ptr(model_id).to_str() {
+    let model_str = match CStr::from_ptr(model_id).to_str() {
         Ok(s) => s,
         Err(_) => {
             set_last_error("invalid UTF-8 in model_id");
@@ -114,7 +113,7 @@ pub unsafe extern "C" fn core_infer_streaming(
     };
 
     let result = rt.tokio.block_on(async {
-        stream_inference(&rt.inner, &tokens, &rust_params, &invoker).await
+        stream_inference(&rt.inner, model_str, &tokens, &rust_params, &invoker).await
     });
 
     match result {
@@ -135,27 +134,34 @@ pub unsafe extern "C" fn core_infer_streaming(
 /// Internal streaming inference implementation
 async fn stream_inference(
     runtime: &crate::Runtime,
+    model_id: &str,
     tokens: &[u32],
     params: &crate::engine::InferenceParams,
     invoker: &CallbackInvoker,
 ) -> Result<(), crate::engine::inference::InferenceError> {
-    // Create token stream
-    let (_sender, _stream) = TokenStream::new(32);
-
-    // Run inference (placeholder - actual impl would spawn task and send tokens)
-    let result = runtime
-        .inference_engine
-        .run(ModelHandle::new(0), tokens, params)
-        .await?;
-
-    // Stream output tokens
-    for (i, &token) in result.output_tokens.iter().enumerate() {
-        let is_final = i == result.output_tokens.len() - 1;
-        if !invoker.invoke(token, is_final, None) {
-            break;
-        }
+    // FAIL-FAST: v0.6.5 protocol is text-based
+    // Token-based FFI requires tokenizer to decode tokens to text.
+    // This path is deprecated - FFI consumers should migrate to text prompts.
+    if !tokens.is_empty() {
+        return Err(crate::engine::inference::InferenceError::InvalidParams(
+            "Token-based FFI streaming deprecated in v0.6.5. Use text prompts.".into(),
+        ));
     }
 
+    // Create token stream for future streaming implementation
+    let (_sender, _stream) = TokenStream::new(32);
+
+    // Run inference using text-based API with proper model lookup
+    let result = runtime
+        .inference_engine
+        .run(model_id, "", params)
+        .await?;
+
+    // Send completion callback (streaming would tokenize output)
+    invoker.invoke(0, true, None);
+
+    // Return success - tokens_generated is in the result
+    let _ = result.tokens_generated;
     Ok(())
 }
 
