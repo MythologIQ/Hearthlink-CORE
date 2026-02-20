@@ -16,7 +16,7 @@ pub struct GgufGenerator {
     #[allow(dead_code)]
     context_size: u32,
     #[cfg(feature = "gguf")]
-    inner: Option<super::super::backend::LlamaBackendInner>,
+    inner: Option<super::backend::LlamaBackendInner>,
 }
 
 impl GgufGenerator {
@@ -52,7 +52,7 @@ impl GgufGenerator {
     fn generate_text(
         &self,
         prompt: &str,
-        _config: &InferenceConfig,
+        config: &InferenceConfig,
     ) -> Result<GenerationResult, InferenceError> {
         if prompt.is_empty() {
             return Err(InferenceError::InputValidation(
@@ -65,6 +65,8 @@ impl GgufGenerator {
                 return inner.generate(prompt, config);
             }
         }
+        #[cfg(not(feature = "gguf"))]
+        let _ = config; // silence unused warning when gguf disabled
         // No model loaded - fail rather than return mock data
         Err(InferenceError::ModelError(format!(
             "model '{}' not loaded - cannot generate",
@@ -84,6 +86,38 @@ impl GgufGenerator {
             return inner.generate_stream(prompt, config, sender);
         }
         Err(InferenceError::ModelError("no model loaded".into()))
+    }
+
+    /// Generate N tokens from token context (for speculative decoding).
+    #[cfg(feature = "gguf")]
+    pub async fn generate_tokens(
+        &self,
+        context: &[u32],
+        count: usize,
+    ) -> Result<Vec<u32>, InferenceError> {
+        if let Some(inner) = &self.inner {
+            return inner.generate_from_tokens(context, count);
+        }
+        Err(InferenceError::ModelError("no model loaded".into()))
+    }
+
+    /// Verify draft tokens against model (for speculative decoding).
+    #[cfg(feature = "gguf")]
+    pub async fn verify_draft_tokens(
+        &self,
+        context: &[u32],
+        draft: &[u32],
+    ) -> Result<crate::engine::speculative::VerifyResult, InferenceError> {
+        if let Some(inner) = &self.inner {
+            return inner.verify_tokens(context, draft);
+        }
+        Err(InferenceError::ModelError("no model loaded".into()))
+    }
+
+    /// Get EOS token ID (for speculative decoding).
+    #[cfg(feature = "gguf")]
+    pub fn eos_token_id(&self) -> Option<u32> {
+        self.inner.as_ref().and_then(|i| i.eos_token())
     }
 
     /// Format chat messages into a prompt string.

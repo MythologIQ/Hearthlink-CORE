@@ -4,10 +4,11 @@
 
 A security-first inference runtime for air-gapped and compliance-sensitive environments.
 
-[![Version](https://img.shields.io/badge/Version-0.8.0-orange.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.8.1-orange.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Security](https://img.shields.io/badge/Security-Hardened-brightgreen.svg)](docs/security/THREAT_MODEL.md)
 [![Tests](https://img.shields.io/badge/Tests-424-blue.svg)](docs/testing/)
+[![E2E](https://img.shields.io/badge/E2E-Verified-brightgreen.svg)](core-runtime/tests/e2e_model_test.rs)
 
 ---
 
@@ -60,8 +61,9 @@ GG-CORE is a sandboxed, offline inference engine providing comprehensive securit
 | Single binary distribution    | MIT/Apache dependencies, static linking     |
 | Rust memory safety            | Language guarantee, no unsafe in core paths |
 | 361ns infrastructure overhead | Benchmark verified                          |
-| 416 tests (100% pass rate)    | Full test suite passing                     |
+| 424 tests (100% pass rate)    | Full test suite passing                     |
 | No mock fallbacks             | All paths require real loaded models        |
+| **E2E inference verified**    | Qwen 2.5 0.5B generates real text (~40 tok/s CPU) |
 
 ---
 
@@ -203,10 +205,21 @@ See [Threat Model](docs/security/THREAT_MODEL.md) for detailed security analysis
 
 | Metric                | Result     | Target    | Status    |
 | --------------------- | ---------- | --------- | --------- |
-| Generation Throughput | 12.5 tok/s | >10 tok/s | ✅ Tier 1 |
+| Generation Throughput | 40 tok/s   | >10 tok/s | ✅ Tier 1 |
 | Classification P95    | 85 ms      | <100 ms   | ✅ Tier 1 |
 | Embedding P95         | 42 ms      | <100 ms   | ✅ Tier 1 |
 | Memory Ratio          | 1.35x      | <1.5x     | ✅ Pass   |
+
+### Benchmark Hardware
+
+| Component | Specification |
+| --------- | ------------- |
+| CPU       | Intel Core i7-7700K (4c/8t @ 4.2 GHz) |
+| RAM       | 32 GB DDR4-2400 |
+| OS        | Windows 10 x64 |
+| Model     | Qwen 2.5 0.5B Q4_K_M (463 MiB) |
+
+*Higher-end CPUs (Ryzen 9, Intel 13th+) achieve proportionally faster results.*
 
 ### Tier 3 Optimizations
 
@@ -319,6 +332,7 @@ See [Usage Guide](docs/USAGE_GUIDE.md) for complete API documentation.
 
 | Document                                                   | Description                        |
 | ---------------------------------------------------------- | ---------------------------------- |
+| [Benchmarks](docs/BENCHMARKS.md)                           | Hardware specs and performance data |
 | [Tier 2 Report](docs/testing/TIER2_COMPLETION_REPORT.md)   | Competitive performance validation |
 | [Tier 3 Report](docs/testing/TIER3_OPTIMIZATION_REPORT.md) | Advanced optimization results      |
 

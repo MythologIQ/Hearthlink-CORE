@@ -50,9 +50,11 @@ This directory contains automation scripts for building, testing, and validating
 
 **Requirements:**
 
-- LLVM installed at `c:\program files\llvm\bin`
+- LLVM 15.0.7 installed at `C:\Program Files\llvm15.0.7\bin`
+  - **Note:** LLVM 22+ is incompatible with bindgen. Use LLVM 15.0.7 specifically.
 - libclang.dll present in LLVM bin directory
 - Cargo and Rust toolchain installed
+- Visual Studio 2022 (CMAKE_GENERATOR = "Visual Studio 17 2022")
 
 **Build time:** 10-15 minutes (initial), 1-2 minutes (incremental)
 
@@ -151,5 +153,5 @@ cargo bench --features onnx
 
 ---
 
-**Last Updated:** 2025-02-15  
-**Scripts Version:** 1.0
+**Last Updated:** 2026-02-20
+**Scripts Version:** 0.8.1

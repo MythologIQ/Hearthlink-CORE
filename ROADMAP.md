@@ -1,7 +1,7 @@
 # GG-CORE (Secure Performance-Accelerated Runtime Kernel) Feature Roadmap
 
-**Last Updated:** 2026-02-19
-**Version:** 0.6.5
+**Last Updated:** 2026-02-20
+**Version:** 0.8.1
 
 ---
 

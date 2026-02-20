@@ -1,6 +1,6 @@
 [package]
 name = "gg-core"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 description = "GG-CORE - Greatest Good - Contained Offline Restricted Execution runtime"
 license = "Apache-2.0"
@@ -161,7 +161,14 @@ harness = false
 
 [profile.release]
 opt-level = 3
-lto = true
+lto = "thin"
+codegen-units = 1
+
+[profile.release.build-override]
+opt-level = 3
+
+# For maximum CPU performance, build with:
+# RUSTFLAGS="-C target-cpu=native" cargo build --release --features gguf
 
 # FORBIDDEN DEPENDENCIES - DO NOT ADD:
 # reqwest - network access

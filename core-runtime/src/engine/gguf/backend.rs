@@ -84,7 +84,8 @@ impl LlamaBackendInner {
         let mut pos = tokens.len() as i32;
         let rt = tokio::runtime::Handle::current();
         for i in 0..max_tok {
-            let tok = sampler.sample(&ctx, pos - 1);
+            // Use -1 to sample from the last token that had logits computed
+            let tok = sampler.sample(&ctx, -1);
             sampler.accept(tok);
             let eog = self.model.is_eog_token(tok);
             let is_final = eog || i + 1 == max_tok;
@@ -98,6 +99,76 @@ impl LlamaBackendInner {
             pos += 1;
         }
         Ok(())
+    }
+
+    /// Generate N tokens from token IDs (for speculative decoding).
+    pub fn generate_from_tokens(
+        &self,
+        context: &[u32],
+        count: usize,
+    ) -> Result<Vec<u32>, InferenceError> {
+        let tokens: Vec<LlamaToken> = context.iter().map(|&t| LlamaToken(t as i32)).collect();
+        let config = InferenceConfig::default();
+        let mut ctx = self.create_context()?;
+        let mut batch = LlamaBatch::new(tokens.len().max(1), 1);
+        add_seq(&mut batch, &tokens)?;
+        decode(&mut ctx, &mut batch)?;
+        let mut sampler = build_sampler(&config);
+        sampler.accept_many(tokens.iter().copied());
+        let mut out = Vec::with_capacity(count);
+        let mut pos = tokens.len() as i32;
+        for _ in 0..count {
+            let tok = sampler.sample(&ctx, -1);
+            sampler.accept(tok);
+            if self.model.is_eog_token(tok) { break; }
+            out.push(tok.0 as u32);
+            batch.clear();
+            add_one(&mut batch, tok, pos)?;
+            decode(&mut ctx, &mut batch)?;
+            pos += 1;
+        }
+        Ok(out)
+    }
+
+    /// Verify draft tokens against model (for speculative decoding).
+    pub fn verify_tokens(
+        &self,
+        context: &[u32],
+        draft: &[u32],
+    ) -> Result<crate::engine::speculative::VerifyResult, InferenceError> {
+        use crate::engine::speculative::VerifyResult;
+        let all_tokens: Vec<LlamaToken> = context.iter()
+            .chain(draft.iter())
+            .map(|&t| LlamaToken(t as i32))
+            .collect();
+        let config = InferenceConfig::default();
+        let mut ctx = self.create_context()?;
+        // Add all tokens with logits enabled for verification positions
+        let mut batch = LlamaBatch::new(all_tokens.len(), 1);
+        let ctx_len = context.len();
+        for (i, &tok) in all_tokens.iter().enumerate() {
+            // Enable logits for context's last token and all draft positions
+            let needs_logits = i >= ctx_len.saturating_sub(1);
+            batch.add(tok, i as i32, &[0], needs_logits)
+                .map_err(|e| InferenceError::ModelError(format!("batch: {e}")))?;
+        }
+        decode(&mut ctx, &mut batch)?;
+        let mut sampler = build_sampler(&config);
+        // Verify each draft token
+        for (i, &draft_tok) in draft.iter().enumerate() {
+            let logit_idx = (ctx_len - 1 + i) as i32;
+            let predicted = sampler.sample(&ctx, logit_idx);
+            sampler.accept(predicted);
+            if predicted.0 as u32 != draft_tok {
+                return Ok(VerifyResult::diverge_at(i, predicted.0 as u32));
+            }
+        }
+        Ok(VerifyResult::accept_all(draft.len()))
+    }
+
+    /// Get EOS token ID.
+    pub fn eos_token(&self) -> Option<u32> {
+        Some(self.model.token_eos().0 as u32)
     }
 
     /// Tokenize a prompt string.
@@ -120,6 +191,8 @@ impl LlamaBackendInner {
     }
 
     fn create_context(&self) -> Result<LlamaContext<'_>, InferenceError> {
+        // Use same thread count for both - simpler and avoids cache contention
+        // llama.cpp internally optimizes based on workload
         let p = LlamaContextParams::default()
             .with_n_ctx(NonZeroU32::new(self.n_ctx))
             .with_n_threads(self.n_threads)
@@ -143,7 +216,8 @@ impl LlamaBackendInner {
         let mut out = Vec::new();
         let mut pos = tokens.len() as i32;
         for _ in 0..max_tok {
-            let tok = sampler.sample(ctx, pos - 1);
+            // Use -1 to sample from the last token that had logits computed
+            let tok = sampler.sample(ctx, -1);
             sampler.accept(tok);
             if self.model.is_eog_token(tok) {
                 return Ok((out, FinishReason::Stop));
@@ -159,8 +233,18 @@ impl LlamaBackendInner {
 }
 
 fn add_seq(batch: &mut LlamaBatch, tokens: &[LlamaToken]) -> Result<(), InferenceError> {
-    batch.add_sequence(tokens, 0, false)
-        .map_err(|e| InferenceError::ModelError(format!("batch: {e}")))
+    // Add all tokens except the last with logits=false
+    // Add the last token with logits=true so we can sample from it
+    let n = tokens.len();
+    if n == 0 {
+        return Ok(());
+    }
+    for (i, &tok) in tokens.iter().enumerate() {
+        let logits = i == n - 1; // Only compute logits for last token
+        batch.add(tok, i as i32, &[0], logits)
+            .map_err(|e| InferenceError::ModelError(format!("batch: {e}")))?;
+    }
+    Ok(())
 }
 
 fn add_one(batch: &mut LlamaBatch, tok: LlamaToken, pos: i32) -> Result<(), InferenceError> {
@@ -188,7 +272,12 @@ fn build_sampler(config: &InferenceConfig) -> LlamaSampler {
 
 fn resolve_threads(n: u32) -> i32 {
     if n == 0 {
-        i32::try_from(num_cpus::get().max(1).min(8)).unwrap_or(4)
+        // LLM inference is memory-bound, hyperthreads help hide latency
+        // Use all logical cores for small models, cap for large models
+        let logical = num_cpus::get();
+        // Cap at 16 to avoid diminishing returns on high-core systems
+        let optimal = logical.max(1).min(16);
+        i32::try_from(optimal).unwrap_or(4)
     } else {
         i32::try_from(n).unwrap_or(4)
     }

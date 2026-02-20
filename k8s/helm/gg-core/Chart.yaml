@@ -2,8 +2,8 @@ apiVersion: v2
 name: gg-core
 description: GG-CORE - Greatest Good - Contained Offline Restricted Execution runtime for AI inference
 type: application
-version: 0.7.0
-appVersion: "0.7.0"
+version: 0.8.1
+appVersion: "0.8.1"
 keywords:
   - ai
   - inference

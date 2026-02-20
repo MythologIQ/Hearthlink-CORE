@@ -1,7 +1,7 @@
 # Threat Model - COREFORGE CORE Runtime
 
-**Version:** 0.6.0
-**Document Date:** 2026-02-17
+**Version:** 0.8.1
+**Document Date:** 2026-02-20
 **Classification:** Internal / Audit Preparation
 **Framework:** STRIDE + Attack Trees
 

@@ -5,10 +5,14 @@
 #[cfg(feature = "gguf")]
 pub mod backend;
 mod generator;
+#[cfg(feature = "gguf")]
+pub mod speculative;
 
 pub use generator::GgufGenerator;
 #[cfg(feature = "gguf")]
 pub use backend::LlamaBackendInner;
+#[cfg(feature = "gguf")]
+pub use speculative::{GgufDraftModel, GgufTargetModel};
 
 use std::path::Path;
 use std::sync::Arc;

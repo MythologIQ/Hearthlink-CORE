@@ -231,6 +231,7 @@ impl InferenceEngine {
         })?;
 
         generator.generate_stream(prompt, config, sender)
+            .map_err(|e| InferenceError::ExecutionFailed(e.to_string()))
     }
 }
 

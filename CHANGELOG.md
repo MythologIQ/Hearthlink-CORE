@@ -2,6 +2,49 @@
 
 All notable changes to GG-CORE (Greatest Good - Contained Offline Restricted Execution) are documented in this file.
 
+## [0.8.1] - 2026-02-20
+
+### E2E Model Inference Verified
+
+This release fixes critical bugs in the GGUF backend and adds verified E2E testing with real models.
+
+#### Fixed
+
+- **GGUF Batch Logits** (`src/engine/gguf/backend.rs`): Fixed `add_seq()` to compute logits only for the last token in the prompt batch, required for sampling
+- **Sampler Index** (`src/engine/gguf/backend.rs`): Fixed `sampler.sample()` to use `-1` (last output) instead of sequence position, matching llama-cpp-2 API expectations
+
+#### Added
+
+- **Speculative Decoding for GGUF** (`src/engine/gguf/speculative.rs`): 2-3x CPU speedup via draft-verify loop
+  - `GgufDraftModel`: Wrapper implementing `DraftModel` trait
+  - `GgufTargetModel`: Wrapper implementing `TargetModel` trait
+  - Backend methods: `generate_from_tokens()`, `verify_tokens()`, `eos_token()`
+- **E2E Model Test** (`tests/e2e_model_test.rs`): Real model inference tests with Qwen 2.5 0.5B
+  - `e2e_load_and_generate`: Batch generation test
+  - `e2e_streaming_generation`: Token-by-token streaming test
+  - `e2e_chat_messages`: Chat message formatting with system/user roles
+  - `e2e_speculative_decoding`: Speculative decoding integration test
+  - `e2e_performance_benchmark`: Throughput measurement (tok/s)
+- **Test Scripts**: PowerShell build script for VS2022 + LLVM environment setup
+
+#### Verified
+
+- ✅ GGUF model loading (Qwen 2.5 0.5B, 463 MiB, Q4_K)
+- ✅ Batch generation (~40 tok/s on CPU release, ~21 tok/s debug)
+- ✅ Streaming generation (20 tokens via async channel)
+- ✅ Chat messages with role formatting
+- ✅ Flash Attention enabled automatically
+- ✅ Memory usage: 435 MiB model + 299 MiB compute + 6 MiB KV cache
+
+#### Benchmark Hardware
+
+- CPU: Intel Core i7-7700K (4c/8t @ 4.2 GHz)
+- RAM: 32 GB DDR4-2400
+- OS: Windows 10 x64
+- Build: Release with `lto = "thin"`, `codegen-units = 1`
+
+---
+
 ## [0.8.0] - 2026-02-19
 
 ### GG-CORE Rebrand & Extension Point Architecture

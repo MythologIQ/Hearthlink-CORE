@@ -1,7 +1,7 @@
 # Recommended Models for GG-CORE
 
-**Version**: 0.7.0
-**Last Updated**: 2026-02-19
+**Version**: 0.8.1
+**Last Updated**: 2026-02-20
 
 ---
 

@@ -5,14 +5,14 @@ Write-Host "=== GGUF Backend Build Script ===" -ForegroundColor Cyan
 Write-Host ""
 
 # Check if LLVM is installed
-$llvmPath = "c:\program files\llvm\bin"
+$llvmPath = "C:\Program Files\llvm15.0.7\bin"
 if (-not (Test-Path $llvmPath)) {
     Write-Host "ERROR: LLVM not found at $llvmPath" -ForegroundColor Red
     Write-Host "Please install LLVM first." -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host "✓ LLVM found at: $llvmPath" -ForegroundColor Green
+Write-Host "[OK] LLVM found at: $llvmPath" -ForegroundColor Green
 
 # Check if libclang.dll exists
 $libclangPath = Join-Path $llvmPath "libclang.dll"
@@ -25,19 +25,19 @@ if (-not (Test-Path $libclangPath)) {
     exit 1
 }
 
-Write-Host "✓ libclang.dll found" -ForegroundColor Green
+Write-Host "[OK] libclang.dll found" -ForegroundColor Green
 
 # Set environment variables
 $env:LIBCLANG_PATH = $llvmPath
-Write-Host "✓ LIBCLANG_PATH set to: $llvmPath" -ForegroundColor Green
+Write-Host "[OK] LIBCLANG_PATH set to: $llvmPath" -ForegroundColor Green
 
 # Add LLVM to PATH if not already there
 $currentPath = $env:PATH
 if ($currentPath -notlike "*llvm*bin*") {
     $env:PATH = "$llvmPath;$currentPath"
-    Write-Host "✓ LLVM added to PATH" -ForegroundColor Green
+    Write-Host "[OK] LLVM added to PATH" -ForegroundColor Green
 } else {
-    Write-Host "✓ LLVM already in PATH" -ForegroundColor Green
+    Write-Host "[OK] LLVM already in PATH" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -50,11 +50,11 @@ Set-Location -Path "g:\MythologIQ\CORE\core-runtime"
 try {
     cargo build --features gguf
     $exitCode = $LASTEXITCODE
-    
+
     if ($exitCode -eq 0) {
         Write-Host ""
         Write-Host "=== Build Successful ===" -ForegroundColor Green
-        Write-Host "✓ GGUF backend built successfully" -ForegroundColor Green
+        Write-Host "[OK] GGUF backend built successfully" -ForegroundColor Green
     } else {
         Write-Host ""
         Write-Host "=== Build Failed ===" -ForegroundColor Red

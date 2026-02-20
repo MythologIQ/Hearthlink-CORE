@@ -1,8 +1,8 @@
 # GG-CORE Documentation
 
-**Version:** 0.7.0
+**Version:** 0.8.1
 **License:** Apache 2.0
-**Last Updated:** 2026-02-19
+**Last Updated:** 2026-02-20
 
 ---
 

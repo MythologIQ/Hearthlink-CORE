@@ -1,7 +1,7 @@
 # Performance Baselines for Canary Analysis
 
-**Version:** 0.6.0  
-**Last Updated:** 2026-02-18  
+**Version:** 0.8.1
+**Last Updated:** 2026-02-20
 **Status:** Active
 
 ## Overview
