@@ -1,6 +1,6 @@
 # Cryptographic Design Document
 
-**Project:** Hearthlink CORE Runtime
+**Project:** COREFORGE CORE Runtime
 **Version:** 1.0.0
 **Last Updated:** 2026-02-18
 **Risk Grade:** L3 (Security-Critical)
@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-This document describes the cryptographic design of the Hearthlink CORE Runtime, covering encryption algorithms, key derivation, secure random number generation, and cryptographic protocol implementation.
+This document describes the cryptographic design of the COREFORGE CORE Runtime, covering encryption algorithms, key derivation, secure random number generation, and cryptographic protocol implementation.
 
 ### 1.1 Cryptographic Inventory
 

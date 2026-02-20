@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **GG-CORE** (Greatest Good - Contained Offline Restricted Execution) - A sandboxed, offline inference engine that performs model execution only and has no authority over data, tools, or system actions.
 
-Part of the Hearthlink stack: Control (governance) → Vault (data) → Construct (persona) → Synapse (external) → **GG-CORE** (compute only)
+Part of the COREFORGE stack: Control (governance) → Vault (data) → Construct (persona) → Synapse (external) → **GG-CORE** (compute only)
 
 **Philosophy**: Built on triage principles ("Greatest Good for the Greatest Number"). Resource-aware, multi-tenant AI that prioritizes system stability over individual request ego.
 

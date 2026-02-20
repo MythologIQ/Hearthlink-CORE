@@ -1,7 +1,7 @@
 #!/bin/bash
 # GG-CORE E2E Proof Script
 # GG-CORE = Greatest Good - Contained Offline Restricted Execution
-# Demonstrates Hearthlink integration compliance:
+# Demonstrates COREFORGE integration compliance:
 # 1. Load real GGUF model
 # 2. Run inference with meaningful output
 # 3. Show metrics increment
@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║  GG-CORE E2E Proof - Hearthlink Compliance             ║"
+echo "║  GG-CORE E2E Proof - COREFORGE Compliance             ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -170,5 +170,5 @@ echo "║  ✓ Metrics: Request/token counts incremented                ║"
 echo "║  ✓ Latency: Measured and reported                           ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
-echo "Hearthlink E2E requirements satisfied."
+echo "COREFORGE E2E requirements satisfied."
 echo ""

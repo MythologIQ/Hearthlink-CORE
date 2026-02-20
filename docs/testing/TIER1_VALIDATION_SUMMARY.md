@@ -1,14 +1,14 @@
 # Tier 1 Validation Summary
 
 **Date:** 2025-02-15  
-**Project:** Hearthlink CORE Runtime  
+**Project:** COREFORGE CORE Runtime  
 **Status:** Infrastructure Validation Complete | ONNX Backend Operational | GGUF Backend Blocked
 
 ---
 
 ## Executive Summary
 
-Tier 1 validation has been completed for the Hearthlink CORE Runtime infrastructure. All infrastructure benchmarks demonstrate excellent performance with a total overhead of **31.8 µs per request**, which is **0.032% of the 100ms classification target**. This leaves **99.968% of the latency budget** available for actual model inference.
+Tier 1 validation has been completed for the COREFORGE CORE Runtime infrastructure. All infrastructure benchmarks demonstrate excellent performance with a total overhead of **31.8 µs per request**, which is **0.032% of the 100ms classification target**. This leaves **99.968% of the latency budget** available for actual model inference.
 
 ### Key Findings
 
@@ -350,7 +350,7 @@ core-runtime/fixtures/
 
 ## Conclusion
 
-The Hearthlink CORE Runtime infrastructure has been successfully validated for Tier 1 requirements. All benchmarks demonstrate excellent performance with minimal overhead. The ONNX backend is fully operational and tested. The GGUF backend requires resolution of a bindgen DLL compatibility issue before validation can proceed.
+The COREFORGE CORE Runtime infrastructure has been successfully validated for Tier 1 requirements. All benchmarks demonstrate excellent performance with minimal overhead. The ONNX backend is fully operational and tested. The GGUF backend requires resolution of a bindgen DLL compatibility issue before validation can proceed.
 
 **Key Achievement:** Infrastructure overhead of 31.8 µs represents only 0.032% of the 100ms classification target, leaving 99.968% of the latency budget available for actual model inference.
 

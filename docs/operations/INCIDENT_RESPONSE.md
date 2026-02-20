@@ -2,9 +2,9 @@
 
 **Document Version:** 1.0.0
 **Last Updated:** 2026-02-18
-**Applies To:** Hearthlink CORE Runtime v0.6.0+
+**Applies To:** COREFORGE CORE Runtime v0.6.0+
 
-This document defines incident response procedures for the Hearthlink CORE Runtime, including severity classification, response workflows, and deployment-specific incident handling.
+This document defines incident response procedures for the COREFORGE CORE Runtime, including severity classification, response workflows, and deployment-specific incident handling.
 
 ---
 
@@ -388,7 +388,7 @@ GG-CORE telemetry status
 ### SEV1 Initial Notification
 
 ```
-[SEV1 INCIDENT] Hearthlink CORE Runtime - Complete Outage
+[SEV1 INCIDENT] COREFORGE CORE Runtime - Complete Outage
 
 Status: INVESTIGATING
 Impact: All inference requests failing
@@ -409,7 +409,7 @@ Incident Channel: #incident-YYYYMMDD-core
 ### SEV1 Update Template
 
 ```
-[SEV1 UPDATE] Hearthlink CORE Runtime
+[SEV1 UPDATE] COREFORGE CORE Runtime
 
 Status: MITIGATING / MONITORING / RESOLVED
 Time: YYYY-MM-DD HH:MM UTC
@@ -428,7 +428,7 @@ Next Update: [Time]
 ### SEV2 Initial Notification
 
 ```
-[SEV2 INCIDENT] Hearthlink CORE Runtime - Partial Degradation
+[SEV2 INCIDENT] COREFORGE CORE Runtime - Partial Degradation
 
 Status: INVESTIGATING
 Impact: [Description of affected functionality]
@@ -444,7 +444,7 @@ Next Update: [Time - within 1 hour]
 ### Resolution Notification
 
 ```
-[RESOLVED] Hearthlink CORE Runtime - [Incident Title]
+[RESOLVED] COREFORGE CORE Runtime - [Incident Title]
 
 Resolution Time: YYYY-MM-DD HH:MM UTC
 Duration: [X hours Y minutes]

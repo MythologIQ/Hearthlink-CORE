@@ -4,7 +4,7 @@
 **Version:** 0.1 (DRAFT)
 **Date:** 2026-02-18
 **Classification:** Internal / Compliance Preparation
-**Project:** Hearthlink CORE Runtime v0.6.0
+**Project:** COREFORGE CORE Runtime v0.6.0
 
 ---
 
@@ -22,7 +22,7 @@ This document is a **draft** security policy prepared in anticipation of future 
 
 | Attribute | Value |
 |-----------|-------|
-| Module Name | Hearthlink CORE Cryptographic Module |
+| Module Name | COREFORGE CORE Cryptographic Module |
 | Module Version | 0.6.0 |
 | Module Type | Software |
 | Cryptographic Boundary | Defined in Section 2 |
@@ -31,7 +31,7 @@ This document is a **draft** security policy prepared in anticipation of future 
 
 ### 1.2 Module Description
 
-The Hearthlink CORE Cryptographic Module provides cryptographic services for the CORE Runtime inference engine. It protects model files at rest and authenticates IPC sessions between the runtime and control plane.
+The COREFORGE CORE Cryptographic Module provides cryptographic services for the CORE Runtime inference engine. It protects model files at rest and authenticates IPC sessions between the runtime and control plane.
 
 ### 1.3 Approved Modes of Operation
 

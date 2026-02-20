@@ -346,7 +346,7 @@ These fields are present in `status --json` output but return placeholder values
 
 ## Contract Compliance
 
-This schema is FROZEN for Hearthlink integration. Any breaking changes require:
+This schema is FROZEN for COREFORGE integration. Any breaking changes require:
 
 1. Version bump (v0.7.0+)
 2. Migration notes with field diffs

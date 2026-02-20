@@ -4,13 +4,13 @@
 **Version:** 1.0
 **Date:** 2026-02-18
 **Classification:** Internal / Compliance Planning
-**Project:** Hearthlink CORE Runtime v0.6.0
+**Project:** COREFORGE CORE Runtime v0.6.0
 
 ---
 
 ## Executive Summary
 
-This document assesses the feasibility of achieving FIPS 140-2/140-3 compliance for the cryptographic operations within the Hearthlink CORE Runtime. The assessment covers the current cryptographic ecosystem, implementation options, and a cost-benefit analysis for different compliance paths.
+This document assesses the feasibility of achieving FIPS 140-2/140-3 compliance for the cryptographic operations within the COREFORGE CORE Runtime. The assessment covers the current cryptographic ecosystem, implementation options, and a cost-benefit analysis for different compliance paths.
 
 ### Key Findings
 

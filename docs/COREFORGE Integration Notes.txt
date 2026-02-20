@@ -1,4 +1,4 @@
-What I Integrated In Hearthlink (GG-CORE Runtime)
+What I Integrated In COREFORGE (GG-CORE Runtime)
 
 Runtime lifecycle + config state in Tauri backend
 Added full GG-CORE runtime state manager in gg_core_runtime.rs.
@@ -40,7 +40,7 @@ File:
 intelligence.rs
 reserve routing helper in model_router.rs
 IPC protocol compatibility updates for GG-CORE v0.6.5
-Updated Hearthlink GG-CORE IPC payload handling to v0.6.5 schema:
+Updated COREFORGE GG-CORE IPC payload handling to v0.6.5 schema:
 request uses prompt
 response uses output and tokens_generated
 Kept backward compatibility for older output_tokens.
@@ -66,7 +66,7 @@ What GG-CORE Builders Still Need To Complete (Precisely)
 
 Production-grade model load lifecycle inside runtime
 Runtime must support loading/unloading models through stable control path (CLI or IPC), not just docs/examples.
-Today, Hearthlink can register model metadata locally; runtime-side loaded model list must be authoritative and manageable.
+Today, COREFORGE can register model metadata locally; runtime-side loaded model list must be authoritative and manageable.
 Guaranteed real generation path for production builds
 No mock or synthetic generation output in production profile.
 Any mock/dev generation path must be gated behind explicit non-production feature flag and impossible in release artifacts.
@@ -88,10 +88,10 @@ Repeatability across restarts
 Operational metrics completion
 status --json has TODO fields still defaulting to zeros/null in several sections.
 For production observability, fill key metrics fields or mark unsupported fields explicitly.
-Contract freeze for Hearthlink integration
+Contract freeze for COREFORGE integration
 Freeze and version the runtime IPC schema for inference/diagnostics/model controls.
 If schema changes again, publish migration notes with exact field diffs and compatibility matrix.
 Current integration boundary
 
-Hearthlink-side integration is functionally wired and protocol-updated.
+COREFORGE-side integration is functionally wired and protocol-updated.
 Remaining blockers are runtime capability maturity and runtime model lifecycle guarantees from GG-CORE builders.

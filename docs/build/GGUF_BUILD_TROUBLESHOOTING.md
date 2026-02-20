@@ -8,7 +8,7 @@
 
 ## Problem Description
 
-When attempting to build the Hearthlink CORE Runtime with the GGUF feature enabled (`cargo build --features gguf`), the build fails with a bindgen error related to libclang compatibility.
+When attempting to build the COREFORGE CORE Runtime with the GGUF feature enabled (`cargo build --features gguf`), the build fails with a bindgen error related to libclang compatibility.
 
 ### Error Message
 

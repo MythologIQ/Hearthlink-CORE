@@ -1,4 +1,4 @@
-# Threat Model - Hearthlink CORE Runtime
+# Threat Model - COREFORGE CORE Runtime
 
 **Version:** 0.6.0
 **Document Date:** 2026-02-17
@@ -11,7 +11,7 @@
 
 ### 1.1 Purpose
 
-Hearthlink CORE Runtime is a sandboxed, offline inference engine that performs model execution only. It operates as a pure compute service with no authority over data, tools, or system actions.
+COREFORGE CORE Runtime is a sandboxed, offline inference engine that performs model execution only. It operates as a pure compute service with no authority over data, tools, or system actions.
 
 ### 1.2 Design Principles (C.O.R.E.)
 

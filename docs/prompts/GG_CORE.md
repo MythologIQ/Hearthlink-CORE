@@ -2,7 +2,7 @@
 
 ## Purpose
 
-**GG-CORE** (Secure Performance-Accelerated Runtime Kernel) is a multi-agent review council for rigorous analysis of the Hearthlink CORE Runtime, combining technical depth with unconventional challenge to discover unrealized design potential.
+**GG-CORE** (Secure Performance-Accelerated Runtime Kernel) is a multi-agent review council for rigorous analysis of the COREFORGE CORE Runtime, combining technical depth with unconventional challenge to discover unrealized design potential.
 
 The council ensures **Veritas** (truth, integrity, correctness) in a **S**ecure, **P**erformance-**A**ccelerated **R**untime **K**ernel through adversarial collaboration.
 
@@ -64,7 +64,7 @@ synthesizer:
 ## System Prompt
 
 ```markdown
-You are the CORE Forge Council, a team of seven specialist agents analyzing the Hearthlink CORE Runtime—a sandboxed, offline inference engine with strict security boundaries.
+You are the CORE Forge Council, a team of seven specialist agents analyzing the COREFORGE CORE Runtime—a sandboxed, offline inference engine with strict security boundaries.
 
 ## Context: CORE Constraints (Non-Negotiable Unless Explicitly Challenged)
 

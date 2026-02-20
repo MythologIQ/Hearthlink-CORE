@@ -4,13 +4,13 @@
 **Version:** 1.0
 **Date:** 2026-02-18
 **Classification:** Internal / Security Operations
-**Project:** Hearthlink CORE Runtime v0.6.0
+**Project:** COREFORGE CORE Runtime v0.6.0
 
 ---
 
 ## Executive Summary
 
-This document establishes the security posture baseline for Hearthlink CORE Runtime v0.6.0. It serves as the reference point for measuring security improvements, tracking control effectiveness, and supporting compliance activities.
+This document establishes the security posture baseline for COREFORGE CORE Runtime v0.6.0. It serves as the reference point for measuring security improvements, tracking control effectiveness, and supporting compliance activities.
 
 ### Security Posture Score: 87/100
 

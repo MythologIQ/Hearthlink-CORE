@@ -1,6 +1,6 @@
 # Testing Infrastructure
 
-This directory contains all testing infrastructure for the Hearthlink CORE Runtime.
+This directory contains all testing infrastructure for the COREFORGE CORE Runtime.
 
 ## Directory Structure
 

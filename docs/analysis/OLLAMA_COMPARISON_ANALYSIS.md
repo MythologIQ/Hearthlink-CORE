@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This document compares Hearthlink CORE Runtime's optimized infrastructure performance against Ollama's known performance characteristics.
+This document compares COREFORGE CORE Runtime's optimized infrastructure performance against Ollama's known performance characteristics.
 
 **Key Finding:** Our infrastructure overhead (~361 ns) is approximately **2,770x to 27,700x faster** than Ollama's HTTP API overhead (~1-10 ms), positioning us extremely well for competitive performance once model inference is integrated.
 
@@ -20,7 +20,7 @@ This document compares Hearthlink CORE Runtime's optimized infrastructure perfor
 
 ### Infrastructure Overhead
 
-| Component                | Hearthlink CORE | Ollama                   | Comparison                   |
+| Component                | COREFORGE CORE | Ollama                   | Comparison                   |
 | ------------------------ | --------------- | ------------------------ | ---------------------------- |
 | IPC/Communication        | 330.35 ns\*     | 1-10 ms (HTTP)           | **2,770x - 27,700x faster**  |
 | Memory Management        | 30.46 ns        | ~100-500 µs (Go GC)      | **3,284x - 16,417x faster**  |
@@ -31,7 +31,7 @@ This document compares Hearthlink CORE Runtime's optimized infrastructure perfor
 
 ### Latency Budget Comparison
 
-| Metric                  | Hearthlink CORE | Ollama                   | Advantage             |
+| Metric                  | COREFORGE CORE | Ollama                   | Advantage             |
 | ----------------------- | --------------- | ------------------------ | --------------------- |
 | Infrastructure Overhead | 361 ns          | 1,000-10,000 ns          | 2,770x - 27,700x      |
 | Available for Inference | 99,999,639 ns   | 99,990,000-99,000,000 ns | +9,639 - +999,639 ns  |
@@ -43,7 +43,7 @@ This document compares Hearthlink CORE Runtime's optimized infrastructure perfor
 
 ### 1. Communication Layer
 
-#### Hearthlink CORE (Optimized Binary IPC)
+#### COREFORGE CORE (Optimized Binary IPC)
 
 **Performance:**
 
@@ -85,13 +85,13 @@ This document compares Hearthlink CORE Runtime's optimized infrastructure perfor
 - ❌ Network stack involved (even localhost)
 - ❌ Multiple memory allocations
 
-**Comparison:** Hearthlink CORE is **2,770x - 27,700x faster** for communication.
+**Comparison:** COREFORGE CORE is **2,770x - 27,700x faster** for communication.
 
 ---
 
 ### 2. Memory Management
 
-#### Hearthlink CORE (Optimized Memory Pool)
+#### COREFORGE CORE (Optimized Memory Pool)
 
 **Performance:**
 
@@ -129,13 +129,13 @@ This document compares Hearthlink CORE Runtime's optimized infrastructure perfor
 - ❌ Higher memory overhead
 - ❌ GC tuning complexity
 
-**Comparison:** Hearthlink CORE is **3,284x - 16,417x faster** for memory management.
+**Comparison:** COREFORGE CORE is **3,284x - 16,417x faster** for memory management.
 
 ---
 
 ### 3. Request Scheduling
 
-#### Hearthlink CORE (Optimized Scheduler)
+#### COREFORGE CORE (Optimized Scheduler)
 
 **Performance:**
 
@@ -174,7 +174,7 @@ This document compares Hearthlink CORE Runtime's optimized infrastructure perfor
 - ❌ Channel communication overhead
 - ❌ Context switching costs
 
-**Comparison:** Hearthlink CORE is **14,925x - 74,627x faster** for request scheduling.
+**Comparison:** COREFORGE CORE is **14,925x - 74,627x faster** for request scheduling.
 
 ---
 
@@ -197,7 +197,7 @@ This document compares Hearthlink CORE Runtime's optimized infrastructure perfor
 
 ### Projected Performance
 
-**Hearthlink CORE (Projected):**
+**COREFORGE CORE (Projected):**
 
 | Component              | Latency       | % of Total |
 | ---------------------- | ------------- | ---------- |
@@ -228,7 +228,7 @@ This document compares Hearthlink CORE Runtime's optimized infrastructure perfor
 
 ### Strengths vs Ollama
 
-#### Hearthlink CORE Advantages
+#### COREFORGE CORE Advantages
 
 1. **Infrastructure Overhead**
    - 2,770x - 27,700x faster communication
@@ -274,7 +274,7 @@ This document compares Hearthlink CORE Runtime's optimized infrastructure perfor
 
 ### Competitive Benchmarks
 
-| Metric                  | Hearthlink CORE | Ollama    | Target  | Status                 |
+| Metric                  | COREFORGE CORE | Ollama    | Target  | Status                 |
 | ----------------------- | --------------- | --------- | ------- | ---------------------- |
 | Infrastructure Overhead | 361 ns          | 1-10 ms   | <1 ms   | ✅ 2,770x faster       |
 | Total Latency (GGUF)    | ~50-80 ms\*     | ~51-90 ms | <100 ms | 🔄 Pending measurement |
@@ -354,7 +354,7 @@ To be competitive with Ollama, we need to achieve:
 
 ### Competitive Outlook
 
-**Hearthlink CORE** has a **significant architectural advantage** in infrastructure performance, which translates to:
+**COREFORGE CORE** has a **significant architectural advantage** in infrastructure performance, which translates to:
 
 1. **Lower latency ceiling** - Our infrastructure overhead is negligible compared to Ollama's
 2. **Higher throughput potential** - Faster request processing enables more concurrent requests

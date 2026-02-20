@@ -2,9 +2,9 @@
 
 **Document Version:** 1.0.0
 **Last Updated:** 2026-02-18
-**Applies To:** Hearthlink CORE Runtime v0.6.0+
+**Applies To:** COREFORGE CORE Runtime v0.6.0+
 
-This guide provides diagnostic procedures and resolution steps for common deployment issues in the Hearthlink CORE Runtime.
+This guide provides diagnostic procedures and resolution steps for common deployment issues in the COREFORGE CORE Runtime.
 
 ---
 

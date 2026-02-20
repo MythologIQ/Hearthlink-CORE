@@ -7,7 +7,7 @@
 ## Overview
 
 This document defines performance baselines and thresholds for automated canary
-deployment decisions in Hearthlink CORE Runtime. These metrics ensure safe
+deployment decisions in COREFORGE CORE Runtime. These metrics ensure safe
 progressive rollouts with automatic rollback on performance degradation.
 
 ---

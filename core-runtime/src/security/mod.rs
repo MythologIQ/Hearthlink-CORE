@@ -1,4 +1,4 @@
-//! Security module for Hearthlink CORE
+//! Security module for COREFORGE CORE
 //!
 //! This module provides comprehensive security features including:
 //! - Prompt injection protection

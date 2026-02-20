@@ -1,6 +1,6 @@
 # GG-CORE E2E Proof Script
 # GG-CORE = Greatest Good - Contained Offline Restricted Execution
-# Demonstrates Hearthlink integration compliance:
+# Demonstrates COREFORGE integration compliance:
 # 1. Load real GGUF model
 # 2. Run inference with meaningful output
 # 3. Show metrics increment
@@ -17,7 +17,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║  GG-CORE E2E Proof - Hearthlink Compliance             ║" -ForegroundColor Cyan
+Write-Host "║  GG-CORE E2E Proof - COREFORGE Compliance             ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 
@@ -199,5 +199,5 @@ Write-Host "║  ✓ Metrics: Request/token counts incremented                �
 Write-Host "║  ✓ Latency: Measured and reported                           ║" -ForegroundColor Green
 Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
-Write-Host "Hearthlink E2E requirements satisfied." -ForegroundColor Cyan
+Write-Host "COREFORGE E2E requirements satisfied." -ForegroundColor Cyan
 Write-Host ""

@@ -1,6 +1,6 @@
 # Core Runtime Automation Scripts
 
-This directory contains automation scripts for building, testing, and validating the Hearthlink CORE Runtime.
+This directory contains automation scripts for building, testing, and validating the COREFORGE CORE Runtime.
 
 ## Available Scripts
 

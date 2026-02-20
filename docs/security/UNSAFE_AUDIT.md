@@ -1,6 +1,6 @@
 # Unsafe Code Audit Report
 
-**Project:** Hearthlink CORE Runtime
+**Project:** COREFORGE CORE Runtime
 **Version:** 1.0.0
 **Last Updated:** 2026-02-18
 **Risk Grade:** L3 (Security-Critical)
@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-This document provides a comprehensive audit of all `unsafe` blocks in the Hearthlink CORE Runtime codebase. Each unsafe block is documented with its safety invariants, justification, and risk assessment.
+This document provides a comprehensive audit of all `unsafe` blocks in the COREFORGE CORE Runtime codebase. Each unsafe block is documented with its safety invariants, justification, and risk assessment.
 
 ### 1.1 Unsafe Code Statistics
 

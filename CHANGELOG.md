@@ -83,7 +83,7 @@ New streaming protocol (backward compatible):
 
 ### Production Safety Fixes
 
-This release focuses on production safety and fail-fast behavior for the Hearthlink integration.
+This release focuses on production safety and fail-fast behavior for the COREFORGE integration.
 
 #### Fixed
 

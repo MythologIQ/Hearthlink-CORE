@@ -11,7 +11,7 @@ set -e
   
 echo "=========================================="  
   
-echo "Hearthlink CORE Runtime - Security Tests"  
+echo "COREFORGE CORE Runtime - Security Tests"  
   
 echo "=========================================="  
   

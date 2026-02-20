@@ -22,7 +22,7 @@ SHA256(CONCEPT.md + ARCHITECTURE_PLAN.md)
 
 **Previous Hash**: GENESIS (no predecessor)
 
-**Decision**: Project DNA initialized. Hearthlink CORE Runtime - sandboxed offline inference engine.
+**Decision**: Project DNA initialized. COREFORGE CORE Runtime - sandboxed offline inference engine.
 
 **Lifecycle**: ALIGN/ENCODE complete.
 
@@ -5472,10 +5472,10 @@ SHA256(content_hash + previous_hash)
 
 **Timestamp**: 2026-02-19T12:00:00+00:00
 **Phase**: IMPLEMENT
-**Author**: Forge Team + Hearthlink Agent
+**Author**: Forge Team + COREFORGE Agent
 **Risk Grade**: L3
 
-**Target**: Production Safety Fixes for Hearthlink Integration
+**Target**: Production Safety Fixes for COREFORGE Integration
 
 **Summary**: Critical production safety fixes addressing fail-fast behavior for placeholder implementations, proper metrics attribution, and text-based IPC protocol alignment.
 

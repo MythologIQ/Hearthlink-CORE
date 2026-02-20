@@ -4,14 +4,14 @@
 **Version:** 1.0
 **Date:** 2026-02-18
 **Classification:** Internal / Audit Records
-**Project:** Hearthlink CORE Runtime v0.6.0
+**Project:** COREFORGE CORE Runtime v0.6.0
 **Audit Period:** 2026-02-01 to 2026-02-18
 
 ---
 
 ## Executive Summary
 
-This internal security audit report documents the security posture of the Hearthlink CORE Runtime v0.6.0. The audit was conducted to establish a security baseline, identify vulnerabilities, and verify remediation of previously identified issues.
+This internal security audit report documents the security posture of the COREFORGE CORE Runtime v0.6.0. The audit was conducted to establish a security baseline, identify vulnerabilities, and verify remediation of previously identified issues.
 
 ### Audit Verdict: PASS
 
@@ -416,7 +416,7 @@ Verified absence of forbidden network dependencies:
 
 ### Audit Certification
 
-This audit certifies that Hearthlink CORE Runtime v0.6.0 meets the security requirements for internal deployment. The identified low-severity findings are accepted with documented mitigations.
+This audit certifies that COREFORGE CORE Runtime v0.6.0 meets the security requirements for internal deployment. The identified low-severity findings are accepted with documented mitigations.
 
 | Aspect | Certification |
 |--------|---------------|
