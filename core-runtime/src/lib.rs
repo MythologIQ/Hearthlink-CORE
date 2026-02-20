@@ -1,15 +1,19 @@
-//! Veritas SPARK - Secure Performance-Accelerated Runtime Kernel
-//!
-//! **Veritas** (Truth, Integrity, Correctness) + **SPARK** (Secure Performance-Accelerated Runtime Kernel)
+//! GG-CORE - Greatest Good - Contained Offline Restricted Execution
 //!
 //! A sandboxed, offline inference engine that performs model execution only.
 //! No authority over data, tools, or system actions.
 //!
-//! # Design Principles
+//! # Philosophy
 //!
-//! - **Secure**: Sandbox with no ambient privileges, comprehensive input/output validation
-//! - **Deterministic**: No GC pauses, predictable latency, reproducible results
-//! - **Veritas**: Truth in outputs, integrity in execution, correctness in behavior
+//! Built on triage principles ("Greatest Good for the Greatest Number").
+//! Resource-aware AI that prioritizes system stability over individual request ego.
+//!
+//! # Design Principles (C.O.R.E.)
+//!
+//! - **Contained**: Sandbox with no ambient privileges
+//! - **Offline**: Zero network access (inbound/outbound blocked)
+//! - **Restricted**: IPC-only communication with authenticated callers
+//! - **Execution**: Pure compute, no business logic or decision authority
 //!
 //! # Security Boundaries
 //!
@@ -40,6 +44,10 @@ pub mod cli;
 
 // Deployment automation (v0.6.0)
 pub mod deployment;
+
+// Request shim interface (v0.8.0)
+// Extension point for commercial multi-tenant features (GG-CORE Nexus)
+pub mod shim;
 
 // C FFI module (v0.3.1)
 #[cfg(feature = "ffi")]

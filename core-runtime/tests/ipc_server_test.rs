@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use veritas_sdr::ipc::{ConnectionConfig, ConnectionPool};
+use gg_core::ipc::{ConnectionConfig, ConnectionPool};
 
 // ---------------------------------------------------------------------------
 // Framing helpers (mirrors server.rs read_frame / write_frame)
@@ -37,8 +37,8 @@ async fn read_frame<R: AsyncReadExt + Unpin>(r: &mut R) -> Vec<u8> {
 // Helpers: build a test IpcHandler via Runtime
 // ---------------------------------------------------------------------------
 
-fn test_handler() -> Arc<veritas_sdr::ipc::IpcHandler> {
-    let rt = veritas_sdr::Runtime::new(veritas_sdr::RuntimeConfig {
+fn test_handler() -> Arc<gg_core::ipc::IpcHandler> {
+    let rt = gg_core::Runtime::new(gg_core::RuntimeConfig {
         auth_token: "test-token".into(),
         ..Default::default()
     });
@@ -165,7 +165,7 @@ mod windows_server_tests {
         let server_handler = Arc::clone(&handler);
         let server_pool = Arc::clone(&pool);
         let server = tokio::spawn(async move {
-            veritas_sdr::ipc::server::run_server(
+            gg_core::ipc::server::run_server(
                 server_pipe, server_handler, server_pool, rx,
             )
             .await
@@ -206,7 +206,7 @@ mod windows_server_tests {
         let sh = Arc::clone(&handler);
         let sc = Arc::clone(&pool);
         let server = tokio::spawn(async move {
-            veritas_sdr::ipc::server::run_server(sp, sh, sc, rx).await
+            gg_core::ipc::server::run_server(sp, sh, sc, rx).await
         });
 
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -240,7 +240,7 @@ mod windows_server_tests {
         let sh = Arc::clone(&handler);
         let sc = Arc::clone(&pool);
         let server = tokio::spawn(async move {
-            veritas_sdr::ipc::server::run_server(sp, sh, sc, rx).await
+            gg_core::ipc::server::run_server(sp, sh, sc, rx).await
         });
 
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -276,7 +276,7 @@ mod windows_server_tests {
         let sh = Arc::clone(&handler);
         let sc = Arc::clone(&pool);
         let server = tokio::spawn(async move {
-            veritas_sdr::ipc::server::run_server(sp, sh, sc, rx).await
+            gg_core::ipc::server::run_server(sp, sh, sc, rx).await
         });
 
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -306,7 +306,7 @@ mod windows_server_tests {
         let sh = Arc::clone(&handler);
         let sc = Arc::clone(&pool);
         let server = tokio::spawn(async move {
-            veritas_sdr::ipc::server::run_server(sp, sh, sc, rx).await
+            gg_core::ipc::server::run_server(sp, sh, sc, rx).await
         });
 
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -337,7 +337,7 @@ mod windows_server_tests {
 
 #[test]
 fn test_server_error_io_display() {
-    use veritas_sdr::ipc::server::ServerError;
+    use gg_core::ipc::server::ServerError;
     let err = ServerError::Io(std::io::Error::new(
         std::io::ErrorKind::AddrInUse,
         "in use",
@@ -347,7 +347,7 @@ fn test_server_error_io_display() {
 
 #[test]
 fn test_server_error_frame_too_large_display() {
-    use veritas_sdr::ipc::server::ServerError;
+    use gg_core::ipc::server::ServerError;
     let err = ServerError::FrameTooLarge {
         size: 100,
         max: 50,

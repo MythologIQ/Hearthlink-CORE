@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 use std::time::Duration;
-use veritas_sdr::models::{
+use gg_core::models::{
     FlightTracker, ModelArchitecture, ModelCapability, ModelManifest, ModelRegistry, ModelRouter,
     SwapError, SwapManager,
 };
@@ -40,7 +40,7 @@ async fn test_zero_downtime_swap() {
     // Setup initial model
     let old_handle = registry
         .register(
-            veritas_sdr::models::ModelMetadata {
+            gg_core::models::ModelMetadata {
                 name: "old-model".to_string(),
                 size_bytes: 1024,
             },
@@ -80,7 +80,7 @@ async fn test_swap_with_drain_timeout() {
     // Setup initial model
     let old_handle = registry
         .register(
-            veritas_sdr::models::ModelMetadata {
+            gg_core::models::ModelMetadata {
                 name: "old-model".to_string(),
                 size_bytes: 1024,
             },
@@ -125,7 +125,7 @@ async fn test_swap_preload_failure_rollback() {
     // Setup initial model
     let old_handle = registry
         .register(
-            veritas_sdr::models::ModelMetadata {
+            gg_core::models::ModelMetadata {
                 name: "old-model".to_string(),
                 size_bytes: 1024,
             },
@@ -156,7 +156,7 @@ async fn test_concurrent_swap_rejected() {
     // Setup initial model
     let old_handle = registry
         .register(
-            veritas_sdr::models::ModelMetadata {
+            gg_core::models::ModelMetadata {
                 name: "old-model".to_string(),
                 size_bytes: 1024,
             },
@@ -207,7 +207,7 @@ async fn test_swap_manager_is_idle_after_completion() {
     // Setup initial model
     let old_handle = registry
         .register(
-            veritas_sdr::models::ModelMetadata {
+            gg_core::models::ModelMetadata {
                 name: "old-model".to_string(),
                 size_bytes: 1024,
             },

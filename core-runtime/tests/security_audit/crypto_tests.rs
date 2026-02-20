@@ -2,7 +2,7 @@
 //!
 //! Tests validating cryptographic correctness and resistance to attacks.
 
-use veritas_sdr::security::encryption::{ModelEncryption, KEY_SIZE, NONCE_SIZE};
+use gg_core::security::encryption::{ModelEncryption, KEY_SIZE, NONCE_SIZE};
 use std::collections::HashSet;
 use std::time::Instant;
 

@@ -1,7 +1,7 @@
-What I Integrated In Hearthlink (Veritas Runtime)
+What I Integrated In Hearthlink (GG-CORE Runtime)
 
 Runtime lifecycle + config state in Tauri backend
-Added full Veritas runtime state manager in veritas_runtime.rs.
+Added full GG-CORE runtime state manager in gg_core_runtime.rs.
 Supports configure/start/stop/status with persisted in-memory state.
 Config fields now include:
 binary_path
@@ -15,54 +15,54 @@ register/list/remove models
 assign model per persona
 query active persona model
 Files:
-veritas_runtime.rs
+gg_core_runtime.rs
 command wiring in main.rs
-Synapse download-to-Veritas flow
-Added command to download model artifacts and register them in Veritas runtime state.
+Synapse download-to-GG-CORE flow
+Added command to download model artifacts and register them in GG-CORE runtime state.
 Includes checksum verification and audit logging.
 Files:
 marketplace.rs
 command registration in main.rs
 bridge updates in SynapseBridge.ts, MarketplaceBridge.ts, agents.ts
 Frontend bridge support
-Added Veritas bridge with typed methods for all runtime operations:
+Added GG-CORE bridge with typed methods for all runtime operations:
 configure/start/stop/status
 register/list/switch/remove/getPersonaModel
 infer
 diagnostics
 Files:
-VeritasBridge.ts
+GgCoreBridge.ts
 export in index.ts
 Inference path integration in app logic
-intelligence_generate now tries Veritas first when a persona has a Veritas model mapping, then falls back to Ollama path.
+intelligence_generate now tries GG-CORE first when a persona has a GG-CORE model mapping, then falls back to Ollama path.
 Also includes reserve model fallback logic for Ollama path.
 File:
 intelligence.rs
 reserve routing helper in model_router.rs
-IPC protocol compatibility updates for Veritas v0.6.5
-Updated Hearthlink Veritas IPC payload handling to v0.6.5 schema:
+IPC protocol compatibility updates for GG-CORE v0.6.5
+Updated Hearthlink GG-CORE IPC payload handling to v0.6.5 schema:
 request uses prompt
 response uses output and tokens_generated
 Kept backward compatibility for older output_tokens.
 File:
-veritas_runtime.rs
+gg_core_runtime.rs
 Diagnostics integration
-Added Tauri command that executes veritas-spark status --json and returns parsed JSON for UI/automation.
+Added Tauri command that executes gg-core-cli status --json and returns parsed JSON for UI/automation.
 File:
-veritas_runtime.rs
+gg_core_runtime.rs
 Safety guards to avoid fake/stub output surfacing
 Detects and rejects mock output patterns so app falls back safely.
 Added readable-output checks and explicit failure messages.
 File:
-veritas_runtime.rs
+gg_core_runtime.rs
 Validation I ran
 cargo check on src-tauri repeatedly passed after each integration slice.
-Veritas runtime tests run in external/Veritas-SPARK/core-runtime:
+GG-CORE runtime tests run in external/GG-CORE/core-runtime:
 ipc_server_test passed
 integration_end_to_end_test passed
 Live smoke:
-veritas-spark serve + veritas-spark status --json returned healthy.
-What Veritas Builders Still Need To Complete (Precisely)
+gg-core-cli serve + gg-core-cli status --json returned healthy.
+What GG-CORE Builders Still Need To Complete (Precisely)
 
 Production-grade model load lifecycle inside runtime
 Runtime must support loading/unloading models through stable control path (CLI or IPC), not just docs/examples.
@@ -78,7 +78,7 @@ ffi/streaming placeholder path must be completed or clearly disabled.
 Streaming inference should emit real chunks and final state consistently.
 Model identity correctness
 Inference must always resolve actual loaded model by model_id; no fallback handles or implicit defaults.
-Errors must be explicit when model isn’t loaded.
+Errors must be explicit when model isn't loaded.
 E2E proof with loaded model
 Required evidence from builders:
 Load real GGUF/ONNX model
@@ -94,4 +94,4 @@ If schema changes again, publish migration notes with exact field diffs and comp
 Current integration boundary
 
 Hearthlink-side integration is functionally wired and protocol-updated.
-Remaining blockers are runtime capability maturity and runtime model lifecycle guarantees from Veritas builders.
+Remaining blockers are runtime capability maturity and runtime model lifecycle guarantees from GG-CORE builders.

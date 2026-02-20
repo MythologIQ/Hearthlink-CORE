@@ -2,37 +2,37 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}
+  name: {{ include "gg-core.fullname" . }}
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
+    {{- include "gg-core.labels" . | nindent 4 }}
 rules:
   # Minimal permissions - read-only access to own namespace resources
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get", "list", "watch"]
-  - apiGroups: ["veritas.io"]
-    resources: ["veritasmodels"]
+  - apiGroups: ["gg-core.io"]
+    resources: ["ggcoremodels"]
     verbs: ["get", "list", "watch"]
   # Canary and Blue-Green CRD access (read-only for runtime)
-  - apiGroups: ["veritas.hearthlink.ai"]
-    resources: ["veritascanaries", "veritasenvironments"]
+  - apiGroups: ["gg-core.hearthlink.ai"]
+    resources: ["ggcorecanaries", "ggcoreenvironments"]
     verbs: ["get", "list", "watch"]
-  - apiGroups: ["veritas.hearthlink.ai"]
-    resources: ["veritascanaries/status", "veritasenvironments/status"]
+  - apiGroups: ["gg-core.hearthlink.ai"]
+    resources: ["ggcorecanaries/status", "ggcoreenvironments/status"]
     verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}
+  name: {{ include "gg-core.fullname" . }}
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
+    {{- include "gg-core.labels" . | nindent 4 }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "veritas-spark.serviceAccountName" . }}
+    name: {{ include "gg-core.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role
-  name: {{ include "veritas-spark.fullname" . }}
+  name: {{ include "gg-core.fullname" . }}
   apiGroup: rbac.authorization.k8s.io
 {{- end }}

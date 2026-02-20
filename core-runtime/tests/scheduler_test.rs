@@ -1,7 +1,7 @@
 //! TDD-Light tests for scheduler module.
 
-use veritas_sdr::engine::InferenceParams;
-use veritas_sdr::scheduler::{
+use gg_core::engine::InferenceParams;
+use gg_core::scheduler::{
     BatchConfig, BatchProcessor, Priority, PriorityQueue, RequestQueue,
     RequestQueueConfig, ThreadPoolConfig,
 };
@@ -99,10 +99,10 @@ fn batch_processor_respects_token_limit() {
 fn create_test_request(
     id: u64,
     token_count: usize,
-) -> veritas_sdr::scheduler::QueuedRequest {
+) -> gg_core::scheduler::QueuedRequest {
     // Create prompt with ~4 chars per token (batch processor estimates tokens from bytes)
     let prompt = "x".repeat(token_count * 4);
-    veritas_sdr::scheduler::QueuedRequest::new(
+    gg_core::scheduler::QueuedRequest::new(
         id,
         "test".to_string(),
         prompt,

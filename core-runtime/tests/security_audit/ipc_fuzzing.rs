@@ -2,11 +2,11 @@
 //!
 //! Tests for malformed messages, boundary conditions, and protocol violations.
 
-use veritas_sdr::ipc::protocol::{
+use gg_core::ipc::protocol::{
     decode_message, decode_message_binary, encode_message, encode_message_binary,
     IpcMessage, InferenceRequest, RequestId, HealthCheckType, ProtocolError,
 };
-use veritas_sdr::engine::InferenceParams;
+use gg_core::engine::InferenceParams;
 
 /// Reject message exceeding size limit.
 #[test]

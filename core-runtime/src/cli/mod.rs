@@ -1,7 +1,7 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-//! CLI module for Veritas SPARK runtime commands.
+//! CLI module for GG-CORE runtime commands.
 //!
 //! Provides subcommands for health checks via IPC, enabling K8s exec probes
 //! without requiring HTTP endpoints. Maintains the Alcatraz principle.
@@ -9,10 +9,10 @@
 //! ## Usage
 //!
 //! ```bash
-//! veritas-spark health   # Full health check, exits 0 on healthy
-//! veritas-spark live     # Liveness probe, exits 0 if alive
-//! veritas-spark ready    # Readiness probe, exits 0 if ready
-//! veritas-spark status   # Show system status and statistics
+//! GG-CORE health   # Full health check, exits 0 on healthy
+//! GG-CORE live     # Liveness probe, exits 0 if alive
+//! GG-CORE ready    # Readiness probe, exits 0 if ready
+//! GG-CORE status   # Show system status and statistics
 //! ```
 
 pub mod health;
@@ -25,10 +25,10 @@ pub use status::{run_status, SystemStatus};
 
 /// Default socket path for IPC communication.
 #[cfg(unix)]
-pub const DEFAULT_SOCKET_PATH: &str = "/var/run/veritas/veritas-spark.sock";
+pub const DEFAULT_SOCKET_PATH: &str = "/var/run/veritas/GG-CORE.sock";
 
 #[cfg(windows)]
-pub const DEFAULT_SOCKET_PATH: &str = r"\\.\pipe\veritas-spark";
+pub const DEFAULT_SOCKET_PATH: &str = r"\\.\pipe\GG-CORE";
 
 /// Get socket path from environment or use default.
 pub fn get_socket_path() -> String {
@@ -42,13 +42,13 @@ mod tests {
     #[test]
     fn test_default_socket_path_unix() {
         #[cfg(unix)]
-        assert_eq!(DEFAULT_SOCKET_PATH, "/var/run/veritas/veritas-spark.sock");
+        assert_eq!(DEFAULT_SOCKET_PATH, "/var/run/veritas/GG-CORE.sock");
     }
 
     #[test]
     fn test_default_socket_path_windows() {
         #[cfg(windows)]
-        assert_eq!(DEFAULT_SOCKET_PATH, r"\\.\pipe\veritas-spark");
+        assert_eq!(DEFAULT_SOCKET_PATH, r"\\.\pipe\GG-CORE");
     }
 
     #[test]

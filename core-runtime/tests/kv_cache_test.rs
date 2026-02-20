@@ -8,7 +8,7 @@
 //! - Multi-sequence management
 //! - Memory tracking
 
-use veritas_sdr::memory::{EvictionPolicy, KvCacheConfig, KvCacheManager, SequenceId};
+use gg_core::memory::{EvictionPolicy, KvCacheConfig, KvCacheManager, SequenceId};
 
 /// Create a test configuration.
 fn test_config() -> KvCacheConfig {

@@ -10,7 +10,7 @@
 
 This guide will get you from zero to running your first LLM inference in approximately 10 minutes. By the end, you'll have:
 
-- A running Veritas SPARK deployment
+- A running GG-CORE deployment
 - A loaded model ready for inference
 - A successful test inference
 
@@ -53,21 +53,21 @@ kubectl describe nodes | grep nvidia.com/gpu
 ## Step 1: Add Helm Repository (1 minute)
 
 ```bash
-# Add the Veritas SPARK Helm repository
-helm repo add veritas-spark https://charts.veritas-spark.io
+# Add the GG-CORE Helm repository
+helm repo add GG-CORE https://charts.GG-CORE.io
 
 # Update repository
 helm repo update
 
 # Verify chart is available
-helm search repo veritas-spark
+helm search repo GG-CORE
 ```
 
 **Expected Output:**
 
 ```
 NAME                    CHART VERSION   APP VERSION     DESCRIPTION
-veritas-spark/veritas-spark 0.6.0           0.6.0           Secure LLM Inference Runtime
+GG-CORE/GG-CORE 0.7.0           0.7.0           Secure LLM Inference Runtime
 ```
 
 ---
@@ -76,22 +76,22 @@ veritas-spark/veritas-spark 0.6.0           0.6.0           Secure LLM Inference
 
 ```bash
 # Create dedicated namespace
-kubectl create namespace veritas-spark
+kubectl create namespace GG-CORE
 
 # Set as default for subsequent commands
-kubectl config set-context --current --namespace=veritas-spark
+kubectl config set-context --current --namespace=GG-CORE
 ```
 
 ---
 
-## Step 3: Deploy Veritas SPARK (3 minutes)
+## Step 3: Deploy GG-CORE (3 minutes)
 
 ### Option A: Quick Development Deployment (CPU-only)
 
 ```bash
 # Deploy with minimal configuration for evaluation
-helm install veritas-spark veritas-spark/veritas-spark \
-  --namespace veritas-spark \
+helm install GG-CORE GG-CORE/GG-CORE \
+  --namespace GG-CORE \
   --set replicaCount=1 \
   --set resources.limits.cpu=2 \
   --set resources.limits.memory=4Gi \
@@ -104,8 +104,8 @@ helm install veritas-spark veritas-spark/veritas-spark \
 
 ```bash
 # Deploy with GPU support
-helm install veritas-spark veritas-spark/veritas-spark \
-  --namespace veritas-spark \
+helm install GG-CORE GG-CORE/GG-CORE \
+  --namespace GG-CORE \
   --set replicaCount=1 \
   --set resources.limits.nvidia.com/gpu=1 \
   --set model.enabled=true \
@@ -116,11 +116,11 @@ helm install veritas-spark veritas-spark/veritas-spark \
 
 ```bash
 # Download example values file
-curl -O https://raw.githubusercontent.com/veritas-spark/charts/main/examples/values-dev.yaml
+curl -O https://raw.githubusercontent.com/GG-CORE/charts/main/examples/values-dev.yaml
 
 # Deploy with example values
-helm install veritas-spark veritas-spark/veritas-spark \
-  --namespace veritas-spark \
+helm install GG-CORE GG-CORE/GG-CORE \
+  --namespace GG-CORE \
   -f values-dev.yaml
 ```
 
@@ -141,32 +141,32 @@ kubectl get pods -w
 
 ```
 NAME                           READY   STATUS    RESTARTS   AGE
-veritas-spark-6f8b9c4d-xyz12     0/1     Pending   0          0s
-veritas-spark-6f8b9c4d-xyz12     0/1     ContainerCreating   0   2s
-veritas-spark-6f8b9c4d-xyz12     1/1     Running   0          45s
+GG-CORE-6f8b9c4d-xyz12     0/1     Pending   0          0s
+GG-CORE-6f8b9c4d-xyz12     0/1     ContainerCreating   0   2s
+GG-CORE-6f8b9c4d-xyz12     1/1     Running   0          45s
 ```
 
 ### Check Deployment Health
 
 ```bash
 # Check deployment status
-kubectl get deployment veritas-spark
+kubectl get deployment GG-CORE
 
 # Check service
-kubectl get svc veritas-spark
+kubectl get svc GG-CORE
 
 # Check model loading
-kubectl logs -l app.kubernetes.io/name=veritas-spark --tail=50 | grep -i model
+kubectl logs -l app.kubernetes.io/name=GG-CORE --tail=50 | grep -i model
 ```
 
 ### Run Verification Command
 
 ```bash
-# If veritas-spark CLI is installed
-veritas-spark verify
+# If GG-CORE CLI is installed
+GG-CORE verify
 
 # Or use kubectl
-kubectl exec -it deployment/veritas-spark -- veritas-spark-verify
+kubectl exec -it deployment/GG-CORE -- GG-CORE-verify
 ```
 
 **Expected Output:**
@@ -187,7 +187,7 @@ kubectl exec -it deployment/veritas-spark -- veritas-spark-verify
 
 ```bash
 # Forward local port to service
-kubectl port-forward svc/veritas-spark 8080:8080 &
+kubectl port-forward svc/GG-CORE 8080:8080 &
 
 # Wait for port forward to establish
 sleep 2
@@ -255,7 +255,7 @@ curl -X POST http://localhost:8080/v1/completions \
 curl http://localhost:8080/v1/models
 
 # Or via kubectl
-kubectl exec -it deployment/veritas-spark -- veritas-spark models list
+kubectl exec -it deployment/GG-CORE -- GG-CORE models list
 ```
 
 ### View Metrics
@@ -272,10 +272,10 @@ curl http://localhost:8080/metrics | grep -E "veritas_(requests|latency|tokens)"
 
 ```bash
 # View recent logs
-kubectl logs -l app.kubernetes.io/name=veritas-spark --tail=100
+kubectl logs -l app.kubernetes.io/name=GG-CORE --tail=100
 
 # Follow logs
-kubectl logs -f -l app.kubernetes.io/name=veritas-spark
+kubectl logs -f -l app.kubernetes.io/name=GG-CORE
 ```
 
 ---
@@ -286,7 +286,7 @@ kubectl logs -f -l app.kubernetes.io/name=veritas-spark
 
 ```bash
 # Check events
-kubectl describe pod -l app.kubernetes.io/name=veritas-spark
+kubectl describe pod -l app.kubernetes.io/name=GG-CORE
 
 # Common causes:
 # - Insufficient resources: Reduce resource requests
@@ -298,7 +298,7 @@ kubectl describe pod -l app.kubernetes.io/name=veritas-spark
 
 ```bash
 # Check model loading logs
-kubectl logs -l app.kubernetes.io/name=veritas-spark | grep -i "model\|error"
+kubectl logs -l app.kubernetes.io/name=GG-CORE | grep -i "model\|error"
 
 # Common causes:
 # - Insufficient memory: Use quantized model
@@ -310,11 +310,11 @@ kubectl logs -l app.kubernetes.io/name=veritas-spark | grep -i "model\|error"
 
 ```bash
 # Check service
-kubectl get svc veritas-spark
-kubectl describe svc veritas-spark
+kubectl get svc GG-CORE
+kubectl describe svc GG-CORE
 
 # Check endpoints
-kubectl get endpoints veritas-spark
+kubectl get endpoints GG-CORE
 
 # Verify port forward is running
 ps aux | grep port-forward
@@ -330,7 +330,7 @@ kubectl describe nodes | grep -A 10 "nvidia.com/gpu"
 kubectl get pods -n gpu-operator
 
 # Verify GPU driver
-kubectl exec -it deployment/veritas-spark -- nvidia-smi
+kubectl exec -it deployment/GG-CORE -- nvidia-smi
 ```
 
 ---
@@ -339,20 +339,20 @@ kubectl exec -it deployment/veritas-spark -- nvidia-smi
 
 ```bash
 # Uninstall Helm release
-helm uninstall veritas-spark --namespace veritas-spark
+helm uninstall GG-CORE --namespace GG-CORE
 
 # Delete namespace
-kubectl delete namespace veritas-spark
+kubectl delete namespace GG-CORE
 
 # Remove Helm repository (optional)
-helm repo remove veritas-spark
+helm repo remove GG-CORE
 ```
 
 ---
 
 ## Next Steps
 
-1. **Configuration:** See [values.yaml examples](../../k8s/helm/veritas-spark/examples/) for production configurations
+1. **Configuration:** See [values.yaml examples](../../k8s/helm/GG-CORE/examples/) for production configurations
 2. **Deployment Strategies:** Read [ADR-006](../architecture/ADR-006-DEPLOYMENT-STRATEGIES.md) for canary/blue-green deployments
 3. **Security:** Review [Security Posture Baseline](../security/SECURITY_POSTURE_BASELINE.md) for production hardening
 4. **Operations:** Check [Deployment Troubleshooting](./DEPLOYMENT_TROUBLESHOOTING.md) for common issues
@@ -364,10 +364,10 @@ helm repo remove veritas-spark
 
 | Resource           | Link                                       |
 | ------------------ | ------------------------------------------ |
-| Documentation      | https://docs.veritas-spark.io                |
-| GitHub Issues      | https://github.com/veritas-spark/core/issues |
-| Community Slack    | https://slack.veritas-spark.io               |
-| Enterprise Support | support@veritas-spark.io                     |
+| Documentation      | https://docs.GG-CORE.io                |
+| GitHub Issues      | https://github.com/GG-CORE/core/issues |
+| Community Slack    | https://slack.GG-CORE.io               |
+| Enterprise Support | support@GG-CORE.io                     |
 
 ---
 
@@ -377,25 +377,25 @@ helm repo remove veritas-spark
 
 ```bash
 # Install
-helm install veritas-spark veritas-spark/veritas-spark -n veritas-spark
+helm install GG-CORE GG-CORE/GG-CORE -n GG-CORE
 
 # Upgrade
-helm upgrade veritas-spark veritas-spark/veritas-spark -n veritas-spark
+helm upgrade GG-CORE GG-CORE/GG-CORE -n GG-CORE
 
 # Rollback
-helm rollback veritas-spark -n veritas-spark
+helm rollback GG-CORE -n GG-CORE
 
 # Uninstall
-helm uninstall veritas-spark -n veritas-spark
+helm uninstall GG-CORE -n GG-CORE
 
 # Check status
-kubectl get all -n veritas-spark
+kubectl get all -n GG-CORE
 
 # View logs
-kubectl logs -f -l app.kubernetes.io/name=veritas-spark -n veritas-spark
+kubectl logs -f -l app.kubernetes.io/name=GG-CORE -n GG-CORE
 
 # Port forward
-kubectl port-forward svc/veritas-spark 8080:8080 -n veritas-spark
+kubectl port-forward svc/GG-CORE 8080:8080 -n GG-CORE
 
 # Test inference
 curl http://localhost:8080/v1/models
@@ -431,4 +431,4 @@ gpu:
 
 ---
 
-**Congratulations!** You've successfully deployed Veritas SPARK and run your first inference. Welcome to secure, production-ready LLM inference!
+**Congratulations!** You've successfully deployed GG-CORE and run your first inference. Welcome to secure, production-ready LLM inference!

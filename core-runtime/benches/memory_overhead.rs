@@ -4,7 +4,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
-use veritas_sdr::memory::{MemoryPool, MemoryPoolConfig, ResourceLimits, ResourceLimitsConfig};
+use gg_core::memory::{MemoryPool, MemoryPoolConfig, ResourceLimits, ResourceLimitsConfig};
 
 fn bench_memory_pool_acquire(c: &mut Criterion) {
     let mut group = c.benchmark_group("memory_pool_acquire");

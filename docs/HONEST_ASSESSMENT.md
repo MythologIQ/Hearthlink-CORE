@@ -1,4 +1,4 @@
-# Veritas SPARK: Honest Assessment
+# GG-CORE: Honest Assessment
 
 **Document Purpose:** Transparent, evidence-based evaluation of claims
 **Date:** 2026-02-16
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Veritas SPARK (Secure Performance-Accelerated Runtime Kernel) is a **security-first inference runtime** with real advantages for specific use cases. This document provides an honest assessment of what we've built, what's verified, and what needs validation.
+GG-CORE (Greatest Good - Contained Offline Restricted Execution) is a **security-first inference runtime** with real advantages for specific use cases. This document provides an honest assessment of what we've built, what's verified, and what needs validation.
 
 ---
 
@@ -57,7 +57,7 @@ Veritas SPARK (Secure Performance-Accelerated Runtime Kernel) is a **security-fi
 | Architecture          | Overhead | Why                                              |
 | --------------------- | -------- | ------------------------------------------------ |
 | **HTTP/REST**         | 1-10 ms  | JSON serialization, TCP handshake, HTTP parsing  |
-| **IPC (Veritas SPARK)** | 361 ns   | Binary protocol, shared memory, no network stack |
+| **IPC (GG-CORE)** | 361 ns   | Binary protocol, shared memory, no network stack |
 
 **The math:** HTTP is inherently slower. Our advantage is choosing NOT to use HTTP, not inventing faster IPC.
 
@@ -67,10 +67,10 @@ Veritas SPARK (Secure Performance-Accelerated Runtime Kernel) is a **security-fi
 
 ### Why This Matters
 
-Veritas SPARK uses llama.cpp bindings (`llama-cpp-2` crate). The fair comparison is:
+GG-CORE uses llama.cpp bindings (`llama-cpp-2` crate). The fair comparison is:
 
 ```
-Veritas SPARK overhead = Veritas SPARK latency - llama.cpp CLI latency
+GG-CORE overhead = GG-CORE latency - llama.cpp CLI latency
 ```
 
 ### What We Expect
@@ -150,7 +150,7 @@ Veritas SPARK overhead = Veritas SPARK latency - llama.cpp CLI latency
 
 # Measurements
 - llama.cpp CLI: time to first token, tokens/sec, total latency
-- Veritas SPARK: same metrics + security overhead breakdown
+- GG-CORE: same metrics + security overhead breakdown
 
 # Expected outcome
 - Quantify exact overhead of security features
@@ -171,9 +171,9 @@ Veritas SPARK overhead = Veritas SPARK latency - llama.cpp CLI latency
 
 ## 6. Competitive Positioning (Honest)
 
-### Where Veritas SPARK Wins
+### Where GG-CORE Wins
 
-| Use Case                           | Why Veritas SPARK                       |
+| Use Case                           | Why GG-CORE                       |
 | ---------------------------------- | ------------------------------------- |
 | **Air-gapped environments**        | No network, no external dependencies  |
 | **Compliance-heavy industries**    | Built-in audit logging, PII detection |
@@ -191,7 +191,7 @@ Veritas SPARK overhead = Veritas SPARK latency - llama.cpp CLI latency
 
 ### Honest Comparison Matrix
 
-| Feature               | Veritas SPARK      | Ollama      | vLLM        | llama.cpp |
+| Feature               | GG-CORE      | Ollama      | vLLM        | llama.cpp |
 | --------------------- | ---------------- | ----------- | ----------- | --------- |
 | **Security features** | ✅ Comprehensive | ⚠️ Basic    | ⚠️ Basic    | ❌ None   |
 | **Air-gapped**        | ✅ Native        | ⚠️ Possible | ⚠️ Possible | ✅ Yes    |
@@ -237,5 +237,5 @@ Veritas SPARK overhead = Veritas SPARK latency - llama.cpp CLI latency
 
 ---
 
-Copyright 2024-2026 Veritas SPARK Contributors  
+Copyright 2024-2026 GG-CORE Contributors  
 Licensed under the Apache License, Version 2.0

@@ -5,9 +5,9 @@
 
 use std::path::PathBuf;
 use std::time::Instant;
-use veritas_sdr::engine::onnx::OnnxDevice;
-use veritas_sdr::engine::{ClassificationResult, InferenceInput, InferenceOutput, OnnxConfig};
-use veritas_sdr::models::ModelLoader;
+use gg_core::engine::onnx::OnnxDevice;
+use gg_core::engine::{ClassificationResult, InferenceInput, InferenceOutput, OnnxConfig};
+use gg_core::models::ModelLoader;
 
 /// Get the path to the tinybert-classifier.onnx model
 fn get_tinybert_model_path() -> PathBuf {

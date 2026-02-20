@@ -24,13 +24,13 @@ This guide provides diagnostic procedures and resolution steps for common deploy
 
 ```bash
 # Overall deployment status
-veritas-spark deployment status
+GG-CORE deployment status
 
 # Check all pod health
-kubectl get pods -l app=veritas-spark -o wide
+kubectl get pods -l app=GG-CORE -o wide
 
 # Quick health check
-veritas-spark health
+GG-CORE health
 
 # View recent events
 kubectl get events --sort-by=.lastTimestamp | tail -20
@@ -41,9 +41,9 @@ kubectl get events --sort-by=.lastTimestamp | tail -20
 | Check | Command | Healthy | Degraded | Critical |
 |-------|---------|---------|----------|----------|
 | Pods | kubectl get pods | All Running | Some NotReady | CrashLoopBackOff |
-| Health | veritas-spark health | Exit 0 | - | Exit 1 |
+| Health | GG-CORE health | Exit 0 | - | Exit 1 |
 | Metrics | curl :9090/metrics | 200 OK | Partial data | Connection refused |
-| IPC | veritas-spark ready | Exit 0 | Timeout | Exit 1 |
+| IPC | GG-CORE ready | Exit 0 | Timeout | Exit 1 |
 
 ---
 
@@ -53,26 +53,26 @@ kubectl get events --sort-by=.lastTimestamp | tail -20
 
 **Symptoms:**
 - Canary pods running but no requests
-- veritas_spark_requests_total{deployment="canary"} = 0
+- gg_core_requests_total{deployment="canary"} = 0
 - Traffic weight set but not effective
 
 **Diagnostic Steps:**
 
 ```bash
 # 1. Check canary resource status
-veritas-spark canary inspect
+GG-CORE canary inspect
 
 # 2. Verify traffic weight configuration
 kubectl get veritascanary -o jsonpath="{.items[*].spec.trafficWeight}"
 
 # 3. Check service endpoints
-kubectl get endpoints veritas-spark-canary
+kubectl get endpoints GG-CORE-canary
 
 # 4. Verify pod labels match service selector
 kubectl get pods -l deployment=canary --show-labels
 
 # 5. Check service mesh configuration (if using Istio)
-kubectl get virtualservice veritas-spark -o yaml
+kubectl get virtualservice GG-CORE -o yaml
 ```
 
 **Resolution:**
@@ -99,7 +99,7 @@ kubectl get virtualservice veritas-spark -o yaml
 kubectl exec -it <canary-pod> -- curl -s localhost:9090/metrics | head
 
 # 2. Verify ServiceMonitor exists
-kubectl get servicemonitor veritas-spark-canary
+kubectl get servicemonitor GG-CORE-canary
 
 # 3. Check Prometheus targets
 kubectl port-forward svc/prometheus 9090:9090
@@ -109,7 +109,7 @@ kubectl port-forward svc/prometheus 9090:9090
 kubectl logs -l app=prometheus -c prometheus | grep canary
 
 # 5. Check for label mismatches
-kubectl get servicemonitor veritas-spark-canary -o yaml
+kubectl get servicemonitor GG-CORE-canary -o yaml
 ```
 
 **Resolution:**
@@ -133,7 +133,7 @@ kubectl get servicemonitor veritas-spark-canary -o yaml
 
 ```bash
 # 1. Check analysis history
-veritas-spark canary inspect --history
+GG-CORE canary inspect --history
 
 # 2. View rollback reason
 kubectl describe veritascanary <name> | grep -A5 "Conditions"
@@ -142,7 +142,7 @@ kubectl describe veritascanary <name> | grep -A5 "Conditions"
 kubectl get veritascanary <name> -o jsonpath="{.status.conditions}"
 
 # 4. Compare canary vs stable metrics
-kubectl exec -it <stable-pod> -- veritas-spark metrics compare
+kubectl exec -it <stable-pod> -- GG-CORE metrics compare
 
 # 5. View canary logs during failure window
 kubectl logs -l deployment=canary --since=30m
@@ -172,7 +172,7 @@ kubectl logs -l deployment=canary --since=30m
 kubectl get veritascanary <name> -o jsonpath="{.spec.promotion}"
 
 # 2. Verify auto-promotion enabled
-veritas-spark canary inspect | grep -i "auto.*promotion"
+GG-CORE canary inspect | grep -i "auto.*promotion"
 
 # 3. Check if paused
 kubectl get veritascanary <name> -o jsonpath="{.status.phase}"
@@ -209,7 +209,7 @@ kubectl describe veritascanary <name> | grep -i "waiting"
 
 ```bash
 # 1. Check environment status
-veritas-spark bluegreen inspect
+GG-CORE bluegreen inspect
 
 # 2. View switch progress
 kubectl get veritasenvironment <name> -o jsonpath="{.status.switchProgress}"
@@ -218,7 +218,7 @@ kubectl get veritasenvironment <name> -o jsonpath="{.status.switchProgress}"
 kubectl get pods -l environment=<target> -o wide
 
 # 4. Verify service selector
-kubectl get svc veritas-spark -o jsonpath="{.spec.selector}"
+kubectl get svc GG-CORE -o jsonpath="{.spec.selector}"
 
 # 5. Check controller logs
 kubectl logs -l app=veritas-controller | grep -i switch
@@ -250,14 +250,14 @@ kubectl get cm veritas-config-green -o yaml > green-config.yaml
 diff blue-config.yaml green-config.yaml
 
 # 2. Check model versions
-kubectl exec -it <blue-pod> -- veritas-spark models list
-kubectl exec -it <green-pod> -- veritas-spark models list
+kubectl exec -it <blue-pod> -- GG-CORE models list
+kubectl exec -it <green-pod> -- GG-CORE models list
 
 # 3. Verify environment labels
 kubectl get pods --show-labels | grep veritas
 
 # 4. Check for config drift
-veritas-spark bluegreen diff
+GG-CORE bluegreen diff
 ```
 
 **Resolution:**
@@ -293,7 +293,7 @@ kubectl describe nodes | grep -A5 "Allocated resources"
 kubectl logs -l environment=<standby> --tail=50
 
 # 5. Test health directly
-kubectl exec -it <standby-pod> -- veritas-spark health --verbose
+kubectl exec -it <standby-pod> -- GG-CORE health --verbose
 ```
 
 **Resolution:**
@@ -317,19 +317,19 @@ kubectl exec -it <standby-pod> -- veritas-spark health --verbose
 
 ```bash
 # 1. Check service endpoints
-kubectl get endpoints veritas-spark
+kubectl get endpoints GG-CORE
 
 # 2. Verify DNS resolution
-kubectl run -it --rm debug --image=busybox -- nslookup veritas-spark
+kubectl run -it --rm debug --image=busybox -- nslookup GG-CORE
 
 # 3. Check CoreDNS
 kubectl logs -l k8s-app=kube-dns -n kube-system --tail=20
 
 # 4. View endpoint slices
-kubectl get endpointslices -l kubernetes.io/service-name=veritas-spark
+kubectl get endpointslices -l kubernetes.io/service-name=GG-CORE
 
 # 5. Test from inside cluster
-kubectl exec -it <any-pod> -- curl veritas-spark:8080/health
+kubectl exec -it <any-pod> -- curl GG-CORE:8080/health
 ```
 
 **Resolution:**
@@ -371,17 +371,17 @@ kubectl exec -it <any-pod> -- curl veritas-spark:8080/health
 **Diagnostic Steps:**
 ```bash
 # 1. Check socket exists
-ls -la /var/run/veritas/veritas-spark.sock  # Unix
+ls -la /var/run/veritas/GG-CORE.sock  # Unix
 Get-ChildItem \.\pipe\ | Where-Object Name -match veritas  # Windows
 
 # 2. Verify runtime is running
-pgrep -a veritas-spark
+pgrep -a GG-CORE
 
 # 3. Check socket permissions
-stat /var/run/veritas/veritas-spark.sock
+stat /var/run/veritas/GG-CORE.sock
 
 # 4. Test connection manually
-veritas-spark health
+GG-CORE health
 ```
 
 **Resolution:**
@@ -404,7 +404,7 @@ sha256sum /models/<model-name>.gguf
 free -h
 
 # 4. View detailed error
-veritas-spark models load <model-name> --verbose
+GG-CORE models load <model-name> --verbose
 ```
 
 **Resolution:**
@@ -441,7 +441,7 @@ kubectl logs <pod> -c sandbox-init
 **Diagnostic Steps:**
 ```bash
 # 1. Check deployment status
-veritas-spark deployment status --verbose
+GG-CORE deployment status --verbose
 
 # 2. View recent events
 kubectl get events --sort-by=.lastTimestamp | grep veritas
@@ -463,57 +463,57 @@ kubectl logs -l app=veritas-controller --tail=50
 
 ## Debugging Tools
 
-### veritas-spark CLI Commands
+### GG-CORE CLI Commands
 
 ```bash
 # Deployment Status
-veritas-spark deployment status              # Overview of deployment state
-veritas-spark deployment status --verbose     # Detailed status with metrics
-veritas-spark deployment status --json        # JSON output for scripting
+GG-CORE deployment status              # Overview of deployment state
+GG-CORE deployment status --verbose     # Detailed status with metrics
+GG-CORE deployment status --json        # JSON output for scripting
 
 # Canary Operations
-veritas-spark canary inspect                  # Current canary state
-veritas-spark canary inspect --history        # Analysis history
-veritas-spark canary inspect --metrics        # Current metric values
+GG-CORE canary inspect                  # Current canary state
+GG-CORE canary inspect --history        # Analysis history
+GG-CORE canary inspect --metrics        # Current metric values
 
 # Blue-Green Operations
-veritas-spark bluegreen inspect               # Current environment state
-veritas-spark bluegreen diff                  # Config diff between envs
-veritas-spark bluegreen switch --dry-run      # Preview switch operation
+GG-CORE bluegreen inspect               # Current environment state
+GG-CORE bluegreen diff                  # Config diff between envs
+GG-CORE bluegreen switch --dry-run      # Preview switch operation
 
 # Rollback Operations
-veritas-spark rollback --canary               # Rollback canary deployment
-veritas-spark rollback --bluegreen            # Switch to previous env
-veritas-spark rollback --force                # Force rollback (override checks)
-veritas-spark rollback --status               # View rollback progress
+GG-CORE rollback --canary               # Rollback canary deployment
+GG-CORE rollback --bluegreen            # Switch to previous env
+GG-CORE rollback --force                # Force rollback (override checks)
+GG-CORE rollback --status               # View rollback progress
 
 # Health and Diagnostics
-veritas-spark health                          # Full health check
-veritas-spark health --verbose                # Detailed health report
-veritas-spark live                            # Liveness probe
-veritas-spark ready                           # Readiness probe
+GG-CORE health                          # Full health check
+GG-CORE health --verbose                # Detailed health report
+GG-CORE live                            # Liveness probe
+GG-CORE ready                           # Readiness probe
 
 # Metrics and Telemetry
-veritas-spark metrics summary                 # Key metrics summary
-veritas-spark metrics canary                  # Canary-specific metrics
-veritas-spark telemetry status                # Telemetry system status
+GG-CORE metrics summary                 # Key metrics summary
+GG-CORE metrics canary                  # Canary-specific metrics
+GG-CORE telemetry status                # Telemetry system status
 ```
 
 ### kubectl Debugging Commands
 
 ```bash
 # Pod Investigation
-kubectl get pods -l app=veritas-spark -o wide
+kubectl get pods -l app=GG-CORE -o wide
 kubectl describe pod <pod-name>
 kubectl logs <pod-name> --tail=100
 kubectl logs <pod-name> --previous          # Previous container logs
 
 # Exec into Pod
 kubectl exec -it <pod-name> -- /bin/sh
-kubectl exec -it <pod-name> -- veritas-spark health --verbose
+kubectl exec -it <pod-name> -- GG-CORE health --verbose
 
 # Resource Status
-kubectl top pods -l app=veritas-spark
+kubectl top pods -l app=GG-CORE
 kubectl get events --sort-by=.lastTimestamp
 
 # CRD Status
@@ -526,18 +526,18 @@ kubectl describe veritascanary <name>
 
 ```promql
 # Error rate
-sum(rate(veritas_spark_requests_total{status="error"}[5m])) /
-sum(rate(veritas_spark_requests_total[5m]))
+sum(rate(gg_core_requests_total{status="error"}[5m])) /
+sum(rate(gg_core_requests_total[5m]))
 
 # P99 latency
-histogram_quantile(0.99, sum(rate(veritas_spark_request_duration_bucket[5m])) by (le))
+histogram_quantile(0.99, sum(rate(gg_core_request_duration_bucket[5m])) by (le))
 
 # Canary error rate comparison
-sum(rate(veritas_spark_requests_total{status="error",deployment="canary"}[5m])) /
-sum(rate(veritas_spark_requests_total{deployment="canary"}[5m]))
+sum(rate(gg_core_requests_total{status="error",deployment="canary"}[5m])) /
+sum(rate(gg_core_requests_total{deployment="canary"}[5m]))
 
 # Memory usage
-veritas_spark_memory_used_bytes / veritas_spark_memory_limit_bytes
+gg_core_memory_used_bytes / gg_core_memory_limit_bytes
 
 # Pod readiness
 sum(kube_pod_status_ready{namespace="veritas",condition="true"}) /
@@ -553,11 +553,11 @@ sum(kube_pod_status_ready{namespace="veritas"})
 | Symptom | First Command | Likely Issue |
 |---------|---------------|--------------|
 | All pods down | kubectl get pods | Cluster issue or config error |
-| Canary failing | veritas-spark canary inspect | Threshold or code bug |
-| Switch stuck | veritas-spark bluegreen inspect | Health check failing |
-| High latency | veritas-spark metrics summary | Resource contention |
+| Canary failing | GG-CORE canary inspect | Threshold or code bug |
+| Switch stuck | GG-CORE bluegreen inspect | Health check failing |
+| High latency | GG-CORE metrics summary | Resource contention |
 | No metrics | curl :9090/metrics | Telemetry config |
-| Rollback failed | veritas-spark rollback --status | Image or state issue |
+| Rollback failed | GG-CORE rollback --status | Image or state issue |
 
 ### Emergency Contacts
 

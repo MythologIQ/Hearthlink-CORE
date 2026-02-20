@@ -6,7 +6,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use veritas_sdr::security::OutputSanitizer;
+use gg_core::security::OutputSanitizer;
 
 fuzz_target!(|data: &str| {
     let sanitizer = OutputSanitizer::default_sanitizer();

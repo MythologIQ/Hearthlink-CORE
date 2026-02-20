@@ -5,11 +5,11 @@
 
 use std::time::Duration;
 
-use veritas_sdr::cli::{
+use gg_core::cli::{
     get_socket_path, run_health, run_liveness, run_readiness, CliError, CliIpcClient,
     DEFAULT_SOCKET_PATH,
 };
-use veritas_sdr::ipc::protocol::HealthCheckType;
+use gg_core::ipc::protocol::HealthCheckType;
 
 // ============================================================================
 // Socket Path Configuration Tests
@@ -18,10 +18,10 @@ use veritas_sdr::ipc::protocol::HealthCheckType;
 #[test]
 fn test_default_socket_path_platform_specific() {
     #[cfg(unix)]
-    assert_eq!(DEFAULT_SOCKET_PATH, "/var/run/veritas/veritas-spark.sock");
+    assert_eq!(DEFAULT_SOCKET_PATH, "/var/run/veritas/GG-CORE.sock");
 
     #[cfg(windows)]
-    assert_eq!(DEFAULT_SOCKET_PATH, r"\\.\pipe\veritas-spark");
+    assert_eq!(DEFAULT_SOCKET_PATH, r"\\.\pipe\GG-CORE");
 }
 
 #[test]
@@ -156,7 +156,7 @@ fn test_cli_error_all_variants_have_display() {
 
 #[test]
 fn test_exit_codes_follow_unix_convention() {
-    use veritas_sdr::cli::health::{EXIT_HEALTHY, EXIT_UNHEALTHY};
+    use gg_core::cli::health::{EXIT_HEALTHY, EXIT_UNHEALTHY};
 
     // Unix convention: 0 = success
     assert_eq!(EXIT_HEALTHY, 0);
@@ -282,7 +282,7 @@ fn test_health_check_type_equality() {
 
 #[tokio::test]
 async fn test_run_health_verbose_connection_failure() {
-    use veritas_sdr::cli::health::run_health_verbose;
+    use gg_core::cli::health::run_health_verbose;
 
     let result = run_health_verbose("/nonexistent/socket.sock").await;
     assert_eq!(result, 1); // EXIT_UNHEALTHY

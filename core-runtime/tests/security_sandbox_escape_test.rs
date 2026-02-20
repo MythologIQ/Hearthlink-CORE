@@ -2,8 +2,8 @@
 //!
 //! Tests that sandbox boundaries are properly enforced and escape attempts fail.
 
-use veritas_sdr::sandbox::{SandboxConfig, create_sandbox};
-use veritas_sdr::memory::{ResourceLimits, ResourceLimitsConfig};
+use gg_core::sandbox::{SandboxConfig, create_sandbox};
+use gg_core::memory::{ResourceLimits, ResourceLimitsConfig};
 
 #[test]
 fn sandbox_config_defaults_enforced() {

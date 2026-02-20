@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "veritas-spark.name" -}}
+{{- define "gg-core.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "veritas-spark.fullname" -}}
+{{- define "gg-core.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "veritas-spark.chart" -}}
+{{- define "gg-core.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "veritas-spark.labels" -}}
-helm.sh/chart: {{ include "veritas-spark.chart" . }}
-{{ include "veritas-spark.selectorLabels" . }}
+{{- define "gg-core.labels" -}}
+helm.sh/chart: {{ include "gg-core.chart" . }}
+{{ include "gg-core.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -43,17 +43,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "veritas-spark.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "veritas-spark.name" . }}
+{{- define "gg-core.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "gg-core.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "veritas-spark.serviceAccountName" -}}
+{{- define "gg-core.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "veritas-spark.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "gg-core.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

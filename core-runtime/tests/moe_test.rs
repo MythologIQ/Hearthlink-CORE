@@ -3,7 +3,7 @@
 //! Tests MoE configuration, routing, expert combination, load balancing,
 //! and executor functionality without requiring actual model inference.
 
-use veritas_sdr::engine::{
+use gg_core::engine::{
     ExpertCombiner, ExpertDeviceAssignment, ExpertOutput, LinearRouter, MoeConfig, MoeError,
     MoeExecutor, MoeRouter, RoutingDecision,
 };

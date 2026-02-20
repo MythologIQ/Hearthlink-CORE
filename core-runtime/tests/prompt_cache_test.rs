@@ -1,6 +1,6 @@
 //! Tests for LRU prompt cache.
 
-use veritas_sdr::memory::prompt_cache::PromptCache;
+use gg_core::memory::prompt_cache::PromptCache;
 
 #[test]
 fn cache_insert_and_get() {

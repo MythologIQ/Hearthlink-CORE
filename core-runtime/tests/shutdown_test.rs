@@ -1,6 +1,6 @@
 //! Tests for graceful shutdown coordination.
 
-use veritas_sdr::shutdown::{ShutdownCoordinator, ShutdownResult, ShutdownState};
+use gg_core::shutdown::{ShutdownCoordinator, ShutdownResult, ShutdownState};
 use std::sync::Arc;
 use std::time::Duration;
 

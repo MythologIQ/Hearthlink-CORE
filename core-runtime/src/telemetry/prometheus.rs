@@ -1,4 +1,4 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 //! Prometheus text format exporter.
@@ -18,7 +18,7 @@ pub struct MetricHelp {
     pub metric_type: &'static str,
 }
 
-/// Standard metric definitions for Veritas SPARK.
+/// Standard metric definitions for GG-CORE.
 pub const METRIC_DEFINITIONS: &[MetricHelp] = &[
     MetricHelp { name: "core_requests_total", help: "Total inference requests", metric_type: "counter" },
     MetricHelp { name: "core_requests_success", help: "Successful inference requests", metric_type: "counter" },

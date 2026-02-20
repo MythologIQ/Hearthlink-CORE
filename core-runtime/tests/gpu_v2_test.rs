@@ -1,12 +1,12 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // Licensed under the Apache License, Version 2.0
 
 //! GPU Support Tests v2 - Tests for CUDA and Metal backends
 
 use std::sync::Arc;
-use veritas_sdr::engine::FlashAttnGpuConfig;
-use veritas_sdr::engine::{GpuBackend, GpuConfig, GpuDevice, GpuError, GpuManager};
-use veritas_sdr::engine::{MultiGpuConfig, MultiGpuManager, MultiGpuStrategy};
+use gg_core::engine::FlashAttnGpuConfig;
+use gg_core::engine::{GpuBackend, GpuConfig, GpuDevice, GpuError, GpuManager};
+use gg_core::engine::{MultiGpuConfig, MultiGpuManager, MultiGpuStrategy};
 
 // ============= Base GPU Tests =============
 
@@ -68,7 +68,7 @@ fn test_gpu_manager_cpu_fallback() {
 #[cfg(feature = "cuda")]
 mod cuda_tests {
     use super::*;
-    use veritas_sdr::engine::{CudaBackend, CudaDeviceInfo, CudaError};
+    use gg_core::engine::{CudaBackend, CudaDeviceInfo, CudaError};
 
     #[test]
     fn test_cuda_backend_creation() {
@@ -123,7 +123,7 @@ mod cuda_tests {
 #[cfg(all(feature = "metal", target_os = "macos"))]
 mod metal_tests {
     use super::*;
-    use veritas_sdr::engine::{MetalBackend, MetalDeviceInfo, MetalError, MetalGpuFamily};
+    use gg_core::engine::{MetalBackend, MetalDeviceInfo, MetalError, MetalGpuFamily};
 
     #[test]
     fn test_metal_backend_creation() {

@@ -1,7 +1,7 @@
 //! TDD-Light tests for speculative decoding.
 
 use async_trait::async_trait;
-use veritas_sdr::engine::{
+use gg_core::engine::{
     DraftModel, InferenceError, SpeculativeConfig, SpeculativeDecoder, TargetModel, VerifyResult,
 };
 

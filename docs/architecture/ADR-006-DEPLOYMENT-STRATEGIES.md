@@ -9,7 +9,7 @@
 
 ## Context
 
-Veritas SPARK v0.6.0 introduces production-grade deployment capabilities. The system requires deployment strategies that:
+GG-CORE v0.6.0 introduces production-grade deployment capabilities. The system requires deployment strategies that:
 
 1. Minimize downtime during updates
 2. Enable safe rollback on failure detection
@@ -175,10 +175,10 @@ impl CanaryController {
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-active
+  name: {{ include "GG-CORE.fullname" . }}-active
 spec:
   selector:
-    app.kubernetes.io/name: {{ include "veritas-spark.name" . }}
+    app.kubernetes.io/name: {{ include "GG-CORE.name" . }}
     app.kubernetes.io/version: {{ .Values.activeVersion }}  # "blue" or "green"
   ports:
     - port: {{ .Values.service.port }}
@@ -294,18 +294,18 @@ spec:
 
 | Metric                           | Description                  | Alert Threshold   |
 | -------------------------------- | ---------------------------- | ----------------- |
-| `veritas_canary_progress`        | Current canary phase (0-100) | N/A               |
-| `veritas_canary_analysis_total`  | Total analysis runs          | N/A               |
-| `veritas_canary_analysis_failed` | Failed analysis runs         | > 0               |
-| `veritas_canary_rollback_total`  | Total rollbacks              | > 0 (investigate) |
+| `gg_core_canary_progress`        | Current canary phase (0-100) | N/A               |
+| `gg_core_canary_analysis_total`  | Total analysis runs          | N/A               |
+| `gg_core_canary_analysis_failed` | Failed analysis runs         | > 0               |
+| `gg_core_canary_rollback_total`  | Total rollbacks              | > 0 (investigate) |
 
 ### Blue-Green Metrics
 
-| Metric                                      | Description      | Alert Threshold   |
-| ------------------------------------------- | ---------------- | ----------------- |
-| `veritas_bluegreen_switch_total`            | Traffic switches | N/A               |
-| `veritas_bluegreen_switch_duration_seconds` | Switch duration  | > 30s             |
-| `veritas_bluegreen_rollback_total`          | Rollbacks        | > 0 (investigate) |
+| Metric                                       | Description      | Alert Threshold   |
+| -------------------------------------------- | ---------------- | ----------------- |
+| `gg_core_bluegreen_switch_total`             | Traffic switches | N/A               |
+| `gg_core_bluegreen_switch_duration_seconds`  | Switch duration  | > 30s             |
+| `gg_core_bluegreen_rollback_total`           | Rollbacks        | > 0 (investigate) |
 
 ---
 

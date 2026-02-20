@@ -1,13 +1,13 @@
 /*
- * Veritas SPARK - Secure Performance-Accelerated Runtime Kernel
+ * GG-CORE - Secure Performance-Accelerated Runtime Kernel
  * C API Header
  *
- * Copyright 2024-2026 Veritas SPARK Contributors
+ * Copyright 2024-2026 GG-CORE Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef VERITAS_SPARK_H
-#define VERITAS_SPARK_H
+#ifndef gg_core_H
+#define gg_core_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -430,4 +430,4 @@ void core_free_string(char *s);
 }
 #endif
 
-#endif /* VERITAS_SPARK_H */
+#endif /* gg_core_H */

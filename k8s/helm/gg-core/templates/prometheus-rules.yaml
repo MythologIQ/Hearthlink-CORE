@@ -2,56 +2,56 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-alerts
+  name: {{ include "GG-CORE.fullname" . }}-alerts
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
+    {{- include "GG-CORE.labels" . | nindent 4 }}
     {{- with .Values.monitoring.prometheus.rules.additionalLabels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
   groups:
     # === Availability Alerts ===
-    - name: veritas-spark-availability
+    - name: GG-CORE-availability
       rules:
-        - alert: VeritasSPARKDown
+        - alert: GgCoreDown
           expr: |
-            absent(up{job="{{ include "veritas-spark.fullname" . }}",namespace="{{ .Release.Namespace }}"}) == 1
+            absent(up{job="{{ include "GG-CORE.fullname" . }}",namespace="{{ .Release.Namespace }}"}) == 1
           for: 1m
           labels:
             severity: critical
             runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/INCIDENT_RESPONSE.md"
           annotations:
-            summary: "Veritas SPARK instance is down"
-            description: "Veritas SPARK has been unreachable for more than 1 minute. Check pod status and logs."
+            summary: "GG-CORE instance is down"
+            description: "GG-CORE has been unreachable for more than 1 minute. Check pod status and logs."
             
-        - alert: VeritasSPARKHighRestartRate
+        - alert: GgCoreHighRestartRate
           expr: |
-            increase(kube_pod_container_status_restarts_total{container="{{ include "veritas-spark.name" . }}",namespace="{{ .Release.Namespace }}"}[1h]) > 3
+            increase(kube_pod_container_status_restarts_total{container="{{ include "GG-CORE.name" . }}",namespace="{{ .Release.Namespace }}"}[1h]) > 3
           for: 5m
           labels:
             severity: warning
             runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/DEPLOYMENT_TROUBLESHOOTING.md"
           annotations:
-            summary: "Veritas SPARK is restarting frequently"
+            summary: "GG-CORE is restarting frequently"
             description: "Container has restarted {{ "{{" }} $value {{ "}}" }} times in the last hour. Check for crash loops or OOM kills."
 
-        - alert: VeritasSPARKPodNotReady
+        - alert: GgCorePodNotReady
           expr: |
-            kube_pod_status_ready{pod=~"{{ include "veritas-spark.fullname" . }}-.*",namespace="{{ .Release.Namespace }}"} == 0
+            kube_pod_status_ready{pod=~"{{ include "GG-CORE.fullname" . }}-.*",namespace="{{ .Release.Namespace }}"} == 0
           for: 5m
           labels:
             severity: warning
             runbook_url: "https://github.com/mythologiq/core/tree/main/docs/operations/DEPLOYMENT_TROUBLESHOOTING.md"
           annotations:
-            summary: "Veritas SPARK pod not ready"
+            summary: "GG-CORE pod not ready"
             description: "Pod {{ "{{" }} $labels.pod {{ "}}" }} has not been ready for more than 5 minutes."
 
     # === Latency Alerts ===
-    - name: veritas-spark-latency
+    - name: GG-CORE-latency
       rules:
-        - alert: VeritasSPARKHighLatencyP95
+        - alert: GgCoreHighLatencyP95
           expr: |
-            histogram_quantile(0.95, sum(rate(veritas_spark_inference_latency_seconds_bucket{namespace="{{ .Release.Namespace }}"}[5m])) by (le)) > 0.5
+            histogram_quantile(0.95, sum(rate(gg_core_inference_latency_seconds_bucket{namespace="{{ .Release.Namespace }}"}[5m])) by (le)) > 0.5
           for: 5m
           labels:
             severity: warning
@@ -60,9 +60,9 @@ spec:
             summary: "High inference latency (P95 > 500ms)"
             description: "P95 inference latency is {{ "{{" }} $value | humanizeDuration {{ "}}" }}. Expected < 500ms."
             
-        - alert: VeritasSPARKHighLatencyP99
+        - alert: GgCoreHighLatencyP99
           expr: |
-            histogram_quantile(0.99, sum(rate(veritas_spark_inference_latency_seconds_bucket{namespace="{{ .Release.Namespace }}"}[5m])) by (le)) > 1.0
+            histogram_quantile(0.99, sum(rate(gg_core_inference_latency_seconds_bucket{namespace="{{ .Release.Namespace }}"}[5m])) by (le)) > 1.0
           for: 5m
           labels:
             severity: critical
@@ -71,9 +71,9 @@ spec:
             summary: "Critical inference latency (P99 > 1s)"
             description: "P99 inference latency is {{ "{{" }} $value | humanizeDuration {{ "}}" }}. Expected < 1s."
 
-        - alert: VeritasSPARKSlowTokenGeneration
+        - alert: GgCoreSlowTokenGeneration
           expr: |
-            rate(veritas_spark_tokens_generated_total{namespace="{{ .Release.Namespace }}"}[5m]) < 10
+            rate(gg_core_tokens_generated_total{namespace="{{ .Release.Namespace }}"}[5m]) < 10
           for: 10m
           labels:
             severity: warning
@@ -83,13 +83,13 @@ spec:
             description: "Token generation rate is {{ "{{" }} $value | printf \"%.1f\" {{ "}}" }} tokens/s. Expected > 10 tok/s."
 
     # === Error Rate Alerts ===
-    - name: veritas-spark-errors
+    - name: GG-CORE-errors
       rules:
-        - alert: VeritasSPARKHighErrorRate
+        - alert: GgCoreHighErrorRate
           expr: |
-            sum(rate(veritas_spark_inference_requests_total{namespace="{{ .Release.Namespace }}",status="error"}[5m])) 
+            sum(rate(gg_core_inference_requests_total{namespace="{{ .Release.Namespace }}",status="error"}[5m])) 
             / 
-            sum(rate(veritas_spark_inference_requests_total{namespace="{{ .Release.Namespace }}"}[5m])) 
+            sum(rate(gg_core_inference_requests_total{namespace="{{ .Release.Namespace }}"}[5m])) 
             > 0.05
           for: 5m
           labels:
@@ -99,11 +99,11 @@ spec:
             summary: "High error rate (> 5%)"
             description: "Error rate is {{ "{{" }} $value | humanizePercentage {{ "}}" }}. Expected < 5%."
 
-        - alert: VeritasSPARKCriticalErrorRate
+        - alert: GgCoreCriticalErrorRate
           expr: |
-            sum(rate(veritas_spark_inference_requests_total{namespace="{{ .Release.Namespace }}",status="error"}[5m])) 
+            sum(rate(gg_core_inference_requests_total{namespace="{{ .Release.Namespace }}",status="error"}[5m])) 
             / 
-            sum(rate(veritas_spark_inference_requests_total{namespace="{{ .Release.Namespace }}"}[5m])) 
+            sum(rate(gg_core_inference_requests_total{namespace="{{ .Release.Namespace }}"}[5m])) 
             > 0.15
           for: 2m
           labels:
@@ -113,9 +113,9 @@ spec:
             summary: "Critical error rate (> 15%)"
             description: "Error rate is {{ "{{" }} $value | humanizePercentage {{ "}}" }}. Immediate investigation required."
 
-        - alert: VeritasSPARKAuthFailures
+        - alert: GgCoreAuthFailures
           expr: |
-            rate(veritas_spark_auth_failures_total{namespace="{{ .Release.Namespace }}"}[5m]) > 10
+            rate(gg_core_auth_failures_total{namespace="{{ .Release.Namespace }}"}[5m]) > 10
           for: 5m
           labels:
             severity: warning
@@ -125,13 +125,13 @@ spec:
             description: "{{ "{{" }} $value | printf \"%.1f\" {{ "}}" }} auth failures per second. Possible attack or misconfiguration."
 
     # === Memory Alerts ===
-    - name: veritas-spark-memory
+    - name: GG-CORE-memory
       rules:
-        - alert: VeritasSPARKHighMemoryUsage
+        - alert: GgCoreHighMemoryUsage
           expr: |
-            process_resident_memory_bytes{namespace="{{ .Release.Namespace }}",app="{{ include "veritas-spark.name" . }}"} 
+            process_resident_memory_bytes{namespace="{{ .Release.Namespace }}",app="{{ include "GG-CORE.name" . }}"} 
             / 
-            kube_pod_container_resource_limits{container="{{ include "veritas-spark.name" . }}",namespace="{{ .Release.Namespace }}",resource="memory"} 
+            kube_pod_container_resource_limits{container="{{ include "GG-CORE.name" . }}",namespace="{{ .Release.Namespace }}",resource="memory"} 
             > 0.85
           for: 10m
           labels:
@@ -141,11 +141,11 @@ spec:
             summary: "High memory usage (> 85%)"
             description: "Memory usage is {{ "{{" }} $value | humanizePercentage {{ "}}" }} of limit. Consider increasing memory or investigating leaks."
 
-        - alert: VeritasSPARKMemoryNearOOM
+        - alert: GgCoreMemoryNearOOM
           expr: |
-            process_resident_memory_bytes{namespace="{{ .Release.Namespace }}",app="{{ include "veritas-spark.name" . }}"} 
+            process_resident_memory_bytes{namespace="{{ .Release.Namespace }}",app="{{ include "GG-CORE.name" . }}"} 
             / 
-            kube_pod_container_resource_limits{container="{{ include "veritas-spark.name" . }}",namespace="{{ .Release.Namespace }}",resource="memory"} 
+            kube_pod_container_resource_limits{container="{{ include "GG-CORE.name" . }}",namespace="{{ .Release.Namespace }}",resource="memory"} 
             > 0.95
           for: 2m
           labels:
@@ -155,11 +155,11 @@ spec:
             summary: "Memory near OOM limit (> 95%)"
             description: "Memory usage is {{ "{{" }} $value | humanizePercentage {{ "}}" }} of limit. OOM kill imminent."
 
-        - alert: VeritasSPARKHighKvCacheUsage
+        - alert: GgCoreHighKvCacheUsage
           expr: |
-            veritas_spark_memory_kv_cache_bytes{namespace="{{ .Release.Namespace }}"} 
+            gg_core_memory_kv_cache_bytes{namespace="{{ .Release.Namespace }}"} 
             / 
-            process_resident_memory_bytes{namespace="{{ .Release.Namespace }}",app="{{ include "veritas-spark.name" . }}"} 
+            process_resident_memory_bytes{namespace="{{ .Release.Namespace }}",app="{{ include "GG-CORE.name" . }}"} 
             > 0.7
           for: 15m
           labels:
@@ -170,11 +170,11 @@ spec:
             description: "KV cache is using {{ "{{" }} $value | humanizePercentage {{ "}}" }} of RSS. Consider adjusting cache settings."
 
     # === GPU Alerts ===
-    - name: veritas-spark-gpu
+    - name: GG-CORE-gpu
       rules:
-        - alert: VeritasSPARKGPUHighUtilization
+        - alert: GgCoreGPUHighUtilization
           expr: |
-            veritas_spark_gpu_utilization_percent{namespace="{{ .Release.Namespace }}"} > 95
+            gg_core_gpu_utilization_percent{namespace="{{ .Release.Namespace }}"} > 95
           for: 15m
           labels:
             severity: warning
@@ -183,11 +183,11 @@ spec:
             summary: "GPU utilization very high (> 95%)"
             description: "GPU {{ "{{" }} $labels.gpu_id {{ "}}" }} utilization is {{ "{{" }} $value {{ "}}" }}%. Consider scaling or load balancing."
 
-        - alert: VeritasSPARKGPUHighMemory
+        - alert: GgCoreGPUHighMemory
           expr: |
-            veritas_spark_gpu_memory_used_bytes{namespace="{{ .Release.Namespace }}"} 
+            gg_core_gpu_memory_used_bytes{namespace="{{ .Release.Namespace }}"} 
             / 
-            veritas_spark_gpu_memory_total_bytes{namespace="{{ .Release.Namespace }}"} 
+            gg_core_gpu_memory_total_bytes{namespace="{{ .Release.Namespace }}"} 
             > 0.9
           for: 10m
           labels:
@@ -197,9 +197,9 @@ spec:
             summary: "GPU memory usage high (> 90%)"
             description: "GPU {{ "{{" }} $labels.gpu_id {{ "}}" }} memory is {{ "{{" }} $value | humanizePercentage {{ "}}" }} full. May cause OOM errors."
 
-        - alert: VeritasSPARKGPUHighTemperature
+        - alert: GgCoreGPUHighTemperature
           expr: |
-            veritas_spark_gpu_temperature_celsius{namespace="{{ .Release.Namespace }}"} > 85
+            gg_core_gpu_temperature_celsius{namespace="{{ .Release.Namespace }}"} > 85
           for: 5m
           labels:
             severity: warning
@@ -208,9 +208,9 @@ spec:
             summary: "GPU temperature high (> 85°C)"
             description: "GPU {{ "{{" }} $labels.gpu_id {{ "}}" }} temperature is {{ "{{" }} $value {{ "}}" }}°C. Check cooling and airflow."
 
-        - alert: VeritasSPARKGPUThermalThrottling
+        - alert: GgCoreGPUThermalThrottling
           expr: |
-            veritas_spark_gpu_temperature_celsius{namespace="{{ .Release.Namespace }}"} > 90
+            gg_core_gpu_temperature_celsius{namespace="{{ .Release.Namespace }}"} > 90
           for: 2m
           labels:
             severity: critical
@@ -220,11 +220,11 @@ spec:
             description: "GPU {{ "{{" }} $labels.gpu_id {{ "}}" }} temperature is {{ "{{" }} $value {{ "}}" }}°C. Thermal throttling active. Immediate action required."
 
     # === Queue & Scheduler Alerts ===
-    - name: veritas-spark-scheduler
+    - name: GG-CORE-scheduler
       rules:
-        - alert: VeritasSPARKQueueBacklog
+        - alert: GgCoreQueueBacklog
           expr: |
-            sum(veritas_spark_scheduler_queue_depth{namespace="{{ .Release.Namespace }}"}) > 100
+            sum(gg_core_scheduler_queue_depth{namespace="{{ .Release.Namespace }}"}) > 100
           for: 10m
           labels:
             severity: warning
@@ -233,9 +233,9 @@ spec:
             summary: "Request queue backlog growing"
             description: "{{ "{{" }} $value {{ "}}" }} requests queued. Consider scaling up or adding replicas."
 
-        - alert: VeritasSPARKQueueCriticalBacklog
+        - alert: GgCoreQueueCriticalBacklog
           expr: |
-            sum(veritas_spark_scheduler_queue_depth{namespace="{{ .Release.Namespace }}"}) > 500
+            sum(gg_core_scheduler_queue_depth{namespace="{{ .Release.Namespace }}"}) > 500
           for: 5m
           labels:
             severity: critical
@@ -244,9 +244,9 @@ spec:
             summary: "Critical queue backlog"
             description: "{{ "{{" }} $value {{ "}}" }} requests queued. System is overloaded. Scale immediately."
 
-        - alert: VeritasSPARKHighPendingRequests
+        - alert: GgCoreHighPendingRequests
           expr: |
-            veritas_spark_scheduler_pending_requests{namespace="{{ .Release.Namespace }}"} > 50
+            gg_core_scheduler_pending_requests{namespace="{{ .Release.Namespace }}"} > 50
           for: 15m
           labels:
             severity: warning
@@ -256,11 +256,11 @@ spec:
             description: "{{ "{{" }} $value {{ "}}" }} requests pending processing. Check batch efficiency."
 
     # === Canary Deployment Alerts ===
-    - name: veritas-spark-canary
+    - name: GG-CORE-canary
       rules:
-        - alert: VeritasSPARKCanaryHighErrorRate
+        - alert: GgCoreCanaryHighErrorRate
           expr: |
-            veritas_spark_canary_error_rate_percent{namespace="{{ .Release.Namespace }}"} > 5
+            gg_core_canary_error_rate_percent{namespace="{{ .Release.Namespace }}"} > 5
           for: 5m
           labels:
             severity: warning
@@ -269,9 +269,9 @@ spec:
             summary: "Canary deployment high error rate"
             description: "Canary {{ "{{" }} $labels.canary_name {{ "}}" }} error rate is {{ "{{" }} $value {{ "}}" }}%. Consider rollback."
 
-        - alert: VeritasSPARKCanaryFailed
+        - alert: GgCoreCanaryFailed
           expr: |
-            veritas_spark_canary_phase{namespace="{{ .Release.Namespace }}"} == 2
+            gg_core_canary_phase{namespace="{{ .Release.Namespace }}"} == 2
           for: 1m
           labels:
             severity: critical
@@ -280,11 +280,11 @@ spec:
             summary: "Canary deployment failed"
             description: "Canary {{ "{{" }} $labels.canary_name {{ "}}" }} has failed. Automatic rollback may be in progress."
 
-        - alert: VeritasSPARKCanaryLatencyRegression
+        - alert: GgCoreCanaryLatencyRegression
           expr: |
-            (veritas_spark_canary_latency_p95_ms{namespace="{{ .Release.Namespace }}"} - 
-             veritas_spark_canary_baseline_latency_p95_ms{namespace="{{ .Release.Namespace }}"}) 
-            / veritas_spark_canary_baseline_latency_p95_ms{namespace="{{ .Release.Namespace }}"} > 0.2
+            (gg_core_canary_latency_p95_ms{namespace="{{ .Release.Namespace }}"} - 
+             gg_core_canary_baseline_latency_p95_ms{namespace="{{ .Release.Namespace }}"}) 
+            / gg_core_canary_baseline_latency_p95_ms{namespace="{{ .Release.Namespace }}"} > 0.2
           for: 10m
           labels:
             severity: warning
@@ -294,11 +294,11 @@ spec:
             description: "Canary P95 latency is {{ "{{" }} $value | humanizePercentage {{ "}}" }} higher than baseline. Performance regression detected."
 
     # === Model Loading Alerts ===
-    - name: veritas-spark-models
+    - name: GG-CORE-models
       rules:
-        - alert: VeritasSPARKModelLoadFailure
+        - alert: GgCoreModelLoadFailure
           expr: |
-            rate(veritas_spark_model_load_errors_total{namespace="{{ .Release.Namespace }}"}[5m]) > 0
+            rate(gg_core_model_load_errors_total{namespace="{{ .Release.Namespace }}"}[5m]) > 0
           for: 1m
           labels:
             severity: critical
@@ -307,9 +307,9 @@ spec:
             summary: "Model loading failure"
             description: "Model {{ "{{" }} $labels.model_name {{ "}}" }} failed to load. Check model files and memory availability."
 
-        - alert: VeritasSPARKModelNotLoaded
+        - alert: GgCoreModelNotLoaded
           expr: |
-            veritas_spark_model_loaded{namespace="{{ .Release.Namespace }}"} == 0
+            gg_core_model_loaded{namespace="{{ .Release.Namespace }}"} == 0
           for: 5m
           labels:
             severity: warning
@@ -318,9 +318,9 @@ spec:
             summary: "Expected model not loaded"
             description: "Model {{ "{{" }} $labels.model_name {{ "}}" }} is not loaded. Service may be degraded."
 
-        - alert: VeritasSPARKModelSwapThrashing
+        - alert: GgCoreModelSwapThrashing
           expr: |
-            rate(veritas_spark_model_swaps_total{namespace="{{ .Release.Namespace }}"}[5m]) > 2
+            rate(gg_core_model_swaps_total{namespace="{{ .Release.Namespace }}"}[5m]) > 2
           for: 10m
           labels:
             severity: warning
@@ -330,11 +330,11 @@ spec:
             description: "{{ "{{" }} $value | printf \"%.1f\" {{ "}}" }} model swaps per second. Consider increasing memory or reducing model count."
 
     # === IPC Alerts ===
-    - name: veritas-spark-ipc
+    - name: GG-CORE-ipc
       rules:
-        - alert: VeritasSPARKIPCHighLatency
+        - alert: GgCoreIPCHighLatency
           expr: |
-            histogram_quantile(0.95, sum(rate(veritas_spark_ipc_latency_seconds_bucket{namespace="{{ .Release.Namespace }}"}[5m])) by (le)) > 0.01
+            histogram_quantile(0.95, sum(rate(gg_core_ipc_latency_seconds_bucket{namespace="{{ .Release.Namespace }}"}[5m])) by (le)) > 0.01
           for: 10m
           labels:
             severity: warning
@@ -343,9 +343,9 @@ spec:
             summary: "High IPC latency"
             description: "P95 IPC latency is {{ "{{" }} $value | humanizeDuration {{ "}}" }}. Expected < 10ms."
 
-        - alert: VeritasSPARKIPCConnectionErrors
+        - alert: GgCoreIPCConnectionErrors
           expr: |
-            rate(veritas_spark_ipc_connection_errors_total{namespace="{{ .Release.Namespace }}"}[5m]) > 5
+            rate(gg_core_ipc_connection_errors_total{namespace="{{ .Release.Namespace }}"}[5m]) > 5
           for: 5m
           labels:
             severity: warning

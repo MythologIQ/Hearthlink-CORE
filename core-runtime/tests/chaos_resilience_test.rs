@@ -1,4 +1,4 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 //! Chaos & Resilience - IPC Protocol Fault Injection
@@ -6,12 +6,12 @@
 //! Malformed IPC messages, type confusion, extreme payloads,
 //! binary protocol chaos, and token encoding edge cases.
 
-use veritas_sdr::ipc::{
+use gg_core::ipc::{
     decode_message, encode_message, InferenceRequest, IpcMessage, RequestId,
     TokenEncoder, V1Encoder, V2Encoder,
 };
-use veritas_sdr::ipc::{decode_message_binary, encode_message_binary};
-use veritas_sdr::engine::InferenceParams;
+use gg_core::ipc::{decode_message_binary, encode_message_binary};
+use gg_core::engine::InferenceParams;
 
 #[test]
 fn chaos_ipc_random_bytes() {
@@ -120,7 +120,7 @@ fn chaos_binary_random_bytes() {
 
 #[test]
 fn chaos_binary_encode_tagged_enums() {
-    use veritas_sdr::ipc::HealthCheckType;
+    use gg_core::ipc::HealthCheckType;
     let msg = IpcMessage::HealthCheck { check_type: HealthCheckType::Liveness };
     if let Ok(bytes) = encode_message_binary(&msg) {
         let _ = decode_message_binary(&bytes);

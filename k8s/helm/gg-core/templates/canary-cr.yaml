@@ -1,12 +1,12 @@
 {{- if .Values.canary.enabled }}
-# VeritasCanary Custom Resource
-# This CR is managed by the Veritas Canary Controller
-apiVersion: veritas.hearthlink.ai/v1alpha1
-kind: VeritasCanary
+# GGCORECanary Custom Resource
+# This CR is managed by the GG-CORE Canary Controller
+apiVersion: gg-core.hearthlink.ai/v1alpha1
+kind: GGCORECanary
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}
+  name: {{ include "gg-core.fullname" . }}
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
+    {{- include "gg-core.labels" . | nindent 4 }}
 spec:
   stableVersion: {{ .Values.canary.stable.version | default .Values.image.tag | quote }}
   canaryVersion: {{ .Values.canary.canary.version | quote }}

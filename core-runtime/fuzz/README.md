@@ -1,4 +1,4 @@
-# Fuzz Testing for Veritas SPARK
+# Fuzz Testing for GG-CORE
 
 This directory contains fuzz testing targets for security-critical parsing code.
 

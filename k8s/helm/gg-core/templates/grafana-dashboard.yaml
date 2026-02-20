@@ -2,12 +2,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-grafana-dashboard
+  name: {{ include "GG-CORE.fullname" . }}-grafana-dashboard
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
+    {{- include "GG-CORE.labels" . | nindent 4 }}
     grafana_dashboard: "1"
 data:
-  veritas-spark-overview.json: |
+  GG-CORE-overview.json: |
     {
       "annotations": {
         "list": [
@@ -103,7 +103,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "histogram_quantile(0.50, sum(rate(veritas_spark_inference_latency_seconds_bucket{namespace=\"{{ .Release.Namespace }}\"}[5m])) by (le)) * 1000",
+              "expr": "histogram_quantile(0.50, sum(rate(gg_core_inference_latency_seconds_bucket{namespace=\"{{ .Release.Namespace }}\"}[5m])) by (le)) * 1000",
               "legendFormat": "P50",
               "refId": "A"
             },
@@ -112,7 +112,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "histogram_quantile(0.95, sum(rate(veritas_spark_inference_latency_seconds_bucket{namespace=\"{{ .Release.Namespace }}\"}[5m])) by (le)) * 1000",
+              "expr": "histogram_quantile(0.95, sum(rate(gg_core_inference_latency_seconds_bucket{namespace=\"{{ .Release.Namespace }}\"}[5m])) by (le)) * 1000",
               "legendFormat": "P95",
               "refId": "B"
             },
@@ -121,7 +121,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "histogram_quantile(0.99, sum(rate(veritas_spark_inference_latency_seconds_bucket{namespace=\"{{ .Release.Namespace }}\"}[5m])) by (le)) * 1000",
+              "expr": "histogram_quantile(0.99, sum(rate(gg_core_inference_latency_seconds_bucket{namespace=\"{{ .Release.Namespace }}\"}[5m])) by (le)) * 1000",
               "legendFormat": "P99",
               "refId": "C"
             }
@@ -187,7 +187,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(veritas_spark_inference_requests_total{namespace=\"{{ .Release.Namespace }}\",status=\"error\"}[5m])) / sum(rate(veritas_spark_inference_requests_total{namespace=\"{{ .Release.Namespace }}\"}[5m])) * 100",
+              "expr": "sum(rate(gg_core_inference_requests_total{namespace=\"{{ .Release.Namespace }}\",status=\"error\"}[5m])) / sum(rate(gg_core_inference_requests_total{namespace=\"{{ .Release.Namespace }}\"}[5m])) * 100",
               "legendFormat": "Error Rate %",
               "refId": "A"
             }
@@ -277,7 +277,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(veritas_spark_inference_requests_total{namespace=\"{{ .Release.Namespace }}\"}[5m]))",
+              "expr": "sum(rate(gg_core_inference_requests_total{namespace=\"{{ .Release.Namespace }}\"}[5m]))",
               "legendFormat": "Total Requests/s",
               "refId": "A"
             },
@@ -286,7 +286,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(veritas_spark_inference_requests_total{namespace=\"{{ .Release.Namespace }}\",status=\"success\"}[5m]))",
+              "expr": "sum(rate(gg_core_inference_requests_total{namespace=\"{{ .Release.Namespace }}\",status=\"success\"}[5m]))",
               "legendFormat": "Success/s",
               "refId": "B"
             },
@@ -295,7 +295,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(veritas_spark_inference_requests_total{namespace=\"{{ .Release.Namespace }}\",status=\"error\"}[5m]))",
+              "expr": "sum(rate(gg_core_inference_requests_total{namespace=\"{{ .Release.Namespace }}\",status=\"error\"}[5m]))",
               "legendFormat": "Errors/s",
               "refId": "C"
             }
@@ -385,7 +385,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(veritas_spark_tokens_generated_total{namespace=\"{{ .Release.Namespace }}\"}[5m]))",
+              "expr": "sum(rate(gg_core_tokens_generated_total{namespace=\"{{ .Release.Namespace }}\"}[5m]))",
               "legendFormat": "Tokens/s",
               "refId": "A"
             }
@@ -492,7 +492,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "process_resident_memory_bytes{namespace=\"{{ .Release.Namespace }}\",app=\"{{ include \"veritas-spark.name\" . }}\"}",
+              "expr": "process_resident_memory_bytes{namespace=\"{{ .Release.Namespace }}\",app=\"{{ include \"GG-CORE.name\" . }}\"}",
               "legendFormat": "RSS",
               "refId": "A"
             },
@@ -501,7 +501,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_memory_kv_cache_bytes{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_memory_kv_cache_bytes{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "KV Cache",
               "refId": "B"
             },
@@ -510,7 +510,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_memory_arena_bytes{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_memory_arena_bytes{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "Arena",
               "refId": "C"
             }
@@ -600,7 +600,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_gpu_utilization_percent{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_gpu_utilization_percent{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "GPU {{ \"{{\" }}gpu_id{{ \"}}\" }}",
               "refId": "A"
             }
@@ -690,7 +690,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_gpu_memory_used_bytes{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_gpu_memory_used_bytes{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "Used GPU {{ \"{{\" }}gpu_id{{ \"}}\" }}",
               "refId": "A"
             },
@@ -699,7 +699,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_gpu_memory_total_bytes{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_gpu_memory_total_bytes{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "Total GPU {{ \"{{\" }}gpu_id{{ \"}}\" }}",
               "refId": "B"
             }
@@ -789,7 +789,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_gpu_temperature_celsius{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_gpu_temperature_celsius{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "GPU {{ \"{{\" }}gpu_id{{ \"}}\" }}",
               "refId": "A"
             }
@@ -892,7 +892,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_scheduler_queue_depth{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_scheduler_queue_depth{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "{{ \"{{\" }}priority{{ \"}}\" }} priority",
               "refId": "A"
             }
@@ -982,7 +982,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_scheduler_active_batches{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_scheduler_active_batches{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "Active Batches",
               "refId": "A"
             },
@@ -991,7 +991,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_scheduler_pending_requests{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_scheduler_pending_requests{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "Pending Requests",
               "refId": "B"
             }
@@ -1070,7 +1070,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_canary_error_rate_percent{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_canary_error_rate_percent{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "Error Rate",
               "refId": "A"
             }
@@ -1136,7 +1136,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_canary_latency_p95_ms{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_canary_latency_p95_ms{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "P95 Latency",
               "refId": "A"
             }
@@ -1215,7 +1215,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "veritas_spark_canary_phase{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "gg_core_canary_phase{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "Phase",
               "refId": "A"
             }
@@ -1228,7 +1228,7 @@ data:
       "schemaVersion": 38,
       "style": "dark",
       "tags": [
-        "veritas-spark",
+        "GG-CORE",
         "llm",
         "inference"
       ],
@@ -1260,8 +1260,8 @@ data:
       },
       "timepicker": {},
       "timezone": "",
-      "title": "Veritas SPARK Overview",
-      "uid": "veritas-spark-overview",
+      "title": "GG-CORE Overview",
+      "uid": "GG-CORE-overview",
       "version": 1,
       "weekStart": ""
     }

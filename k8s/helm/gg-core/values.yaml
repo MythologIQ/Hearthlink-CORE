@@ -1,9 +1,9 @@
-# Default values for veritas-spark
+# Default values for gg-core
 
 replicaCount: 1
 
 image:
-  repository: veritas-spark
+  repository: gg-core
   tag: "0.5.0"
   pullPolicy: IfNotPresent
 
@@ -32,7 +32,7 @@ models:
 
 # Runtime configuration
 config:
-  socketPath: "/var/run/veritas/veritas-spark.sock"
+  socketPath: "/var/run/gg-core/gg-core.sock"
   maxContextLength: 4096
   sessionTimeout: 3600
   shutdownTimeout: 30

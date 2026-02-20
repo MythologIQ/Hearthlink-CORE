@@ -1,6 +1,6 @@
 //! TDD-Light tests for output content filtering.
 
-use veritas_sdr::engine::filter::{FilterConfig, OutputFilter};
+use gg_core::engine::filter::{FilterConfig, OutputFilter};
 
 #[test]
 fn filter_default_passes_all_text() {

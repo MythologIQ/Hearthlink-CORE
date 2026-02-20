@@ -12,10 +12,10 @@
 apiVersion: veritas.hearthlink.ai/v1alpha1
 kind: VeritasCanary
 metadata:
-  name: veritas-spark-canary
+  name: GG-CORE-canary
   namespace: veritas-system
   labels:
-    app.kubernetes.io/name: veritas-spark
+    app.kubernetes.io/name: GG-CORE
     app.kubernetes.io/component: canary
 spec:
   # Current stable version
@@ -89,7 +89,7 @@ spec:
 apiVersion: veritas.hearthlink.ai/v1alpha1
 kind: VeritasCanary
 metadata:
-  name: veritas-spark-canary-manual
+  name: GG-CORE-canary-manual
   namespace: veritas-system
 spec:
   stableVersion: "0.5.0"

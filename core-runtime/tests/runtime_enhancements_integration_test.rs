@@ -5,12 +5,12 @@
 
 use std::time::Duration;
 
-use veritas_sdr::engine::InferenceParams;
-use veritas_sdr::ipc::{
+use gg_core::engine::InferenceParams;
+use gg_core::ipc::{
     decode_message, encode_message, ConnectionConfig, ConnectionPool,
     IpcMessage, WarmupRequest, WarmupResponse,
 };
-use veritas_sdr::scheduler::{OutputCache, OutputCacheConfig, Priority, RequestQueue, RequestQueueConfig};
+use gg_core::scheduler::{OutputCache, OutputCacheConfig, Priority, RequestQueue, RequestQueueConfig};
 
 #[tokio::test]
 async fn test_cancel_pending_request() {

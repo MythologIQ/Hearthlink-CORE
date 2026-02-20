@@ -3,7 +3,7 @@
 //! Tests that model integrity verification correctly accepts valid hashes
 //! and rejects invalid, malformed, or mismatched hashes.
 
-use veritas_sdr::models::manifest::{ModelManifest, ModelCapability, ModelArchitecture};
+use gg_core::models::manifest::{ModelManifest, ModelCapability, ModelArchitecture};
 
 fn create_test_manifest(sha256: &str) -> ModelManifest {
     ModelManifest {

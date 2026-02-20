@@ -4,7 +4,7 @@
 **Last Updated:** 2026-02-18
 **Status:** Active
 
-This runbook documents chaos engineering practices for the Veritas SPARK runtime, including blast radius analysis, recovery procedures, and pre-planned game day scenarios.
+This runbook documents chaos engineering practices for the GG-CORE runtime, including blast radius analysis, recovery procedures, and pre-planned game day scenarios.
 
 ---
 

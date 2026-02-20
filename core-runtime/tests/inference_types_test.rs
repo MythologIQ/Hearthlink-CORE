@@ -2,12 +2,12 @@
 //!
 //! Validates config, input, output, and manifest types.
 
-use veritas_sdr::engine::{
+use gg_core::engine::{
     ChatMessage, ChatRole, ClassificationResult, EmbeddingResult, FinishReason,
     GenerationResult, InferenceCapability, InferenceConfig, InferenceError,
     InferenceInput, InferenceOutput, MAX_BATCH_SIZE, MAX_TEXT_BYTES,
 };
-use veritas_sdr::models::{ModelArchitecture, ModelCapability, ModelManifest};
+use gg_core::models::{ModelArchitecture, ModelCapability, ModelManifest};
 
 // ============================================================================
 // InferenceConfig Tests

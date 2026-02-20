@@ -6,7 +6,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use veritas_sdr::security::PromptInjectionFilter;
+use gg_core::security::PromptInjectionFilter;
 
 fuzz_target!(|data: &str| {
     let filter = PromptInjectionFilter::new(true);

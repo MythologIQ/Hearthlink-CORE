@@ -1,32 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}
+  name: {{ include "gg-core.fullname" . }}
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
+    {{- include "gg-core.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "veritas-spark.selectorLabels" . | nindent 6 }}
+      {{- include "gg-core.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "veritas-spark.selectorLabels" . | nindent 8 }}
+        {{- include "gg-core.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "veritas-spark.serviceAccountName" . }}
+      serviceAccountName: {{ include "gg-core.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: veritas-spark
+        - name: gg-core
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - serve
           env:
-            - name: VERITAS_SOCKET_PATH
+            - name: GG_CORE_SOCKET_PATH
               value: {{ .Values.config.socketPath }}
-            - name: VERITAS_MAX_CONTEXT
+            - name: GG_CORE_MAX_CONTEXT
               value: "{{ .Values.config.maxContextLength }}"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -41,7 +41,7 @@ spec:
               mountPath: {{ .Values.models.mountPath }}
               readOnly: true
             - name: socket
-              mountPath: /var/run/veritas
+              mountPath: /var/run/gg-core
             - name: tmp
               mountPath: /tmp
             - name: cache
@@ -51,7 +51,7 @@ spec:
           livenessProbe:
             exec:
               command:
-                - /app/veritas-spark
+                - /app/gg-core
                 - live
             initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
@@ -62,7 +62,7 @@ spec:
           readinessProbe:
             exec:
               command:
-                - /app/veritas-spark
+                - /app/gg-core
                 - ready
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}

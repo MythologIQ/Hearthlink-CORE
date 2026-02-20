@@ -2,7 +2,20 @@
 
 ## Why (One Sentence)
 
-The Hearthlink CORE Runtime is a sandboxed, offline inference engine that performs model execution only and has no authority over data, tools, or system actions.
+**GG-CORE** (Greatest Good - Contained Offline Restricted Execution) is a sandboxed, offline inference engine that performs model execution only and has no authority over data, tools, or system actions.
+
+## Philosophy: Greatest Good
+
+Built on triage principles ("Greatest Good for the Greatest Number"), GG-CORE prioritizes system stability and fair resource allocation over individual request optimization. In a multi-tenant AI world, every inference request competes for limited compute—GG-CORE ensures no single tenant can monopolize resources or destabilize the system.
+
+## C.O.R.E. Principles
+
+| Principle | Meaning |
+|-----------|---------|
+| **Contained** | Sandbox with no ambient privileges |
+| **Offline** | Zero network access (inbound/outbound blocked) |
+| **Restricted** | IPC-only communication with authenticated callers |
+| **Execution** | Pure compute, no business logic or decision authority |
 
 ## Vibe (Three Keywords)
 

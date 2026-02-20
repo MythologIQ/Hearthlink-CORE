@@ -1,10 +1,10 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // Licensed under the Apache License, Version 2.0
 
 //! GPU Backend Support
 //!
 //! Provides GPU acceleration for inference using CUDA (NVIDIA) or Metal (Apple Silicon).
-//! This module implements the GPU abstraction layer for Veritas SPARK.
+//! This module implements the GPU abstraction layer for GG-CORE.
 
 use std::fmt;
 use std::sync::Arc;

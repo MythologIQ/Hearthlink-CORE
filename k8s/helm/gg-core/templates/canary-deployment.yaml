@@ -4,10 +4,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-stable
+  name: {{ include "gg-core.fullname" . }}-stable
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
-    veritas.hearthlink.ai/deployment-type: stable
+    {{- include "gg-core.labels" . | nindent 4 }}
+    gg-core.hearthlink.ai/deployment-type: stable
   annotations:
     prometheus.io/scrape: "true"
     prometheus.io/port: "9090"
@@ -16,8 +16,8 @@ spec:
   replicas: {{ .Values.canary.stable.replicas | default .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "veritas-spark.selectorLabels" . | nindent 6 }}
-      veritas.hearthlink.ai/deployment-type: stable
+      {{- include "gg-core.selectorLabels" . | nindent 6 }}
+      gg-core.hearthlink.ai/deployment-type: stable
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -26,30 +26,30 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "veritas-spark.selectorLabels" . | nindent 8 }}
-        veritas.hearthlink.ai/deployment-type: stable
-        veritas.hearthlink.ai/version: {{ .Values.canary.stable.version | default .Values.image.tag | quote }}
+        {{- include "gg-core.selectorLabels" . | nindent 8 }}
+        gg-core.hearthlink.ai/deployment-type: stable
+        gg-core.hearthlink.ai/version: {{ .Values.canary.stable.version | default .Values.image.tag | quote }}
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
     spec:
-      serviceAccountName: {{ include "veritas-spark.serviceAccountName" . }}
+      serviceAccountName: {{ include "gg-core.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: veritas-spark
+        - name: gg-core
           image: "{{ .Values.image.repository }}:{{ .Values.canary.stable.version | default .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - serve
           env:
-            - name: VERITAS_SOCKET_PATH
+            - name: GG_CORE_SOCKET_PATH
               value: {{ .Values.config.socketPath }}
-            - name: VERITAS_MAX_CONTEXT
+            - name: GG_CORE_MAX_CONTEXT
               value: "{{ .Values.config.maxContextLength }}"
-            - name: VERITAS_DEPLOYMENT_TYPE
+            - name: GG_CORE_DEPLOYMENT_TYPE
               value: "stable"
-            - name: VERITAS_VERSION
+            - name: GG_CORE_VERSION
               value: {{ .Values.canary.stable.version | default .Values.image.tag | quote }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -64,7 +64,7 @@ spec:
               mountPath: {{ .Values.models.mountPath }}
               readOnly: true
             - name: socket
-              mountPath: /var/run/veritas
+              mountPath: /var/run/gg-core
             - name: tmp
               mountPath: /tmp
             - name: cache
@@ -73,7 +73,7 @@ spec:
           livenessProbe:
             exec:
               command:
-                - /app/veritas-spark
+                - /app/gg-core
                 - live
             initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
@@ -84,7 +84,7 @@ spec:
           readinessProbe:
             exec:
               command:
-                - /app/veritas-spark
+                - /app/gg-core
                 - ready
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
@@ -118,10 +118,10 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-canary
+  name: {{ include "gg-core.fullname" . }}-canary
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
-    veritas.hearthlink.ai/deployment-type: canary
+    {{- include "gg-core.labels" . | nindent 4 }}
+    gg-core.hearthlink.ai/deployment-type: canary
   annotations:
     prometheus.io/scrape: "true"
     prometheus.io/port: "9090"
@@ -130,8 +130,8 @@ spec:
   replicas: {{ .Values.canary.canary.replicas | default 1 }}
   selector:
     matchLabels:
-      {{- include "veritas-spark.selectorLabels" . | nindent 6 }}
-      veritas.hearthlink.ai/deployment-type: canary
+      {{- include "gg-core.selectorLabels" . | nindent 6 }}
+      gg-core.hearthlink.ai/deployment-type: canary
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -140,30 +140,30 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "veritas-spark.selectorLabels" . | nindent 8 }}
-        veritas.hearthlink.ai/deployment-type: canary
-        veritas.hearthlink.ai/version: {{ .Values.canary.canary.version | quote }}
+        {{- include "gg-core.selectorLabels" . | nindent 8 }}
+        gg-core.hearthlink.ai/deployment-type: canary
+        gg-core.hearthlink.ai/version: {{ .Values.canary.canary.version | quote }}
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
     spec:
-      serviceAccountName: {{ include "veritas-spark.serviceAccountName" . }}
+      serviceAccountName: {{ include "gg-core.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: veritas-spark
+        - name: gg-core
           image: "{{ .Values.image.repository }}:{{ .Values.canary.canary.version }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - serve
           env:
-            - name: VERITAS_SOCKET_PATH
+            - name: GG_CORE_SOCKET_PATH
               value: {{ .Values.config.socketPath }}
-            - name: VERITAS_MAX_CONTEXT
+            - name: GG_CORE_MAX_CONTEXT
               value: "{{ .Values.config.maxContextLength }}"
-            - name: VERITAS_DEPLOYMENT_TYPE
+            - name: GG_CORE_DEPLOYMENT_TYPE
               value: "canary"
-            - name: VERITAS_VERSION
+            - name: GG_CORE_VERSION
               value: {{ .Values.canary.canary.version | quote }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -178,7 +178,7 @@ spec:
               mountPath: {{ .Values.models.mountPath }}
               readOnly: true
             - name: socket
-              mountPath: /var/run/veritas
+              mountPath: /var/run/gg-core
             - name: tmp
               mountPath: /tmp
             - name: cache
@@ -187,7 +187,7 @@ spec:
           livenessProbe:
             exec:
               command:
-                - /app/veritas-spark
+                - /app/gg-core
                 - live
             initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
@@ -198,7 +198,7 @@ spec:
           readinessProbe:
             exec:
               command:
-                - /app/veritas-spark
+                - /app/gg-core
                 - ready
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
@@ -232,43 +232,43 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-canary
+  name: {{ include "gg-core.fullname" . }}-canary
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
-    veritas.hearthlink.ai/service-type: canary
+    {{- include "gg-core.labels" . | nindent 4 }}
+    gg-core.hearthlink.ai/service-type: canary
 spec:
   type: ClusterIP
   selector:
-    {{- include "veritas-spark.selectorLabels" . | nindent 4 }}
-    veritas.hearthlink.ai/deployment-type: canary
+    {{- include "gg-core.selectorLabels" . | nindent 4 }}
+    gg-core.hearthlink.ai/deployment-type: canary
   ports: []
 ---
 # Stable Service
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-stable
+  name: {{ include "gg-core.fullname" . }}-stable
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
-    veritas.hearthlink.ai/service-type: stable
+    {{- include "gg-core.labels" . | nindent 4 }}
+    gg-core.hearthlink.ai/service-type: stable
 spec:
   type: ClusterIP
   selector:
-    {{- include "veritas-spark.selectorLabels" . | nindent 4 }}
-    veritas.hearthlink.ai/deployment-type: stable
+    {{- include "gg-core.selectorLabels" . | nindent 4 }}
+    gg-core.hearthlink.ai/deployment-type: stable
   ports: []
 ---
 # Pod Disruption Budget for Stable
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-stable-pdb
+  name: {{ include "gg-core.fullname" . }}-stable-pdb
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
+    {{- include "gg-core.labels" . | nindent 4 }}
 spec:
   minAvailable: {{ .Values.canary.pdb.minAvailable | default 1 }}
   selector:
     matchLabels:
-      {{- include "veritas-spark.selectorLabels" . | nindent 6 }}
-      veritas.hearthlink.ai/deployment-type: stable
+      {{- include "gg-core.selectorLabels" . | nindent 6 }}
+      gg-core.hearthlink.ai/deployment-type: stable
 {{- end }}

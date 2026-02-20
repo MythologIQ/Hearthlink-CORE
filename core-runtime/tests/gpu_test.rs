@@ -1,10 +1,10 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // Licensed under the Apache License, Version 2.0
 
 //! GPU Support Tests
 
 use std::sync::Arc;
-use veritas_sdr::engine::{GpuBackend, GpuConfig, GpuDevice, GpuError, GpuManager, GpuMemoryPool};
+use gg_core::engine::{GpuBackend, GpuConfig, GpuDevice, GpuError, GpuManager, GpuMemoryPool};
 
 #[test]
 fn test_gpu_backend_display() {

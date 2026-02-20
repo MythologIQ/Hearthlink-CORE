@@ -1,13 +1,13 @@
-# Recommended Models for Veritas SPARK
+# Recommended Models for GG-CORE
 
-**Version**: 0.6.7
+**Version**: 0.7.0
 **Last Updated**: 2026-02-19
 
 ---
 
 ## Overview
 
-Veritas SPARK (Secure Performance-Accelerated Runtime Kernel) supports GGUF and ONNX model formats. This document lists recommended models with permissive licenses (MIT/Apache 2.0) suitable for bundling and commercial use.
+GG-CORE (Secure Performance-Accelerated Runtime Kernel) supports GGUF and ONNX model formats. This document lists recommended models with permissive licenses (MIT/Apache 2.0) suitable for bundling and commercial use.
 
 ## Tiered Model Strategy
 
@@ -136,17 +136,17 @@ Both licenses are fully permissive for commercial use and bundling.
 After downloading, verify model integrity:
 
 ```bash
-# Register model with Veritas SPARK
-veritas-spark-cli model register \
+# Register model with GG-CORE
+GG-CORE-cli model register \
   --name qwen-1.5b \
   --path models/qwen2.5-1.5b-instruct-q4_k_m.gguf \
   --format gguf
 
 # Verify model loads
-veritas-spark-cli status --json | jq '.models'
+GG-CORE-cli status --json | jq '.models'
 
 # Run test inference
-veritas-spark-cli infer \
+GG-CORE-cli infer \
   --model qwen-1.5b \
   --prompt "Hello, world!"
 ```
@@ -235,4 +235,4 @@ Models under evaluation for future support:
 
 ---
 
-Copyright 2024-2026 Veritas SPARK Contributors
+Copyright 2024-2026 GG-CORE Contributors

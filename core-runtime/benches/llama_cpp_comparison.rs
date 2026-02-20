@@ -1,9 +1,9 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // Licensed under the Apache License, Version 2.0
 
 //! llama.cpp Direct Comparison Benchmark
 //!
-//! This benchmark compares Veritas SPARK overhead against llama.cpp CLI directly.
+//! This benchmark compares GG-CORE overhead against llama.cpp CLI directly.
 //! This is the fair comparison - both use the same backend (llama.cpp).
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
@@ -67,11 +67,11 @@ fn bench_llama_cpp_cli(c: &mut Criterion) {
     group.finish();
 }
 
-/// Veritas SPARK overhead benchmark
-fn bench_veritas_sdr_overhead(c: &mut Criterion) {
-    let mut group = c.benchmark_group("veritas_sdr_overhead");
+/// GG-CORE overhead benchmark
+fn bench_gg_core_overhead(c: &mut Criterion) {
+    let mut group = c.benchmark_group("gg_core_overhead");
 
-    // This would benchmark the actual Veritas SPARK inference
+    // This would benchmark the actual GG-CORE inference
     // For now, we measure the infrastructure overhead
 
     group.throughput(Throughput::Elements(1));
@@ -79,7 +79,7 @@ fn bench_veritas_sdr_overhead(c: &mut Criterion) {
     // IPC encoding overhead
     // IPC encoding overhead
     group.bench_function(BenchmarkId::new("ipc_encode", "overhead"), |b| {
-        use veritas_sdr::ipc::protocol::{
+        use gg_core::ipc::protocol::{
             encode_message_binary, IpcMessage, RequestId, StreamChunk,
         };
         // Create a message roughly equivalent to 1KB of data
@@ -100,7 +100,7 @@ fn bench_veritas_sdr_overhead(c: &mut Criterion) {
     // IPC decoding overhead
     // IPC decoding overhead
     group.bench_function(BenchmarkId::new("ipc_decode", "overhead"), |b| {
-        use veritas_sdr::ipc::protocol::{
+        use gg_core::ipc::protocol::{
             decode_message_binary, encode_message_binary, IpcMessage, RequestId, StreamChunk,
         };
         let data = IpcMessage::StreamChunk(StreamChunk {
@@ -121,7 +121,7 @@ fn bench_veritas_sdr_overhead(c: &mut Criterion) {
     // Security scanning overhead
     // Security scanning overhead
     group.bench_function(BenchmarkId::new("security_scan", "overhead"), |b| {
-        use veritas_sdr::security::PromptInjectionFilter;
+        use gg_core::security::PromptInjectionFilter;
         let filter = PromptInjectionFilter::default();
 
         b.iter(|| {
@@ -133,7 +133,7 @@ fn bench_veritas_sdr_overhead(c: &mut Criterion) {
     // PII detection overhead
     // PII detection overhead
     group.bench_function(BenchmarkId::new("pii_detect", "overhead"), |b| {
-        use veritas_sdr::security::PIIDetector;
+        use gg_core::security::PIIDetector;
         let detector = PIIDetector::new();
 
         b.iter(|| {
@@ -150,10 +150,10 @@ fn bench_total_overhead(c: &mut Criterion) {
     let mut group = c.benchmark_group("total_overhead");
 
     group.bench_function("infrastructure_total", |b| {
-        use veritas_sdr::ipc::protocol::{
+        use gg_core::ipc::protocol::{
             decode_message_binary, encode_message_binary, IpcMessage, RequestId, StreamChunk,
         };
-        use veritas_sdr::security::{PIIDetector, PromptInjectionFilter};
+        use gg_core::security::{PIIDetector, PromptInjectionFilter};
 
         let filter = PromptInjectionFilter::default();
         let detector = PIIDetector::new();
@@ -182,7 +182,7 @@ fn bench_total_overhead(c: &mut Criterion) {
 /// Results summary
 fn print_comparison_summary() {
     println!("\n=== llama.cpp Direct Comparison Summary ===\n");
-    println!("This benchmark measures Veritas SPARK overhead vs llama.cpp CLI.");
+    println!("This benchmark measures GG-CORE overhead vs llama.cpp CLI.");
     println!("\nExpected Results:");
     println!("| Component          | Expected Overhead |");
     println!("|--------------------|-------------------|");
@@ -203,7 +203,7 @@ criterion_group! {
     config = Criterion::default()
         .measurement_time(Duration::from_secs(10))
         .sample_size(100);
-    targets = bench_llama_cpp_cli, bench_veritas_sdr_overhead, bench_total_overhead
+    targets = bench_llama_cpp_cli, bench_gg_core_overhead, bench_total_overhead
 }
 
 criterion_main! {

@@ -1,46 +1,53 @@
-# Veritas SPARK Single GPU Values
-# Configuration for single GPU deployment
-# Suitable for: Production inference with single GPU, small workloads
+# GG-CORE Multi-GPU Values
+# Configuration for multi-GPU deployment with load balancing
+# Suitable for: High-throughput production inference, large models
 
 ---
-# Single replica for single GPU
-replicaCount: 1
+# Multiple replicas for load balancing
+replicaCount: 3
 
 # Container image configuration
 image:
-  repository: veritas-spark/core
+  repository: GG-CORE/core
   pullPolicy: IfNotPresent
   tag: "0.6.5"
 
-# GPU resource allocation
+# GPU resource allocation per pod
 resources:
   limits:
+    cpu: 8
+    memory: 32Gi
+    nvidia.com/gpu: 2
+  requests:
     cpu: 4
     memory: 16Gi
-    nvidia.com/gpu: 1
-  requests:
-    cpu: 2
-    memory: 8Gi
-    nvidia.com/gpu: 1
+    nvidia.com/gpu: 2
 
 # GPU configuration
 gpu:
   enabled: true
   type: "nvidia"
-  # GPU memory fraction (0.9 = 90% of GPU memory for model)
-  memoryFraction: 0.9
+  memoryFraction: 0.85
+  # Multi-GPU settings
+  multiGpu:
+    enabled: true
+    # Tensor parallelism for large models
+    tensorParallelism: 2
+    # Pipeline parallelism (1 = no pipeline parallelism)
+    pipelineParallelism: 1
 
 # Model configuration
 model:
   enabled: true
-  # Model suitable for single GPU (7B or 13B parameter)
-  name: "llama-2-13b-chat"
-  quantization: "q4_0" # 4-bit quantization for memory efficiency
+  # Larger model for multi-GPU (70B parameter)
+  name: "llama-2-70b-chat"
+  quantization: "q4_0"
   cacheDir: "/models"
   preload: true
-  # Model-specific settings
   contextLength: 4096
-  batchSize: 32
+  batchSize: 64
+  # Multi-GPU model settings
+  tensorSplit: [1, 1] # Equal split across GPUs
 
 # Service configuration
 service:
@@ -50,6 +57,11 @@ service:
     prometheus.io/scrape: "true"
     prometheus.io/port: "8080"
     prometheus.io/path: "/metrics"
+  # Session affinity for streaming connections
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600
 
 # Ingress configuration
 ingress:
@@ -58,14 +70,16 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
   hosts:
     - host: inference.example.com
       paths:
         - path: /
           pathType: Prefix
   tls:
-    - secretName: veritas-spark-tls
+    - secretName: GG-CORE-tls
       hosts:
         - inference.example.com
 
@@ -86,9 +100,9 @@ podSecurityContext:
   seccompProfile:
     type: RuntimeDefault
 
-# Node selector for GPU nodes
+# Node selector for multi-GPU nodes
 nodeSelector:
-  nvidia.com/gpu.present: "true"
+  nvidia.com/gpu.count: "2"
 
 # Tolerations for GPU nodes
 tolerations:
@@ -96,8 +110,19 @@ tolerations:
     operator: "Exists"
     effect: "NoSchedule"
 
-# Affinity for GPU node selection
+# Anti-affinity to spread across nodes
 affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - GG-CORE
+          topologyKey: kubernetes.io/hostname
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
       nodeSelectorTerms:
@@ -105,23 +130,22 @@ affinity:
             - key: nvidia.com/gpu.product
               operator: In
               values:
-                - NVIDIA-A100-SXM4-40GB
-                - NVIDIA-A100-PCIE-40GB
-                - NVIDIA-V100
+                - NVIDIA-A100-SXM4-80GB
+                - NVIDIA-H100-SXM5
 
 # Health checks
 livenessProbe:
   enabled: true
-  initialDelaySeconds: 120 # Longer for model loading
+  initialDelaySeconds: 180 # Longer for large model loading
   periodSeconds: 10
-  timeoutSeconds: 5
+  timeoutSeconds: 10
   failureThreshold: 3
 
 readinessProbe:
   enabled: true
-  initialDelaySeconds: 60
-  periodSeconds: 5
-  timeoutSeconds: 3
+  initialDelaySeconds: 120
+  periodSeconds: 10
+  timeoutSeconds: 5
   failureThreshold: 3
 
 # Logging configuration
@@ -135,7 +159,7 @@ metrics:
   enabled: true
   serviceMonitor:
     enabled: true
-    interval: 30s
+    interval: 15s
     labels:
       release: prometheus
 
@@ -145,11 +169,22 @@ tracing:
   endpoint: "jaeger-collector.observability.svc.cluster.local:14268"
   sampleRate: 0.1
 
-# Canary deployment disabled (single replica)
+# Canary deployment enabled
 canary:
-  enabled: false
+  enabled: true
+  # Canary analysis settings
+  analysis:
+    interval: 60s
+    threshold: 3
+    maxWeight: 50
+    stepWeight: 10
+  # Metrics thresholds
+  thresholds:
+    errorRate: 0.01
+    p99Latency: 500ms
+    throughput: 95
 
-# Blue-green deployment disabled (single replica)
+# Blue-green deployment (alternative to canary)
 blueGreen:
   enabled: false
 
@@ -160,7 +195,7 @@ env:
   - name: VERITAS_ENV
     value: "production"
   - name: CUDA_VISIBLE_DEVICES
-    value: "0"
+    value: "0,1"
 
 # ConfigMap data
 config:
@@ -175,14 +210,17 @@ config:
     piiDetection: true
     promptInjectionDetection: true
   performance:
-    kvCacheSize: 1000
-    batchSize: 32
+    kvCacheSize: 2000
+    batchSize: 64
+    # Multi-GPU optimizations
+    tensorParallelSize: 2
+    pipelineParallelSize: 1
 
 # Persistence for model cache
 persistence:
   enabled: true
   accessMode: ReadWriteOnce
-  size: 50Gi
+  size: 200Gi
   storageClass: "fast-ssd"
   mountPath: "/models"
 
@@ -201,11 +239,25 @@ priorityClassName: "high-priority"
 
 # Pod disruption budget
 podDisruptionBudget:
-  enabled: false # Not applicable for single replica
+  enabled: true
+  minAvailable: 2
 
 # Horizontal pod autoscaler
 autoscaling:
-  enabled: false # Cannot scale beyond GPU count
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  # Custom metrics
+  metrics:
+    - type: Pods
+      pods:
+        metric:
+          name: veritas_inference_queue_depth
+        target:
+          type: AverageValue
+          averageValue: 10
 
 # Network policies
 networkPolicy:
@@ -225,7 +277,15 @@ networkPolicy:
               name: observability
       ports:
         - protocol: TCP
-          port: 14268 # Jaeger
+          port: 14268
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: GG-CORE
+      ports:
+        - protocol: TCP
+          port: 8080
 
 # Pod annotations
 podAnnotations:
@@ -235,7 +295,8 @@ podAnnotations:
 # Pod labels
 podLabels:
   app.kubernetes.io/component: inference
-  app.kubernetes.io/part-of: veritas-spark
+  app.kubernetes.io/part-of: GG-CORE
+  GG-CORE.io/gpu-count: "2"
 
 # Additional containers
 extraContainers: []
@@ -244,13 +305,19 @@ extraContainers: []
 extraVolumes:
   - name: tmp
     emptyDir: {}
+  - name: dshm
+    emptyDir:
+      medium: Memory
+      sizeLimit: 16Gi
 
 # Additional volume mounts
 extraVolumeMounts:
   - name: tmp
     mountPath: /tmp
+  - name: dshm
+    mountPath: /dev/shm
 
-# Init containers for model download
+# Init containers
 initContainers:
   - name: model-downloader
     image: busybox:1.36

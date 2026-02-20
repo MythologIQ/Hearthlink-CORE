@@ -1,6 +1,6 @@
 //! Tests for SIMD matmul kernels.
 
-use veritas_sdr::engine::simd_matmul::{dot_q4, dot_q8, init_simd};
+use gg_core::engine::simd_matmul::{dot_q4, dot_q8, init_simd};
 
 fn dot_q8_scalar(q_data: &[u8], input: &[f32], scale: f32) -> f32 {
     q_data.iter().zip(input.iter())

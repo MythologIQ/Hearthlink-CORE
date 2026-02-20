@@ -1,5 +1,5 @@
-# Veritas SPARK Model Download Script
-# SPARK = Secure Performance-Accelerated Runtime Kernel
+# GG-CORE Model Download Script
+# GG-CORE = Greatest Good - Contained Offline Restricted Execution
 # Downloads recommended GGUF models for testing and production
 
 param(
@@ -15,7 +15,7 @@ if (-not (Test-Path $ModelsDir)) {
     New-Item -ItemType Directory -Path $ModelsDir -Force | Out-Null
 }
 
-Write-Host "Veritas SPARK Model Downloader" -ForegroundColor Cyan
+Write-Host "GG-CORE Model Downloader" -ForegroundColor Cyan
 Write-Host "===============================" -ForegroundColor Cyan
 
 # Model definitions
@@ -97,4 +97,4 @@ foreach ($tier in $toDownload) {
 Write-Host "Done! Models ready in: $ModelsDir" -ForegroundColor Green
 Write-Host ""
 Write-Host "Register models with:"
-Write-Host "  veritas-spark-cli model register --name <name> --path models/<file>.gguf --format gguf"
+Write-Host "  GG-CORE-cli model register --name <name> --path models/<file>.gguf --format gguf"

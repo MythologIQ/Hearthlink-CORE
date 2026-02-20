@@ -1,6 +1,6 @@
 //! Tests for model warm-up functionality.
 
-use veritas_sdr::ipc::{
+use gg_core::ipc::{
     decode_message, encode_message, IpcMessage, WarmupRequest, WarmupResponse,
 };
 

@@ -1,4 +1,4 @@
-# Comparative Analysis: Veritas SPARK vs Open-Source Inference Runtimes
+# Comparative Analysis: GG-CORE vs Open-Source Inference Runtimes
 
 **Date:** 2026-02-16
 **Status:** Complete
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document provides a comprehensive comparison of **Veritas SPARK** (Secure Performance-Accelerated Runtime Kernel) against major open-source inference runtimes, covering both performance and security dimensions.
+This document provides a comprehensive comparison of **GG-CORE** (Greatest Good - Contained Offline Restricted Execution) against major open-source inference runtimes, covering both performance and security dimensions.
 
 ### Key Findings
 
@@ -32,7 +32,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 | Runtime            | Version | Language   | License    | Primary Use Case            |
 | ------------------ | ------- | ---------- | ---------- | --------------------------- |
-| **Veritas SPARK**    | 1.0.0   | Rust       | Apache 2.0 | Secure enterprise inference |
+| **GG-CORE**    | 1.0.0   | Rust       | Apache 2.0 | Secure enterprise inference |
 | Ollama             | 0.1.x   | Go         | MIT        | Local LLM deployment        |
 | llama.cpp          | b2000+  | C++        | MIT        | High-performance inference  |
 | vLLM               | 0.3.x   | Python     | Apache 2.0 | High-throughput serving     |
@@ -51,7 +51,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 | Runtime            | Communication | Memory Mgmt | Scheduling | Total Overhead |
 | ------------------ | ------------- | ----------- | ---------- | -------------- |
-| **Veritas SPARK**    | 330 ns        | 30 ns       | 0.67 ns    | **~361 ns**    |
+| **GG-CORE**    | 330 ns        | 30 ns       | 0.67 ns    | **~361 ns**    |
 | Ollama             | 1-10 ms       | 100-500 µs  | 10-50 µs   | ~1-10 ms       |
 | llama.cpp (server) | 0.5-5 ms      | 50-200 µs   | 5-20 µs    | ~0.5-5 ms      |
 | vLLM               | 0.5-2 ms      | 100-300 µs  | 10-30 µs   | ~0.6-2.3 ms    |
@@ -62,7 +62,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 | ONNX Runtime       | N/A (library) | 10-50 µs    | N/A        | ~10-50 µs      |
 | ctransformers      | N/A (library) | 50-200 µs   | N/A        | ~50-200 µs     |
 
-**Veritas SPARK Advantage:**
+**GG-CORE Advantage:**
 
 - vs Ollama: **2,770x - 27,700x faster**
 - vs llama.cpp: **1,385x - 13,850x faster**
@@ -74,7 +74,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 ### 2.2 Feature Comparison
 
-| Feature                  | Veritas SPARK  | Ollama     | llama.cpp | vLLM     | TGI      | TensorRT-LLM | LocalAI    | OpenLLM | ONNX RT |
+| Feature                  | GG-CORE  | Ollama     | llama.cpp | vLLM     | TGI      | TensorRT-LLM | LocalAI    | OpenLLM | ONNX RT |
 | ------------------------ | ------------ | ---------- | --------- | -------- | -------- | ------------ | ---------- | ------- | ------- |
 | **Backends**             | GGUF+ONNX    | GGUF       | GGUF      | PyTorch  | PyTorch  | TensorRT     | GGUF       | Various | ONNX    |
 | **Sandboxing**           | Full         | None       | None      | None     | None     | None         | None       | None    | None    |
@@ -93,7 +93,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 ### 2.3 Performance Optimizations
 
-| Optimization          | Veritas SPARK  | llama.cpp | vLLM       | TGI        | TensorRT-LLM |
+| Optimization          | GG-CORE  | llama.cpp | vLLM       | TGI        | TensorRT-LLM |
 | --------------------- | ------------ | --------- | ---------- | ---------- | ------------ |
 | Paged Attention       | Q8 Quantized | Yes       | Origin     | Yes        | Yes          |
 | KV Cache Quantization | Q8           | Q4/Q8     | Yes        | Yes        | Yes          |
@@ -110,7 +110,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 ### 3.1 Security Features Matrix
 
-| Security Feature        | Veritas SPARK  | Ollama  | llama.cpp | vLLM    | TGI     | TensorRT-LLM | LocalAI | OpenLLM | ONNX RT |
+| Security Feature        | GG-CORE  | Ollama  | llama.cpp | vLLM    | TGI     | TensorRT-LLM | LocalAI | OpenLLM | ONNX RT |
 | ----------------------- | ------------ | ------- | --------- | ------- | ------- | ------------ | ------- | ------- | ------- |
 | **Sandbox Isolation**   | Full         | -       | -         | -       | -       | -            | -       | -       | -       |
 | **Memory Limits**       | Job Objects  | -       | -         | -       | -       | -            | -       | -       | -       |
@@ -129,7 +129,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 ### 3.2 Security Test Coverage
 
-| Category                  | Veritas SPARK | Ollama | llama.cpp | vLLM  | TGI   | Others |
+| Category                  | GG-CORE | Ollama | llama.cpp | vLLM  | TGI   | Others |
 | ------------------------- | ----------- | ------ | --------- | ----- | ----- | ------ |
 | Prompt Injection Tests    | 11          | 0      | 0         | 0     | 0     | 0      |
 | PII Detection Tests       | 13          | 0      | 0         | 0     | 0     | 0      |
@@ -147,7 +147,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 | Runtime         | Score  | Grade | Notes                         |
 | --------------- | ------ | ----- | ----------------------------- |
-| **Veritas SPARK** | 95/100 | A+    | Only sandboxed runtime        |
+| **GG-CORE** | 95/100 | A+    | Only sandboxed runtime        |
 | ONNX Runtime    | 45/100 | C     | Library, not service          |
 | vLLM            | 40/100 | C     | Basic input validation        |
 | TGI             | 40/100 | C     | Basic input validation        |
@@ -166,7 +166,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 | Runtime         | Protocol   | Latency  | Overhead | Streaming |
 | --------------- | ---------- | -------- | -------- | --------- |
-| **Veritas SPARK** | Binary IPC | 330 ns   | Minimal  | Yes       |
+| **GG-CORE** | Binary IPC | 330 ns   | Minimal  | Yes       |
 | Ollama          | HTTP/REST  | 1-10 ms  | High     | Yes       |
 | llama.cpp       | HTTP/REST  | 0.5-5 ms | Medium   | Yes       |
 | vLLM            | HTTP/gRPC  | 0.5-2 ms | Medium   | Yes       |
@@ -179,7 +179,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 | Runtime         | Strategy     | GC Pauses | Deterministic | Memory Safety |
 | --------------- | ------------ | --------- | ------------- | ------------- |
-| **Veritas SPARK** | Arena + Pool | No        | Yes           | Rust          |
+| **GG-CORE** | Arena + Pool | No        | Yes           | Rust          |
 | Ollama          | Go GC        | Yes       | No            | Go            |
 | llama.cpp       | Manual       | No        | Yes           | C++ (unsafe)  |
 | vLLM            | Python GC    | Yes       | No            | Python        |
@@ -193,7 +193,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 | Runtime         | Model        | Thread Pool | Work Stealing | Async   |
 | --------------- | ------------ | ----------- | ------------- | ------- |
-| **Veritas SPARK** | Tokio + Pool | Yes         | Yes           | Yes     |
+| **GG-CORE** | Tokio + Pool | Yes         | Yes           | Yes     |
 | Ollama          | Goroutines   | Go runtime  | No            | Yes     |
 | llama.cpp       | Thread Pool  | Basic       | No            | Partial |
 | vLLM            | Async Python | Limited     | No            | Yes     |
@@ -206,7 +206,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 ## 5. OWASP LLM Top 10 Coverage
 
-| Risk                           | Veritas SPARK               | Ollama | llama.cpp | vLLM    | TGI     | TensorRT-LLM |
+| Risk                           | GG-CORE               | Ollama | llama.cpp | vLLM    | TGI     | TensorRT-LLM |
 | ------------------------------ | ------------------------- | ------ | --------- | ------- | ------- | ------------ |
 | LLM01: Prompt Injection        | Detection + Filtering     | -      | -         | -       | -       | -            |
 | LLM02: Insecure Output         | PII Sanitization          | -      | -         | -       | -       | -            |
@@ -227,7 +227,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 | Runtime         | Security  | Performance | Ease of Use | Enterprise Ready |
 | --------------- | --------- | ----------- | ----------- | ---------------- |
-| **Veritas SPARK** | Excellent | Excellent   | Moderate    | Yes              |
+| **GG-CORE** | Excellent | Excellent   | Moderate    | Yes              |
 | vLLM            | Basic     | Excellent   | Good        | Partial          |
 | TGI             | Basic     | Excellent   | Good        | Partial          |
 | TensorRT-LLM    | Basic     | Excellent   | Complex     | Partial          |
@@ -241,11 +241,11 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 | Use Case                        | Best Choice  | Alternative            |
 | ------------------------------- | ------------ | ---------------------- |
-| **Secure Enterprise Inference** | Veritas SPARK  | vLLM + custom security |
+| **Secure Enterprise Inference** | GG-CORE  | vLLM + custom security |
 | **Local Development**           | Ollama       | llama.cpp              |
 | **High-Throughput Serving**     | vLLM         | TGI, TensorRT-LLM      |
 | **GPU Optimization**            | TensorRT-LLM | vLLM                   |
-| **Classification/Embedding**    | Veritas SPARK  | ONNX Runtime           |
+| **Classification/Embedding**    | GG-CORE  | ONNX Runtime           |
 | **Research/Experimentation**    | llama.cpp    | vLLM                   |
 | **OpenAI Compatibility**        | LocalAI      | Ollama                 |
 | **Production Kubernetes**       | TGI          | vLLM                   |
@@ -254,7 +254,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 ## 7. Competitive Positioning
 
-### 7.1 Veritas SPARK Advantages
+### 7.1 GG-CORE Advantages
 
 **Security:**
 
@@ -324,7 +324,7 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 ## 8. Recommendations
 
-### 8.1 When to Choose Veritas SPARK
+### 8.1 When to Choose GG-CORE
 
 1. **Security-critical applications** - Only sandboxed option
 2. **Enterprise compliance requirements** - Audit logging, rate limiting
@@ -347,11 +347,11 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 ## Conclusion
 
-**Veritas SPARK** occupies a unique position in the inference runtime landscape:
+**GG-CORE** occupies a unique position in the inference runtime landscape:
 
 **Security Leader:** The only sandboxed inference runtime with comprehensive security testing (43 tests), audit logging, rate limiting, and OWASP LLM Top 10 coverage. Security score: 95/100 (A+).
 
-**Performance Leader:** With infrastructure overhead 2,770x-27,700x lower than HTTP-based competitors, Veritas SPARK provides the most efficient request processing layer available.
+**Performance Leader:** With infrastructure overhead 2,770x-27,700x lower than HTTP-based competitors, GG-CORE provides the most efficient request processing layer available.
 
 **Architecture Leader:** Modern design with paged attention, speculative decoding, SIMD optimization, and work-stealing thread pools.
 
@@ -359,9 +359,9 @@ This document provides a comprehensive comparison of **Veritas SPARK** (Secure P
 
 ---
 
-**Analysis Completed By:** Veritas SPARK Documentation System  
+**Analysis Completed By:** GG-CORE Documentation System  
 **Documentation Version:** 2.0  
 **Last Updated:** 2026-02-16T22:20:00Z
 
-Copyright 2024-2026 Veritas SPARK Contributors  
+Copyright 2024-2026 GG-CORE Contributors  
 Licensed under the Apache License, Version 2.0

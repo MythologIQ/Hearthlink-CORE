@@ -1,5 +1,5 @@
 [package]
-name = "veritas-spark-fuzz"
+name = "gg-core-fuzz"
 version = "0.0.0"
 publish = false
 edition = "2021"
@@ -11,7 +11,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 arbitrary = { version = "1", features = ["derive"] }
 
-[dependencies.veritas-sdr]
+[dependencies.gg-core]
 path = ".."
 
 # Fuzz targets for IPC protocol parsing

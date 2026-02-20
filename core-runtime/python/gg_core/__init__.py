@@ -1,13 +1,13 @@
-"""Veritas SPARK - Secure Performance-Accelerated Runtime Kernel for Python
+"""GG-CORE - Greatest Good - Contained Offline Restricted Execution for Python
 
 A sandboxed, offline inference engine for LLM execution.
 
 Example usage:
 
-    import veritas_sdr
+    import gg_core
 
     # Create runtime with authentication
-    runtime = veritas_sdr.Runtime(auth_token="your-secret-token")
+    runtime = gg_core.Runtime(auth_token="your-secret-token")
 
     # Sync session
     with runtime.session() as session:

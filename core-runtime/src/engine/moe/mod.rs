@@ -1,4 +1,4 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 //! Mixture of Experts (MoE) module for sparse model architectures.

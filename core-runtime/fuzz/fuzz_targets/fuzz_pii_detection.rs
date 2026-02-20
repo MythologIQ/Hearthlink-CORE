@@ -6,7 +6,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use veritas_sdr::security::PIIDetector;
+use gg_core::security::PIIDetector;
 
 fuzz_target!(|data: &str| {
     let detector = PIIDetector::new();

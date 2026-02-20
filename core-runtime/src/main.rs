@@ -1,4 +1,4 @@
-//! Veritas SPARK Runtime entry point.
+//! GG-CORE Runtime entry point.
 //!
 //! Bootstraps the sandboxed inference engine with:
 //! - FIPS 140-3 power-on self-tests (fail-fast)
@@ -8,21 +8,21 @@
 //!
 //! ## CLI Subcommands
 //!
-//! - `veritas-spark` or `veritas-spark serve` - Run IPC server (default)
-//! - `veritas-spark health` - Full health check (exit 0/1)
-//! - `veritas-spark live` - Liveness probe (exit 0/1)
-//! - `veritas-spark ready` - Readiness probe (exit 0/1)
+//! - `GG-CORE` or `GG-CORE serve` - Run IPC server (default)
+//! - `GG-CORE health` - Full health check (exit 0/1)
+//! - `GG-CORE live` - Liveness probe (exit 0/1)
+//! - `GG-CORE ready` - Readiness probe (exit 0/1)
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
 
-use veritas_sdr::cli::{get_socket_path, run_health, run_liveness, run_readiness, run_status, CliIpcClient};
-use veritas_sdr::engine::InferenceParams;
-use veritas_sdr::ipc::server;
-use veritas_sdr::security::fips_tests;
-use veritas_sdr::shutdown::ShutdownResult;
-use veritas_sdr::{Runtime, RuntimeConfig};
+use gg_core::cli::{get_socket_path, run_health, run_liveness, run_readiness, run_status, CliIpcClient};
+use gg_core::engine::InferenceParams;
+use gg_core::ipc::server;
+use gg_core::security::fips_tests;
+use gg_core::shutdown::ShutdownResult;
+use gg_core::{Runtime, RuntimeConfig};
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -74,7 +74,7 @@ async fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         "version" | "--version" | "-V" => {
-            println!("veritas-spark {}", env!("CARGO_PKG_VERSION"));
+            println!("GG-CORE {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
         }
         "status" => {
@@ -90,7 +90,7 @@ async fn main() -> ExitCode {
         "verify" => {
             // TODO: Implement verify command
             eprintln!(
-                "Verify command not yet implemented. Use 'veritas-spark health' for health checks."
+                "Verify command not yet implemented. Use 'GG-CORE health' for health checks."
             );
             ExitCode::from(2u8)
         }
@@ -133,10 +133,10 @@ async fn main() -> ExitCode {
 fn print_usage() {
     let version = env!("CARGO_PKG_VERSION");
     eprintln!(
-        "Veritas SPARK - Secure Performance-Accelerated Runtime Kernel v{}
+        "GG-CORE - Secure Performance-Accelerated Runtime Kernel v{}
 
 USAGE:
-    veritas-spark [COMMAND] [OPTIONS]
+    GG-CORE [COMMAND] [OPTIONS]
 
 COMMANDS:
     serve        Run the IPC server (default when no command given)
@@ -158,20 +158,20 @@ OPTIONS:
     --socket PATH  Override IPC socket path
 
 EXAMPLES:
-    veritas-spark                          # Run IPC server (default)
-    veritas-spark serve                    # Explicitly run IPC server
-    veritas-spark infer --model phi-3 --prompt \"Hello\"  # Run inference
-    veritas-spark infer --model phi-3 --prompt \"Hi\" --stream  # Streaming
-    veritas-spark health                   # Full health check
-    veritas-spark live                     # Liveness probe
-    veritas-spark ready                    # Readiness probe
-    veritas-spark status                   # Show system status
-    veritas-spark models list              # List loaded models
-    veritas-spark config validate          # Validate configuration
-    veritas-spark --socket /custom/path    # Use custom socket path
+    GG-CORE                          # Run IPC server (default)
+    GG-CORE serve                    # Explicitly run IPC server
+    GG-CORE infer --model phi-3 --prompt \"Hello\"  # Run inference
+    GG-CORE infer --model phi-3 --prompt \"Hi\" --stream  # Streaming
+    GG-CORE health                   # Full health check
+    GG-CORE live                     # Liveness probe
+    GG-CORE ready                    # Readiness probe
+    GG-CORE status                   # Show system status
+    GG-CORE models list              # List loaded models
+    GG-CORE config validate          # Validate configuration
+    GG-CORE --socket /custom/path    # Use custom socket path
 
 ENVIRONMENT:
-    VERITAS_SOCKET_PATH  IPC socket path (default: /var/run/veritas/veritas-spark.sock on Unix)
+    VERITAS_SOCKET_PATH  IPC socket path (default: /var/run/veritas/GG-CORE.sock on Unix)
     CORE_AUTH_TOKEN      Authentication token for server mode
     RUST_LOG             Log level (debug, info, warn, error)
     VERITAS_ENV          Environment (development, staging, production)
@@ -183,11 +183,11 @@ EXIT CODES:
     3  Connection error
 
 DOCUMENTATION:
-    https://docs.veritas-spark.io
+    https://docs.GG-CORE.io
 
 SUPPORT:
-    GitHub Issues: https://github.com/veritas-spark/core/issues
-    Community:     https://slack.veritas-spark.io
+    GitHub Issues: https://github.com/GG-CORE/core/issues
+    Community:     https://slack.GG-CORE.io
 ",
         version
     );
@@ -198,10 +198,10 @@ fn print_command_help(command: &str) {
     match command {
         "serve" => {
             eprintln!(
-                "veritas-spark serve - Run the IPC server
+                "GG-CORE serve - Run the IPC server
 
 USAGE:
-    veritas-spark serve [OPTIONS]
+    GG-CORE serve [OPTIONS]
 
 OPTIONS:
     --socket PATH     Override IPC socket path
@@ -209,7 +209,7 @@ OPTIONS:
     --auth-token TKN  Set authentication token
 
 DESCRIPTION:
-    Starts the Veritas SPARK IPC server, which handles inference requests
+    Starts the GG-CORE IPC server, which handles inference requests
     through inter-process communication. This is the default command when
     no command is specified.
 
@@ -217,18 +217,18 @@ DESCRIPTION:
     and will fail-fast if any cryptographic self-test fails.
 
 EXAMPLES:
-    veritas-spark serve
-    veritas-spark serve --socket /custom/veritas.sock
-    veritas-spark serve --config /etc/veritas/config.toml
+    GG-CORE serve
+    GG-CORE serve --socket /custom/veritas.sock
+    GG-CORE serve --config /etc/veritas/config.toml
 "
             );
         }
         "health" => {
             eprintln!(
-                "veritas-spark health - Full health check
+                "GG-CORE health - Full health check
 
 USAGE:
-    veritas-spark health [OPTIONS]
+    GG-CORE health [OPTIONS]
 
 OPTIONS:
     --socket PATH  Override IPC socket path
@@ -236,7 +236,7 @@ OPTIONS:
     --json         Output in JSON format
 
 DESCRIPTION:
-    Performs a comprehensive health check of the Veritas SPARK runtime.
+    Performs a comprehensive health check of the GG-CORE runtime.
     Checks model loading, memory status, and inference capability.
 
 EXIT CODES:
@@ -245,18 +245,18 @@ EXIT CODES:
     3  Connection error
 
 EXAMPLES:
-    veritas-spark health
-    veritas-spark health --json
-    veritas-spark health --timeout 10
+    GG-CORE health
+    GG-CORE health --json
+    GG-CORE health --timeout 10
 "
             );
         }
         "live" | "liveness" => {
             eprintln!(
-                "veritas-spark live - Liveness probe
+                "GG-CORE live - Liveness probe
 
 USAGE:
-    veritas-spark live [OPTIONS]
+    GG-CORE live [OPTIONS]
 
 OPTIONS:
     --socket PATH  Override IPC socket path
@@ -273,7 +273,7 @@ EXIT CODES:
 KUBERNETES USAGE:
     livenessProbe:
       exec:
-        command: [veritas-spark, live]
+        command: [GG-CORE, live]
       initialDelaySeconds: 30
       periodSeconds: 10
 "
@@ -281,10 +281,10 @@ KUBERNETES USAGE:
         }
         "ready" | "readiness" => {
             eprintln!(
-                "veritas-spark ready - Readiness probe
+                "GG-CORE ready - Readiness probe
 
 USAGE:
-    veritas-spark ready [OPTIONS]
+    GG-CORE ready [OPTIONS]
 
 OPTIONS:
     --socket PATH  Override IPC socket path
@@ -302,7 +302,7 @@ EXIT CODES:
 KUBERNETES USAGE:
     readinessProbe:
       exec:
-        command: [veritas-spark, ready]
+        command: [GG-CORE, ready]
       initialDelaySeconds: 60
       periodSeconds: 5
 "
@@ -310,10 +310,10 @@ KUBERNETES USAGE:
         }
         "status" => {
             eprintln!(
-                "veritas-spark status - Show system status
+                "GG-CORE status - Show system status
 
 USAGE:
-    veritas-spark status [OPTIONS]
+    GG-CORE status [OPTIONS]
 
 OPTIONS:
     --socket PATH  Override IPC socket path
@@ -329,18 +329,18 @@ DESCRIPTION:
     - Recent events
 
 EXAMPLES:
-    veritas-spark status
-    veritas-spark status --json
-    veritas-spark status --watch
+    GG-CORE status
+    GG-CORE status --json
+    GG-CORE status --watch
 "
             );
         }
         "infer" => {
             eprintln!(
-                "veritas-spark infer - Run inference
+                "GG-CORE infer - Run inference
 
 USAGE:
-    veritas-spark infer --model <MODEL> --prompt <PROMPT> [OPTIONS]
+    GG-CORE infer --model <MODEL> --prompt <PROMPT> [OPTIONS]
 
 OPTIONS:
     --model <MODEL>      Model ID to use for inference
@@ -350,7 +350,7 @@ OPTIONS:
     --socket PATH        Override IPC socket path
 
 DESCRIPTION:
-    Sends an inference request to the running Veritas SPARK server
+    Sends an inference request to the running GG-CORE server
     and prints the generated output. Use --stream for real-time
     token streaming.
 
@@ -359,18 +359,18 @@ EXIT CODES:
     1  Inference failed or connection error
 
 EXAMPLES:
-    veritas-spark infer --model phi-3 --prompt \"Hello, world!\"
-    veritas-spark infer --model phi-3 --prompt \"Count to 5\" --stream
-    veritas-spark infer --model qwen --prompt \"Hi\" --max-tokens 100
+    GG-CORE infer --model phi-3 --prompt \"Hello, world!\"
+    GG-CORE infer --model phi-3 --prompt \"Count to 5\" --stream
+    GG-CORE infer --model qwen --prompt \"Hi\" --max-tokens 100
 "
             );
         }
         "verify" => {
             eprintln!(
-                "veritas-spark verify - Verify deployment
+                "GG-CORE verify - Verify deployment
 
 USAGE:
-    veritas-spark verify [OPTIONS]
+    GG-CORE verify [OPTIONS]
 
 OPTIONS:
     --socket PATH  Override IPC socket path
@@ -389,17 +389,17 @@ EXIT CODES:
     1  One or more checks failed
 
 EXAMPLES:
-    veritas-spark verify
-    veritas-spark verify --all
+    GG-CORE verify
+    GG-CORE verify --all
 "
             );
         }
         "models" => {
             eprintln!(
-                "veritas-spark models - Manage models
+                "GG-CORE models - Manage models
 
 USAGE:
-    veritas-spark models <SUBCOMMAND> [OPTIONS]
+    GG-CORE models <SUBCOMMAND> [OPTIONS]
 
 SUBCOMMANDS:
     list           List loaded models
@@ -412,19 +412,19 @@ OPTIONS:
     --json         Output in JSON format
 
 EXAMPLES:
-    veritas-spark models list
-    veritas-spark models load llama-2-7b-chat
-    veritas-spark models info llama-2-7b-chat
-    veritas-spark models unload llama-2-7b-chat
+    GG-CORE models list
+    GG-CORE models load llama-2-7b-chat
+    GG-CORE models info llama-2-7b-chat
+    GG-CORE models unload llama-2-7b-chat
 "
             );
         }
         "config" => {
             eprintln!(
-                "veritas-spark config - Manage configuration
+                "GG-CORE config - Manage configuration
 
 USAGE:
-    veritas-spark config <SUBCOMMAND> [OPTIONS]
+    GG-CORE config <SUBCOMMAND> [OPTIONS]
 
 SUBCOMMANDS:
     show           Show current configuration
@@ -436,15 +436,15 @@ OPTIONS:
     --file PATH    Configuration file path
 
 EXAMPLES:
-    veritas-spark config show
-    veritas-spark config validate --file values.yaml
-    veritas-spark config defaults
+    GG-CORE config show
+    GG-CORE config validate --file values.yaml
+    GG-CORE config defaults
 "
             );
         }
         _ => {
             eprintln!(
-                "No detailed help available for '{}'. Use 'veritas-spark help' for general usage.",
+                "No detailed help available for '{}'. Use 'GG-CORE help' for general usage.",
                 command
             );
         }
@@ -513,7 +513,7 @@ async fn run_inference(args: &[String]) -> i32 {
     }
 
     if model_id.is_empty() || prompt.is_empty() {
-        eprintln!("Usage: veritas-spark infer --model <MODEL> --prompt <PROMPT> [--max-tokens N] [--stream]");
+        eprintln!("Usage: GG-CORE infer --model <MODEL> --prompt <PROMPT> [--max-tokens N] [--stream]");
         return 1;
     }
 

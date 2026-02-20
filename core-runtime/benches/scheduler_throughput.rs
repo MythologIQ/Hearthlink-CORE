@@ -2,8 +2,8 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
-use veritas_sdr::engine::InferenceParams;
-use veritas_sdr::scheduler::{Priority, PriorityQueue, QueuedRequest};
+use gg_core::engine::InferenceParams;
+use gg_core::scheduler::{Priority, PriorityQueue, QueuedRequest};
 
 fn create_test_request(id: u64, token_count: usize) -> QueuedRequest {
     // Generate a prompt string of approximately the specified token count

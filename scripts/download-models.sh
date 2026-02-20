@@ -1,6 +1,6 @@
 #!/bin/bash
-# Veritas SPARK Model Download Script
-# SPARK = Secure Performance-Accelerated Runtime Kernel
+# GG-CORE Model Download Script
+# GG-CORE = Greatest Good - Contained Offline Restricted Execution
 # Downloads recommended GGUF models for testing and production
 
 set -e
@@ -8,7 +8,7 @@ set -e
 TIER="${1:-default}"
 MODELS_DIR="${2:-models}"
 
-echo "Veritas SPARK Model Downloader"
+echo "GG-CORE Model Downloader"
 echo "==============================="
 echo ""
 
@@ -111,4 +111,4 @@ echo ""
 echo "Done! Models ready in: $MODELS_DIR"
 echo ""
 echo "Register models with:"
-echo "  veritas-spark-cli model register --name <name> --path models/<file>.gguf --format gguf"
+echo "  GG-CORE-cli model register --name <name> --path models/<file>.gguf --format gguf"

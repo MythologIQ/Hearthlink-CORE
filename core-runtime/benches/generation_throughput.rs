@@ -4,7 +4,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
-use veritas_sdr::engine::{FinishReason, GenerationResult, StreamingOutput};
+use gg_core::engine::{FinishReason, GenerationResult, StreamingOutput};
 
 fn create_generation_result(token_count: usize) -> GenerationResult {
     let text = "generated ".repeat(token_count);

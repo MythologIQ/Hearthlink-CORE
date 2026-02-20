@@ -1,5 +1,5 @@
-# Veritas SPARK E2E Proof Script
-# SPARK = Secure Performance-Accelerated Runtime Kernel
+# GG-CORE E2E Proof Script
+# GG-CORE = Greatest Good - Contained Offline Restricted Execution
 # Demonstrates Hearthlink integration compliance:
 # 1. Load real GGUF model
 # 2. Run inference with meaningful output
@@ -17,7 +17,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║  Veritas SPARK E2E Proof - Hearthlink Compliance             ║" -ForegroundColor Cyan
+Write-Host "║  GG-CORE E2E Proof - Hearthlink Compliance             ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 
@@ -53,13 +53,13 @@ try {
     Pop-Location
 }
 
-$binary = Join-Path $PSScriptRoot "..\core-runtime\target\release\veritas-spark-cli.exe"
+$binary = Join-Path $PSScriptRoot "..\core-runtime\target\release\GG-CORE-cli.exe"
 if (-not (Test-Path $binary)) {
     # Try target-triple specific path (Windows MSVC)
-    $binary = Join-Path $PSScriptRoot "..\core-runtime\target\x86_64-pc-windows-msvc\release\veritas-spark-cli.exe"
+    $binary = Join-Path $PSScriptRoot "..\core-runtime\target\x86_64-pc-windows-msvc\release\GG-CORE-cli.exe"
 }
 if (-not (Test-Path $binary)) {
-    $binary = Join-Path $PSScriptRoot "..\core-runtime\target\release\veritas-spark-cli"
+    $binary = Join-Path $PSScriptRoot "..\core-runtime\target\release\GG-CORE-cli"
 }
 Write-Host "  Binary: $binary" -ForegroundColor Green
 

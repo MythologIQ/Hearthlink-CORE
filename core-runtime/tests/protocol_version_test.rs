@@ -1,6 +1,6 @@
 //! Tests for protocol version negotiation.
 
-use veritas_sdr::ipc::{
+use gg_core::ipc::{
     decode_message, encode_message, IpcMessage, ProtocolVersion,
 };
 

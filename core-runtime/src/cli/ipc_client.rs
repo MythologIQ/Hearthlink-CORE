@@ -1,9 +1,9 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 //! IPC client for CLI commands.
 //!
-//! Connects to running Veritas SPARK instance via named pipe/Unix socket
+//! Connects to running GG-CORE instance via named pipe/Unix socket
 //! to perform health checks and other operations.
 
 use std::time::Duration;

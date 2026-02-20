@@ -1,10 +1,10 @@
 //! Health check tests for CORE Runtime.
 
-use veritas_sdr::health::{HealthChecker, HealthConfig, HealthState};
-use veritas_sdr::ipc::{
+use gg_core::health::{HealthChecker, HealthConfig, HealthState};
+use gg_core::ipc::{
     decode_message, encode_message, HealthCheckResponse, HealthCheckType, IpcMessage,
 };
-use veritas_sdr::shutdown::ShutdownState;
+use gg_core::shutdown::ShutdownState;
 
 // ============================================================================
 // Health Checker Tests

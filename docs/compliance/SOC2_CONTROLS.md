@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document maps Veritas SPARK's (Secure Performance-Accelerated Runtime Kernel) implemented controls to SOC 2 Trust Service Criteria. The current compliance level is **91%**, with 61 of 67 applicable controls fully implemented.
+This document maps GG-CORE's (Greatest Good - Contained Offline Restricted Execution) implemented controls to SOC 2 Trust Service Criteria. The current compliance level is **91%**, with 61 of 67 applicable controls fully implemented.
 
 ### Compliance Status Overview
 

@@ -4,18 +4,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-blue
+  name: {{ include "gg-core.fullname" . }}-blue
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
-    veritas.hearthlink.ai/environment: blue
+    {{- include "gg-core.labels" . | nindent 4 }}
+    gg-core.hearthlink.ai/environment: blue
   annotations:
-    veritas.hearthlink.ai/deployment-strategy: bluegreen
+    gg-core.hearthlink.ai/deployment-strategy: bluegreen
 spec:
   replicas: {{ .Values.bluegreen.blue.replicas | default .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "veritas-spark.selectorLabels" . | nindent 6 }}
-      veritas.hearthlink.ai/environment: blue
+      {{- include "gg-core.selectorLabels" . | nindent 6 }}
+      gg-core.hearthlink.ai/environment: blue
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -24,30 +24,30 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "veritas-spark.selectorLabels" . | nindent 8 }}
-        veritas.hearthlink.ai/environment: blue
-        veritas.hearthlink.ai/version: {{ .Values.bluegreen.blue.version | quote }}
+        {{- include "gg-core.selectorLabels" . | nindent 8 }}
+        gg-core.hearthlink.ai/environment: blue
+        gg-core.hearthlink.ai/version: {{ .Values.bluegreen.blue.version | quote }}
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
     spec:
-      serviceAccountName: {{ include "veritas-spark.serviceAccountName" . }}
+      serviceAccountName: {{ include "gg-core.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: veritas-spark
+        - name: gg-core
           image: "{{ .Values.image.repository }}:{{ .Values.bluegreen.blue.version }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - serve
           env:
-            - name: VERITAS_SOCKET_PATH
+            - name: GG_CORE_SOCKET_PATH
               value: {{ .Values.config.socketPath }}
-            - name: VERITAS_MAX_CONTEXT
+            - name: GG_CORE_MAX_CONTEXT
               value: "{{ .Values.config.maxContextLength }}"
-            - name: VERITAS_ENVIRONMENT
+            - name: GG_CORE_ENVIRONMENT
               value: "blue"
-            - name: VERITAS_VERSION
+            - name: GG_CORE_VERSION
               value: {{ .Values.bluegreen.blue.version | quote }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -66,7 +66,7 @@ spec:
               mountPath: {{ .Values.models.mountPath }}
               readOnly: true
             - name: socket
-              mountPath: /var/run/veritas
+              mountPath: /var/run/gg-core
             - name: tmp
               mountPath: /tmp
             - name: cache
@@ -75,7 +75,7 @@ spec:
           livenessProbe:
             exec:
               command:
-                - /app/veritas-spark
+                - /app/gg-core
                 - live
             initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
@@ -86,7 +86,7 @@ spec:
           readinessProbe:
             exec:
               command:
-                - /app/veritas-spark
+                - /app/gg-core
                 - ready
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
@@ -120,18 +120,18 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-green
+  name: {{ include "gg-core.fullname" . }}-green
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
-    veritas.hearthlink.ai/environment: green
+    {{- include "gg-core.labels" . | nindent 4 }}
+    gg-core.hearthlink.ai/environment: green
   annotations:
-    veritas.hearthlink.ai/deployment-strategy: bluegreen
+    gg-core.hearthlink.ai/deployment-strategy: bluegreen
 spec:
   replicas: {{ .Values.bluegreen.green.replicas | default .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "veritas-spark.selectorLabels" . | nindent 6 }}
-      veritas.hearthlink.ai/environment: green
+      {{- include "gg-core.selectorLabels" . | nindent 6 }}
+      gg-core.hearthlink.ai/environment: green
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -140,30 +140,30 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "veritas-spark.selectorLabels" . | nindent 8 }}
-        veritas.hearthlink.ai/environment: green
-        veritas.hearthlink.ai/version: {{ .Values.bluegreen.green.version | quote }}
+        {{- include "gg-core.selectorLabels" . | nindent 8 }}
+        gg-core.hearthlink.ai/environment: green
+        gg-core.hearthlink.ai/version: {{ .Values.bluegreen.green.version | quote }}
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
     spec:
-      serviceAccountName: {{ include "veritas-spark.serviceAccountName" . }}
+      serviceAccountName: {{ include "gg-core.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: veritas-spark
+        - name: gg-core
           image: "{{ .Values.image.repository }}:{{ .Values.bluegreen.green.version }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - serve
           env:
-            - name: VERITAS_SOCKET_PATH
+            - name: GG_CORE_SOCKET_PATH
               value: {{ .Values.config.socketPath }}
-            - name: VERITAS_MAX_CONTEXT
+            - name: GG_CORE_MAX_CONTEXT
               value: "{{ .Values.config.maxContextLength }}"
-            - name: VERITAS_ENVIRONMENT
+            - name: GG_CORE_ENVIRONMENT
               value: "green"
-            - name: VERITAS_VERSION
+            - name: GG_CORE_VERSION
               value: {{ .Values.bluegreen.green.version | quote }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -182,7 +182,7 @@ spec:
               mountPath: {{ .Values.models.mountPath }}
               readOnly: true
             - name: socket
-              mountPath: /var/run/veritas
+              mountPath: /var/run/gg-core
             - name: tmp
               mountPath: /tmp
             - name: cache
@@ -191,7 +191,7 @@ spec:
           livenessProbe:
             exec:
               command:
-                - /app/veritas-spark
+                - /app/gg-core
                 - live
             initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
@@ -202,7 +202,7 @@ spec:
           readinessProbe:
             exec:
               command:
-                - /app/veritas-spark
+                - /app/gg-core
                 - ready
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
@@ -237,50 +237,50 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-active
+  name: {{ include "gg-core.fullname" . }}-active
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
-    veritas.hearthlink.ai/service-type: active
+    {{- include "gg-core.labels" . | nindent 4 }}
+    gg-core.hearthlink.ai/service-type: active
   annotations:
-    veritas.hearthlink.ai/deployment-strategy: bluegreen
-    veritas.hearthlink.ai/active-environment: {{ .Values.bluegreen.active | quote }}
+    gg-core.hearthlink.ai/deployment-strategy: bluegreen
+    gg-core.hearthlink.ai/active-environment: {{ .Values.bluegreen.active | quote }}
 spec:
   type: ClusterIP
   selector:
-    {{- include "veritas-spark.selectorLabels" . | nindent 4 }}
-    veritas.hearthlink.ai/environment: {{ .Values.bluegreen.active }}
+    {{- include "gg-core.selectorLabels" . | nindent 4 }}
+    gg-core.hearthlink.ai/environment: {{ .Values.bluegreen.active }}
   ports: []
 ---
 # Blue Service - Direct access to blue environment
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-blue
+  name: {{ include "gg-core.fullname" . }}-blue
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
-    veritas.hearthlink.ai/service-type: environment
-    veritas.hearthlink.ai/environment: blue
+    {{- include "gg-core.labels" . | nindent 4 }}
+    gg-core.hearthlink.ai/service-type: environment
+    gg-core.hearthlink.ai/environment: blue
 spec:
   type: ClusterIP
   selector:
-    {{- include "veritas-spark.selectorLabels" . | nindent 4 }}
-    veritas.hearthlink.ai/environment: blue
+    {{- include "gg-core.selectorLabels" . | nindent 4 }}
+    gg-core.hearthlink.ai/environment: blue
   ports: []
 ---
 # Green Service - Direct access to green environment
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-green
+  name: {{ include "gg-core.fullname" . }}-green
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
-    veritas.hearthlink.ai/service-type: environment
-    veritas.hearthlink.ai/environment: green
+    {{- include "gg-core.labels" . | nindent 4 }}
+    gg-core.hearthlink.ai/service-type: environment
+    gg-core.hearthlink.ai/environment: green
 spec:
   type: ClusterIP
   selector:
-    {{- include "veritas-spark.selectorLabels" . | nindent 4 }}
-    veritas.hearthlink.ai/environment: green
+    {{- include "gg-core.selectorLabels" . | nindent 4 }}
+    gg-core.hearthlink.ai/environment: green
   ports: []
 {{- if .Values.bluegreen.preview.enabled }}
 ---
@@ -288,18 +288,18 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-preview
+  name: {{ include "gg-core.fullname" . }}-preview
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
-    veritas.hearthlink.ai/service-type: preview
+    {{- include "gg-core.labels" . | nindent 4 }}
+    gg-core.hearthlink.ai/service-type: preview
   annotations:
-    veritas.hearthlink.ai/preview-environment: {{ eq .Values.bluegreen.active "blue" | ternary "green" "blue" | quote }}
+    gg-core.hearthlink.ai/preview-environment: {{ eq .Values.bluegreen.active "blue" | ternary "green" "blue" | quote }}
 spec:
   type: ClusterIP
   selector:
-    {{- include "veritas-spark.selectorLabels" . | nindent 4 }}
+    {{- include "gg-core.selectorLabels" . | nindent 4 }}
     # Selects the INACTIVE environment for preview
-    veritas.hearthlink.ai/environment: {{ eq .Values.bluegreen.active "blue" | ternary "green" "blue" }}
+    gg-core.hearthlink.ai/environment: {{ eq .Values.bluegreen.active "blue" | ternary "green" "blue" }}
   ports: []
 {{- end }}
 ---
@@ -307,27 +307,27 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-blue-pdb
+  name: {{ include "gg-core.fullname" . }}-blue-pdb
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
+    {{- include "gg-core.labels" . | nindent 4 }}
 spec:
   minAvailable: {{ .Values.bluegreen.pdb.minAvailable | default 1 }}
   selector:
     matchLabels:
-      {{- include "veritas-spark.selectorLabels" . | nindent 6 }}
-      veritas.hearthlink.ai/environment: blue
+      {{- include "gg-core.selectorLabels" . | nindent 6 }}
+      gg-core.hearthlink.ai/environment: blue
 ---
 # Pod Disruption Budget for Green
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}-green-pdb
+  name: {{ include "gg-core.fullname" . }}-green-pdb
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
+    {{- include "gg-core.labels" . | nindent 4 }}
 spec:
   minAvailable: {{ .Values.bluegreen.pdb.minAvailable | default 1 }}
   selector:
     matchLabels:
-      {{- include "veritas-spark.selectorLabels" . | nindent 6 }}
-      veritas.hearthlink.ai/environment: green
+      {{- include "gg-core.selectorLabels" . | nindent 6 }}
+      gg-core.hearthlink.ai/environment: green
 {{- end }}

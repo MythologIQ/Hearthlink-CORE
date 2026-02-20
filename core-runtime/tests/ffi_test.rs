@@ -9,7 +9,7 @@
 use std::ffi::{c_char, CStr, CString};
 use std::ptr;
 
-use veritas_sdr::ffi::{
+use gg_core::ffi::{
     core_clear_last_error, core_config_default, core_get_last_error,
     core_runtime_create, core_runtime_destroy,
     CoreConfig, CoreErrorCode, CoreHealthReport, CoreHealthState,
@@ -64,7 +64,7 @@ fn test_get_last_error_returns_null_when_no_error() {
 #[test]
 fn test_clear_last_error_clears_message() {
     // Trigger an error by passing null config
-    let mut out_runtime: *mut veritas_sdr::ffi::CoreRuntime = ptr::null_mut();
+    let mut out_runtime: *mut gg_core::ffi::CoreRuntime = ptr::null_mut();
     unsafe {
         core_runtime_create(ptr::null(), &mut out_runtime);
     }
@@ -85,7 +85,7 @@ fn test_clear_last_error_clears_message() {
 fn test_error_message_set_on_null_pointer() {
     core_clear_last_error();
 
-    let mut out_runtime: *mut veritas_sdr::ffi::CoreRuntime = ptr::null_mut();
+    let mut out_runtime: *mut gg_core::ffi::CoreRuntime = ptr::null_mut();
     let result = unsafe { core_runtime_create(ptr::null(), &mut out_runtime) };
 
     assert_eq!(result, CoreErrorCode::NullPointer);
@@ -230,7 +230,7 @@ fn test_model_metadata_default_values() {
 fn test_runtime_create_rejects_null_config() {
     core_clear_last_error();
 
-    let mut out_runtime: *mut veritas_sdr::ffi::CoreRuntime = ptr::null_mut();
+    let mut out_runtime: *mut gg_core::ffi::CoreRuntime = ptr::null_mut();
     let result = unsafe { core_runtime_create(ptr::null(), &mut out_runtime) };
 
     assert_eq!(result, CoreErrorCode::NullPointer);
@@ -252,7 +252,7 @@ fn test_runtime_create_requires_auth_token() {
     core_clear_last_error();
 
     let config = CoreConfig::default();
-    let mut out_runtime: *mut veritas_sdr::ffi::CoreRuntime = ptr::null_mut();
+    let mut out_runtime: *mut gg_core::ffi::CoreRuntime = ptr::null_mut();
 
     let result = unsafe { core_runtime_create(&config, &mut out_runtime) };
 
@@ -279,7 +279,7 @@ fn test_runtime_create_and_destroy_lifecycle() {
     let mut config = CoreConfig::default();
     config.auth_token = auth_token.as_ptr();
 
-    let mut out_runtime: *mut veritas_sdr::ffi::CoreRuntime = ptr::null_mut();
+    let mut out_runtime: *mut gg_core::ffi::CoreRuntime = ptr::null_mut();
 
     let result = unsafe { core_runtime_create(&config, &mut out_runtime) };
 

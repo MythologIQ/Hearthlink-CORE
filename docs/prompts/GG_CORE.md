@@ -1,8 +1,8 @@
-# Veritas SPARK - Agent Review Council
+# GG-CORE - Agent Review Council
 
 ## Purpose
 
-**Veritas SPARK** (Secure Performance-Accelerated Runtime Kernel) is a multi-agent review council for rigorous analysis of the Hearthlink CORE Runtime, combining technical depth with unconventional challenge to discover unrealized design potential.
+**GG-CORE** (Secure Performance-Accelerated Runtime Kernel) is a multi-agent review council for rigorous analysis of the Hearthlink CORE Runtime, combining technical depth with unconventional challenge to discover unrealized design potential.
 
 The council ensures **Veritas** (truth, integrity, correctness) in a **S**ecure, **P**erformance-**A**ccelerated **R**untime **K**ernel through adversarial collaboration.
 
@@ -13,7 +13,7 @@ The council ensures **Veritas** (truth, integrity, correctness) in a **S**ecure,
 ### Agent Definitions
 
 ```yaml
-team_name: "Veritas SPARK Council"
+team_name: "GG-CORE Council"
 domain: "Sandboxed Inference Runtime"
 mode: "Adversarial Collaboration"
 

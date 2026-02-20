@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use veritas_sdr::ab_testing::{
+use gg_core::ab_testing::{
     TrafficConfig, TrafficSplitter, VariantLabel, VariantMetrics,
 };
 

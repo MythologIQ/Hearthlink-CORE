@@ -3,8 +3,8 @@
 //! These tests validate that the sandbox boundaries are properly enforced
 //! and cannot be escaped through various attack vectors.
 
-use veritas_sdr::memory::{ResourceLimits, ResourceLimitsConfig};
-use veritas_sdr::sandbox::{create_sandbox, Sandbox, SandboxConfig};
+use gg_core::memory::{ResourceLimits, ResourceLimitsConfig};
+use gg_core::sandbox::{create_sandbox, Sandbox, SandboxConfig};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};

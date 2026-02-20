@@ -1,20 +1,20 @@
-# Veritas SPARK Contributor License Agreement
+# GG-CORE Contributor License Agreement
 
-Thank you for your interest in contributing to Veritas SPARK (Secure Performance-Accelerated Runtime Kernel)!
+Thank you for your interest in contributing to GG-CORE (Secure Performance-Accelerated Runtime Kernel)!
 
-This Contributor License Agreement ("CLA") is based on the Apache Software Foundation's CLA. By contributing to Veritas SPARK, you agree to the following terms and conditions.
+This Contributor License Agreement ("CLA") is based on the Apache Software Foundation's CLA. By contributing to GG-CORE, you agree to the following terms and conditions.
 
 ## 1. Definitions
 
 **"You"** (or "Your") shall mean the copyright owner or legal entity authorized by the copyright owner that is making this Contribution.
 
-**"Contribution"** shall mean any original work of authorship, including any modifications or additions to an existing work, that is intentionally submitted by You to Veritas SPARK for inclusion in, or documentation of, the project.
+**"Contribution"** shall mean any original work of authorship, including any modifications or additions to an existing work, that is intentionally submitted by You to GG-CORE for inclusion in, or documentation of, the project.
 
-**"Submit"** shall mean any form of electronic, verbal, or written communication sent to the Veritas SPARK maintainers or their representatives, including but not limited to communication on electronic mailing lists, source code control systems, and issue tracking systems.
+**"Submit"** shall mean any form of electronic, verbal, or written communication sent to the GG-CORE maintainers or their representatives, including but not limited to communication on electronic mailing lists, source code control systems, and issue tracking systems.
 
 ## 2. Grant of License
 
-You hereby grant to Veritas SPARK and its successors a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable license to:
+You hereby grant to GG-CORE and its successors a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable license to:
 
 a) **Reproduce** - make copies of your Contribution  
 b) **Prepare Derivative Works** - modify, adapt, or create new works based on your Contribution  
@@ -26,7 +26,7 @@ This license applies to your Contribution in both Source and Object form.
 
 ## 3. Patent License
 
-You hereby grant to Veritas SPARK and its successors a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable patent license to make, have made, use, offer to sell, sell, import, and otherwise transfer your Contribution, where such license applies only to those patent claims licensable by You that are necessarily infringed by your Contribution alone or by combination of your Contribution with the Work to which your Contribution was submitted.
+You hereby grant to GG-CORE and its successors a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable patent license to make, have made, use, offer to sell, sell, import, and otherwise transfer your Contribution, where such license applies only to those patent claims licensable by You that are necessarily infringed by your Contribution alone or by combination of your Contribution with the Work to which your Contribution was submitted.
 
 ## 4. You Represent That
 
@@ -38,7 +38,7 @@ You represent that your Contribution is your original creation, and that You hav
 
 ## 5. Notice
 
-You agree to notify Veritas SPARK of any facts or circumstances of which You become aware that would make Your representations in this Agreement inaccurate in any respect.
+You agree to notify GG-CORE of any facts or circumstances of which You become aware that would make Your representations in this Agreement inaccurate in any respect.
 
 ## 6. No Obligation
 
@@ -50,7 +50,7 @@ Unless required by applicable law or agreed to in writing, You provide your Cont
 
 ## 8. Commercial Use Rights
 
-Veritas SPARK and its successors retain the right to:
+GG-CORE and its successors retain the right to:
 
 a) Use your Contribution in commercial products and services  
 b) License your Contribution under different terms (including commercial licenses)  
@@ -60,7 +60,7 @@ You retain all rights to use your Contribution for your own purposes, including 
 
 ## 9. How to Sign
 
-By submitting a pull request, issue, or any other contribution to Veritas SPARK, You agree to be bound by this CLA.
+By submitting a pull request, issue, or any other contribution to GG-CORE, You agree to be bound by this CLA.
 
 For corporate contributions, please have an authorized representative sign this CLA by:
 
@@ -70,7 +70,7 @@ For corporate contributions, please have an authorized representative sign this 
 
 ## 10. Contact
 
-For questions about this CLA, please contact the Veritas SPARK maintainers.
+For questions about this CLA, please contact the GG-CORE maintainers.
 
 ---
 

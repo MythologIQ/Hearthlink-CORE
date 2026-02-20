@@ -1,7 +1,7 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-//! Build script for Veritas SPARK
+//! Build script for GG-CORE
 //!
 //! Generates C header file when `ffi` feature is enabled.
 
@@ -26,7 +26,7 @@ fn generate_c_header() -> Result<(), Box<dyn std::error::Error>> {
     // Ensure include directory exists
     std::fs::create_dir_all(&output_dir)?;
 
-    let output_file = output_dir.join("veritas_sdr.h");
+    let output_file = output_dir.join("gg_core.h");
     let config_path = PathBuf::from(&crate_dir).join("cbindgen.toml");
 
     if config_path.exists() {

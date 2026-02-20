@@ -1,4 +1,4 @@
-"""Type stubs for veritas_spark._core native module."""
+"""Type stubs for gg_core._core native module."""
 
 from typing import Iterator, List, Optional
 
@@ -6,7 +6,7 @@ __version__: str
 
 # Exceptions
 class CoreError(Exception):
-    """Base exception for all Veritas SPARK errors."""
+    """Base exception for all GG-CORE errors."""
     pass
 
 class AuthenticationError(CoreError):
@@ -31,7 +31,7 @@ class CancellationError(CoreError):
 
 # Classes
 class Runtime:
-    """Main runtime entry point for Veritas SPARK."""
+    """Main runtime entry point for GG-CORE."""
 
     def __init__(
         self,

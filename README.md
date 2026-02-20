@@ -1,23 +1,23 @@
-# Veritas SPARK
+# GG-CORE
 
-**Veritas** (Truth, Integrity, Correctness) + **SPARK** (Secure Performance-Accelerated Runtime Kernel)
+**GG-CORE** (Greatest Good - Contained Offline Restricted Execution)
 
 A security-first inference runtime for air-gapped and compliance-sensitive environments.
 
-[![Version](https://img.shields.io/badge/Version-0.6.7-orange.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.8.0-orange.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Security](https://img.shields.io/badge/Security-Hardened-brightgreen.svg)](docs/security/THREAT_MODEL.md)
 [![Tests](https://img.shields.io/badge/Tests-424-blue.svg)](docs/testing/)
 
 ---
 
-## Why Veritas SPARK?
+## Why GG-CORE?
 
 ### ⚡Up to 27,000x Faster Infrastructure
 
-| Runtime | Overhead | vs Veritas SPARK |
+| Runtime | Overhead | vs GG-CORE |
 |---------|----------|----------------|
-| **Veritas SPARK** | **361 ns** | — |
+| **GG-CORE** | **361 ns** | — |
 | Ollama | 1-10 ms | 2,770x - 27,700x slower |
 | llama.cpp server | 0.5-5 ms | 1,385x - 13,850x slower |
 | vLLM | 0.6-2.3 ms | 1,660x - 6,370x slower |
@@ -40,7 +40,7 @@ Air-gapped deployments. FIPS-ready cryptography. Full audit logging.
 
 ## Overview
 
-Veritas SPARK is a sandboxed, offline inference engine providing comprehensive security isolation with zero network dependencies. Designed for air-gapped deployments and compliance-sensitive environments requiring predictable performance and strict security controls.
+GG-CORE is a sandboxed, offline inference engine providing comprehensive security isolation with zero network dependencies. Designed for air-gapped deployments and compliance-sensitive environments requiring predictable performance and strict security controls.
 
 ### Key Features
 
@@ -111,10 +111,10 @@ Query real-time runtime diagnostics via secure IPC:
 
 ```bash
 # Human-readable output
-veritas-spark-cli status
+GG-CORE-cli status
 
 # JSON output for external systems
-veritas-spark-cli status --json
+GG-CORE-cli status --json
 ```
 
 **Live Metrics Available**:
@@ -134,8 +134,8 @@ veritas-spark-cli status --json
 Kubernetes-ready health endpoints:
 
 ```bash
-veritas-spark-cli health --liveness   # Process alive?
-veritas-spark-cli health --readiness  # Model loaded?
+GG-CORE-cli health --liveness   # Process alive?
+GG-CORE-cli health --readiness  # Model loaded?
 ```
 
 See [Usage Guide](docs/USAGE_GUIDE.md#cli-commands) for full CLI documentation.
@@ -146,7 +146,7 @@ See [Usage Guide](docs/USAGE_GUIDE.md#cli-commands) for full CLI documentation.
 
 ```
 +-------------------------------------------------------------+
-|                     Veritas SPARK Runtime                      |
+|                     GG-CORE Runtime                      |
 +-------------------------------------------------------------+
 |  +-------------+  +-------------+  +---------------------+  |
 |  |   Security  |  |   Memory    |  |     Scheduler       |  |
@@ -192,9 +192,9 @@ See [Threat Model](docs/security/THREAT_MODEL.md) for detailed security analysis
 
 ### vs HTTP-Based Runtimes
 
-| Runtime          | Infrastructure Overhead | Veritas SPARK Advantage       |
+| Runtime          | Infrastructure Overhead | GG-CORE Advantage       |
 | ---------------- | ----------------------- | --------------------------- |
-| **Veritas SPARK**  | 361 ns                  | Baseline                    |
+| **GG-CORE**  | 361 ns                  | Baseline                    |
 | Ollama           | 1-10 ms                 | **2,770x - 27,700x faster** |
 | llama.cpp server | 0.5-5 ms                | **1,385x - 13,850x faster** |
 | vLLM             | 0.6-2.3 ms              | **1,660x - 6,370x faster**  |
@@ -265,9 +265,9 @@ See [Recommended Models](docs/RECOMMENDED_MODELS.md) for download instructions.
 ## Usage
 
 ```rust
-use veritas_spark::engine::{InferenceEngine, InferenceInput, InferenceParams};
-use veritas_spark::engine::gguf::{load_gguf_model, GgufConfig};
-use veritas_spark::security::PromptInjectionFilter;
+use gg_core::engine::{InferenceEngine, InferenceInput, InferenceParams};
+use gg_core::engine::gguf::{load_gguf_model, GgufConfig};
+use gg_core::security::PromptInjectionFilter;
 use std::path::Path;
 
 // Security scan
@@ -357,4 +357,4 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ---
 
-Copyright 2024-2026 Veritas SPARK Contributors
+Copyright 2024-2026 GG-CORE Contributors

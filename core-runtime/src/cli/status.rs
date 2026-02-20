@@ -1,7 +1,7 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-//! Status command implementation for Veritas SPARK.
+//! Status command implementation for GG-CORE.
 //!
 //! Provides detailed system status including:
 //! - Health state
@@ -356,7 +356,7 @@ fn print_status_human(status: &SystemStatus) {
 
     println!("╔════════════════════════════════════════════════════════════════╗");
     println!(
-        "║  Veritas SPARK Status                                    v{}   ║",
+        "║  GG-CORE Status                                    v{}   ║",
         status.version.version
     );
     println!("╠════════════════════════════════════════════════════════════════╣");

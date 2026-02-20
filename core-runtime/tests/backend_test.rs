@@ -3,11 +3,11 @@
 //! Note: Tests that require actual inference return errors since no model is loaded.
 //! This is the correct behavior - no mock fallbacks.
 
-use veritas_sdr::engine::{
+use gg_core::engine::{
     InferenceCapability, InferenceConfig, InferenceError, InferenceInput,
 };
-use veritas_sdr::engine::onnx::{OnnxClassifier, OnnxEmbedder, OnnxModel};
-use veritas_sdr::engine::gguf::{GgufGenerator, GgufModel};
+use gg_core::engine::onnx::{OnnxClassifier, OnnxEmbedder, OnnxModel};
+use gg_core::engine::gguf::{GgufGenerator, GgufModel};
 
 // ============================================================================
 // ONNX Classifier Tests
@@ -137,7 +137,7 @@ async fn gguf_generator_requires_loaded_model() {
 
 #[tokio::test]
 async fn gguf_generator_chat_requires_loaded_model() {
-    use veritas_sdr::engine::{ChatMessage, ChatRole};
+    use gg_core::engine::{ChatMessage, ChatRole};
 
     let generator = GgufGenerator::new("test-generator".to_string(), 2048);
 

@@ -41,9 +41,9 @@ This document defines incident response procedures for the Hearthlink CORE Runti
 
 **Indicators:**
 ```
-veritas_spark_runtime_state \!= 1 (all instances)
-veritas_spark_requests_total{status="error"} rate > 95%
-veritas_spark_health_ready == 0 (all instances)
+gg_core_runtime_state \!= 1 (all instances)
+gg_core_requests_total{status="error"} rate > 95%
+gg_core_health_ready == 0 (all instances)
 ```
 
 ### SEV2: Partial Outage or Severe Degradation
@@ -66,9 +66,9 @@ veritas_spark_health_ready == 0 (all instances)
 
 **Indicators:**
 ```
-veritas_spark_canary_error_rate > 0.05
-veritas_spark_p99_latency_seconds > baseline * 10
-veritas_spark_model_load_failures_total increasing rapidly
+gg_core_canary_error_rate > 0.05
+gg_core_p99_latency_seconds > baseline * 10
+gg_core_model_load_failures_total increasing rapidly
 ```
 
 ### SEV3: Minor Degradation
@@ -91,9 +91,9 @@ veritas_spark_model_load_failures_total increasing rapidly
 
 **Indicators:**
 ```
-veritas_spark_replica_count < desired (but service operational)
-veritas_spark_memory_used_ratio > 0.8
-veritas_spark_error_rate > 0.001 AND < 0.01
+gg_core_replica_count < desired (but service operational)
+gg_core_memory_used_ratio > 0.8
+gg_core_error_rate > 0.001 AND < 0.01
 ```
 
 ### SEV4: Informational
@@ -151,16 +151,16 @@ veritas_spark_error_rate > 0.001 AND < 0.01
 **Triage Commands:**
 ```bash
 # Check overall deployment status
-veritas-spark deployment status
+GG-CORE deployment status
 
 # Inspect canary state
-veritas-spark canary inspect
+GG-CORE canary inspect
 
 # Inspect blue-green state
-veritas-spark bluegreen inspect
+GG-CORE bluegreen inspect
 
 # Get health report
-veritas-spark health --verbose
+GG-CORE health --verbose
 ```
 
 **Triage Checklist:**
@@ -178,11 +178,11 @@ veritas-spark health --verbose
 
 | Action | Command | Use When |
 |--------|---------|----------|
-| Rollback canary | veritas-spark rollback --canary | Canary causing errors |
-| Rollback blue-green | veritas-spark rollback --bluegreen | Active env unhealthy |
-| Force rollback | veritas-spark rollback --force | Automated rollback stuck |
+| Rollback canary | GG-CORE rollback --canary | Canary causing errors |
+| Rollback blue-green | GG-CORE rollback --bluegreen | Active env unhealthy |
+| Force rollback | GG-CORE rollback --force | Automated rollback stuck |
 | Scale up stable | kubectl scale deploy veritas-stable --replicas=N | Need more capacity |
-| Restart pods | kubectl rollout restart deploy/veritas-spark | Transient state issue |
+| Restart pods | kubectl rollout restart deploy/GG-CORE | Transient state issue |
 
 **Mitigation Priority:**
 1. Stop the bleeding (restore service)
@@ -274,22 +274,22 @@ veritas-spark health --verbose
 **Diagnostic Steps:**
 ```bash
 # 1. Check canary status
-veritas-spark canary inspect
+GG-CORE canary inspect
 
 # 2. View canary pod logs
-kubectl logs -l deployment=canary -c veritas-spark --tail=100
+kubectl logs -l deployment=canary -c GG-CORE --tail=100
 
 # 3. Check analysis results
 kubectl describe veritascanary <name>
 
 # 4. View metrics
-kubectl exec -it <stable-pod> -- veritas-spark metrics canary
+kubectl exec -it <stable-pod> -- GG-CORE metrics canary
 ```
 
 **Resolution Options:**
 | Scenario | Action |
 |----------|--------|
-| Canary crashing | veritas-spark rollback --canary |
+| Canary crashing | GG-CORE rollback --canary |
 | Metrics not collecting | Check Prometheus scraping config |
 | Analysis failing | Adjust thresholds or extend duration |
 | Traffic not splitting | Verify service mesh configuration |
@@ -304,7 +304,7 @@ kubectl exec -it <stable-pod> -- veritas-spark metrics canary
 **Diagnostic Steps:**
 ```bash
 # 1. Check environment status
-veritas-spark bluegreen inspect
+GG-CORE bluegreen inspect
 
 # 2. View both environment pods
 kubectl get pods -l environment=blue
@@ -314,14 +314,14 @@ kubectl get pods -l environment=green
 kubectl describe veritasenvironment <name>
 
 # 4. Verify health of target environment
-kubectl exec -it <target-pod> -- veritas-spark health --verbose
+kubectl exec -it <target-pod> -- GG-CORE health --verbose
 ```
 
 **Resolution Options:**
 | Scenario | Action |
 |----------|--------|
 | Target env unhealthy | Fix target or rollback |
-| Switch timeout | veritas-spark bluegreen switch --force |
+| Switch timeout | GG-CORE bluegreen switch --force |
 | Service routing stuck | Manually update service selector |
 | State sync failed | Clear state and retry |
 
@@ -335,13 +335,13 @@ kubectl exec -it <target-pod> -- veritas-spark health --verbose
 **Diagnostic Steps:**
 ```bash
 # 1. Check rollback status
-veritas-spark rollback --status
+GG-CORE rollback --status
 
 # 2. Verify previous image availability
-kubectl describe deployment veritas-spark | grep Image
+kubectl describe deployment GG-CORE | grep Image
 
 # 3. Check rollout history
-kubectl rollout history deployment/veritas-spark
+kubectl rollout history deployment/GG-CORE
 ```
 
 **Resolution Options:**
@@ -364,14 +364,14 @@ kubectl rollout history deployment/veritas-spark
 kubectl exec -it <pod> -- curl localhost:9090/metrics
 
 # 2. Verify ServiceMonitor
-kubectl get servicemonitor veritas-spark -o yaml
+kubectl get servicemonitor GG-CORE -o yaml
 
 # 3. Check Prometheus targets
 kubectl port-forward svc/prometheus 9090:9090
 # Then visit http://localhost:9090/targets
 
 # 4. View telemetry status
-veritas-spark telemetry status
+GG-CORE telemetry status
 ```
 
 **Resolution Options:**
@@ -503,23 +503,23 @@ Post-Mortem: Scheduled for [Date/Time] - [Link to RCA doc]
 
 ```bash
 # Health checks
-veritas-spark health
-veritas-spark live
-veritas-spark ready
+GG-CORE health
+GG-CORE live
+GG-CORE ready
 
 # Deployment status
-veritas-spark deployment status
-veritas-spark canary inspect
-veritas-spark bluegreen inspect
+GG-CORE deployment status
+GG-CORE canary inspect
+GG-CORE bluegreen inspect
 
 # Rollback operations
-veritas-spark rollback --canary
-veritas-spark rollback --bluegreen
-veritas-spark rollback --force
+GG-CORE rollback --canary
+GG-CORE rollback --bluegreen
+GG-CORE rollback --force
 
 # Diagnostics
-veritas-spark telemetry status
-veritas-spark metrics summary
+GG-CORE telemetry status
+GG-CORE metrics summary
 ```
 
 ### Key Metrics

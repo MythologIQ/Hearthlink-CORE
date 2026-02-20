@@ -1,7 +1,7 @@
 //! Tests for streaming response functionality.
 
-use veritas_sdr::engine::InferenceParams;
-use veritas_sdr::ipc::{
+use gg_core::engine::InferenceParams;
+use gg_core::ipc::{
     decode_message, encode_message, InferenceRequest, IpcMessage, RequestId, StreamChunk,
 };
 

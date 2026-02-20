@@ -20,16 +20,16 @@
 
 ### 1. Purpose
 
-This Information Security Policy establishes the framework for protecting Veritas SPARK's (Secure Performance-Accelerated Runtime Kernel) information assets, ensuring confidentiality, integrity, and availability of all data processed by the system.
+This Information Security Policy establishes the framework for protecting GG-CORE's (Greatest Good - Contained Offline Restricted Execution) information assets, ensuring confidentiality, integrity, and availability of all data processed by the system.
 
 ### 2. Scope
 
 This policy applies to:
 
-- All Veritas SPARK runtime components
-- All personnel with access to Veritas SPARK systems
+- All GG-CORE runtime components
+- All personnel with access to GG-CORE systems
 - All third-party vendors and contractors
-- All data processed, stored, or transmitted by Veritas SPARK
+- All data processed, stored, or transmitted by GG-CORE
 
 ### 3. Policy Statements
 
@@ -88,14 +88,14 @@ This policy applies to:
 
 ### 1. Purpose
 
-This Access Control Policy defines the requirements for managing user access to Veritas SPARK systems and data, ensuring that access is granted on a need-to-know basis and properly monitored.
+This Access Control Policy defines the requirements for managing user access to GG-CORE systems and data, ensuring that access is granted on a need-to-know basis and properly monitored.
 
 ### 2. Scope
 
 This policy applies to:
 
 - All user accounts (human and service)
-- All access to Veritas SPARK systems
+- All access to GG-CORE systems
 - All authentication and authorization mechanisms
 - All privileged access
 
@@ -168,7 +168,7 @@ This policy applies to:
 
 ### 1. Purpose
 
-This Change Management Policy establishes the process for planning, approving, and implementing changes to Veritas SPARK systems, minimizing risk and ensuring service stability.
+This Change Management Policy establishes the process for planning, approving, and implementing changes to GG-CORE systems, minimizing risk and ensuring service stability.
 
 ### 2. Scope
 
@@ -248,7 +248,7 @@ Pre-approved changes with documented procedures:
 
 ### 1. Purpose
 
-This Incident Response Policy defines the procedures for detecting, responding to, and recovering from security incidents affecting Veritas SPARK systems.
+This Incident Response Policy defines the procedures for detecting, responding to, and recovering from security incidents affecting GG-CORE systems.
 
 ### 2. Scope
 

@@ -1,4 +1,4 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 //! Chaos & Resilience - Shutdown, Health, Resources, Combined Stress
@@ -9,12 +9,12 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use veritas_sdr::engine::InferenceParams;
-use veritas_sdr::health::{HealthChecker, HealthConfig, HealthState};
-use veritas_sdr::ipc::{ConnectionConfig, ConnectionPool};
-use veritas_sdr::memory::{ResourceLimits, ResourceLimitsConfig};
-use veritas_sdr::scheduler::{Priority, RequestQueue, RequestQueueConfig};
-use veritas_sdr::shutdown::{ShutdownCoordinator, ShutdownResult, ShutdownState};
+use gg_core::engine::InferenceParams;
+use gg_core::health::{HealthChecker, HealthConfig, HealthState};
+use gg_core::ipc::{ConnectionConfig, ConnectionPool};
+use gg_core::memory::{ResourceLimits, ResourceLimitsConfig};
+use gg_core::scheduler::{Priority, RequestQueue, RequestQueueConfig};
+use gg_core::shutdown::{ShutdownCoordinator, ShutdownResult, ShutdownState};
 
 // ============================================================================
 // Shutdown Under Stress

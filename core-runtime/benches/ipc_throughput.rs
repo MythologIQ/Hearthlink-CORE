@@ -3,8 +3,8 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use std::fs;
 
-use veritas_sdr::engine::InferenceParams;
-use veritas_sdr::ipc::protocol::{
+use gg_core::engine::InferenceParams;
+use gg_core::ipc::protocol::{
     decode_message, decode_message_binary, encode_message, encode_message_binary,
     InferenceRequest, IpcMessage, RequestId,
 };

@@ -1,15 +1,15 @@
 [package]
-name = "veritas-sdr"
-version = "0.7.0"
+name = "gg-core"
+version = "0.8.0"
 edition = "2021"
-description = "Veritas SPARK - Secure Performance-Accelerated Runtime Kernel for inference"
+description = "GG-CORE - Greatest Good - Contained Offline Restricted Execution runtime"
 license = "Apache-2.0"
 
 [lib]
 crate-type = ["rlib", "cdylib"]
 
 [[bin]]
-name = "veritas-spark-cli"
+name = "gg-core-cli"
 path = "src/main.rs"
 
 [dependencies]
@@ -121,7 +121,7 @@ cuda = ["cudarc"]  # GPU support via CUDA (requires CUDA toolkit)
 metal = ["dep:metal"]  # GPU support via Metal (macOS only)
 full = ["onnx", "gguf"]
 gpu = ["cuda"]  # GPU support alias
-ffi = ["cbindgen"]  # C FFI support (generates veritas_spark.h)
+ffi = ["cbindgen"]  # C FFI support (generates gg_core.h)
 python = ["pyo3", "pyo3-asyncio-0-21"]  # Python bindings via PyO3
 
 [build-dependencies]

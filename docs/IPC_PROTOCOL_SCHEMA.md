@@ -1,4 +1,4 @@
-# Veritas SPARK IPC Protocol Schema v0.7.0
+# GG-CORE IPC Protocol Schema v0.7.0
 
 **Contract Freeze Date**: 2026-02-19
 **Protocol Version**: V1 (JSON encoding)
@@ -8,7 +8,7 @@
 
 ## Overview
 
-Veritas SPARK (Secure Performance-Accelerated Runtime Kernel) uses a named pipe IPC protocol for all communication. This document specifies the wire format and message schemas that integrators must implement.
+GG-CORE (Secure Performance-Accelerated Runtime Kernel) uses a named pipe IPC protocol for all communication. This document specifies the wire format and message schemas that integrators must implement.
 
 ## Transport Layer
 
@@ -356,4 +356,4 @@ This schema is FROZEN for Hearthlink integration. Any breaking changes require:
 
 ---
 
-Copyright 2024-2026 Veritas SPARK Contributors
+Copyright 2024-2026 GG-CORE Contributors

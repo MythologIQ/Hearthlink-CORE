@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use veritas_sdr::models::pool::{ModelPool, ModelTier, PoolConfig};
-use veritas_sdr::models::registry::{ModelHandle, ModelRegistry};
+use gg_core::models::pool::{ModelPool, ModelTier, PoolConfig};
+use gg_core::models::registry::{ModelHandle, ModelRegistry};
 
 /// Simulated model sizes for the three tiers.
 const CI_MODEL_SIZE: usize = 491_000_000;        // ~491 MB (Qwen 0.5B)

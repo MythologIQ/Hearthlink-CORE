@@ -1,6 +1,6 @@
 apiVersion: v2
-name: veritas-spark
-description: Veritas SPARK - Secure Deterministic Runtime for AI inference
+name: gg-core
+description: GG-CORE - Greatest Good - Contained Offline Restricted Execution runtime for AI inference
 type: application
 version: 0.7.0
 appVersion: "0.7.0"
@@ -13,4 +13,4 @@ keywords:
   - bluegreen
 home: https://github.com/MythologIQ/CORE
 maintainers:
-  - name: Veritas SPARK Contributors
+  - name: GG-CORE Contributors

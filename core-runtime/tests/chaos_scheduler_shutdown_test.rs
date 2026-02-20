@@ -1,4 +1,4 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 //! Chaos & Resilience - Scheduler and Inference Engine
@@ -9,8 +9,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use veritas_sdr::engine::{InferenceEngine, InferenceParams};
-use veritas_sdr::scheduler::{Priority, RequestQueue, RequestQueueConfig};
+use gg_core::engine::{InferenceEngine, InferenceParams};
+use gg_core::scheduler::{Priority, RequestQueue, RequestQueueConfig};
 
 // ============================================================================
 // Queue Chaos

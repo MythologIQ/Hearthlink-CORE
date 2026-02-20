@@ -3,7 +3,7 @@
 //! Tests boundary conditions, malformed inputs, and edge cases that could
 //! bypass input validation or cause security issues.
 
-use veritas_sdr::engine::{
+use gg_core::engine::{
     InferenceInput, ChatMessage, ChatRole, MAX_TEXT_BYTES, MAX_BATCH_SIZE,
 };
 

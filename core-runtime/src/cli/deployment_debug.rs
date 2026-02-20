@@ -1,4 +1,4 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 //! Deployment debugging CLI commands.
@@ -10,12 +10,12 @@
 //! ## Usage
 //!
 //! ```bash
-//! veritas-spark deployment status
-//! veritas-spark canary inspect
-//! veritas-spark bluegreen inspect
-//! veritas-spark rollback --canary
-//! veritas-spark rollback --bluegreen
-//! veritas-spark rollback --force
+//! GG-CORE deployment status
+//! GG-CORE canary inspect
+//! GG-CORE bluegreen inspect
+//! GG-CORE rollback --canary
+//! GG-CORE rollback --bluegreen
+//! GG-CORE rollback --force
 //! ```
 
 use std::fmt;

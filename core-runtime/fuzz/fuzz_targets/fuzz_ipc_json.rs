@@ -6,7 +6,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use veritas_sdr::ipc::decode_message;
+use gg_core::ipc::decode_message;
 
 fuzz_target!(|data: &[u8]| {
     // Attempt to decode arbitrary bytes as an IPC message.

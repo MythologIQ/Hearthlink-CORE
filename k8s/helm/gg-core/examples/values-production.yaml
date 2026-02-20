@@ -1,4 +1,4 @@
-# Veritas SPARK Production Values
+# GG-CORE Production Values
 # Full production configuration with security hardening
 # Suitable for: Enterprise production deployments, regulated industries
 
@@ -8,7 +8,7 @@ replicaCount: 5
 
 # Container image configuration
 image:
-  repository: veritas-spark/core
+  repository: GG-CORE/core
   pullPolicy: Always
   tag: "0.6.5"
   # Use private registry
@@ -89,7 +89,7 @@ ingress:
         - path: /
           pathType: Prefix
   tls:
-    - secretName: veritas-spark-tls
+    - secretName: GG-CORE-tls
       hosts:
         - inference.example.com
 
@@ -140,7 +140,7 @@ affinity:
             - key: app.kubernetes.io/name
               operator: In
               values:
-                - veritas-spark
+                - GG-CORE
         topologyKey: kubernetes.io/hostname
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -165,7 +165,7 @@ topologySpreadConstraints:
     whenUnsatisfiable: DoNotSchedule
     labelSelector:
       matchLabels:
-        app.kubernetes.io/name: veritas-spark
+        app.kubernetes.io/name: GG-CORE
 
 # Health checks
 livenessProbe:
@@ -240,8 +240,8 @@ canary:
 # Blue-green deployment (alternative)
 blueGreen:
   enabled: false
-  activeService: veritas-spark-active
-  previewService: veritas-spark-preview
+  activeService: GG-CORE-active
+  previewService: GG-CORE-preview
   autoPromotionEnabled: false
   scaleDownDelaySeconds: 600
 
@@ -261,12 +261,12 @@ env:
   - name: VERITAS_ENCRYPTION_KEY
     valueFrom:
       secretKeyRef:
-        name: veritas-spark-secrets
+        name: GG-CORE-secrets
         key: encryption-key
   - name: VERITAS_API_KEY
     valueFrom:
       secretKeyRef:
-        name: veritas-spark-secrets
+        name: GG-CORE-secrets
         key: api-key
 
 # ConfigMap data
@@ -319,8 +319,8 @@ persistence:
 serviceAccount:
   create: true
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/veritas-spark-role"
-  name: "veritas-spark"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/GG-CORE-role"
+  name: "GG-CORE"
 
 # RBAC
 rbac:
@@ -332,7 +332,7 @@ rbac:
     - apiGroups: ["apps"]
       resources: ["deployments", "replicasets"]
       verbs: ["get", "list", "watch"]
-    - apiGroups: ["veritas-spark.io"]
+    - apiGroups: ["GG-CORE.io"]
       resources: ["canaries", "environments"]
       verbs: ["get", "list", "watch", "create", "update", "patch"]
 
@@ -441,9 +441,9 @@ podAnnotations:
 # Pod labels
 podLabels:
   app.kubernetes.io/component: inference
-  app.kubernetes.io/part-of: veritas-spark
-  veritas-spark.io/gpu-count: "2"
-  veritas-spark.io/environment: production
+  app.kubernetes.io/part-of: GG-CORE
+  GG-CORE.io/gpu-count: "2"
+  GG-CORE.io/environment: production
 
 # Additional containers
 extraContainers:

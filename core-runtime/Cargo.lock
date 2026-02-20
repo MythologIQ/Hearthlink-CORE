@@ -1150,6 +1150,54 @@ dependencies = [
 ]
 
 [[package]]
+name = "gg-core"
+version = "0.8.0"
+dependencies = [
+ "aes",
+ "aes-gcm",
+ "aho-corasick",
+ "async-trait",
+ "candle-core",
+ "candle-onnx",
+ "cbindgen",
+ "chrono",
+ "criterion",
+ "cudarc",
+ "dashmap",
+ "encoding_rs",
+ "futures",
+ "half",
+ "hex",
+ "hostname",
+ "interprocess",
+ "llama-cpp-2",
+ "memmap2",
+ "metal",
+ "metrics",
+ "num_cpus",
+ "parking_lot",
+ "pbkdf2",
+ "pyo3",
+ "pyo3-asyncio-0-21",
+ "rand 0.8.5",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-test",
+ "tokio-util",
+ "toml 0.8.23",
+ "tracing",
+ "tracing-subscriber",
+ "unicode-normalization",
+ "uuid",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "ghash"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2844,54 +2892,6 @@ name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
-
-[[package]]
-name = "veritas-sdr"
-version = "0.7.0"
-dependencies = [
- "aes",
- "aes-gcm",
- "aho-corasick",
- "async-trait",
- "candle-core",
- "candle-onnx",
- "cbindgen",
- "chrono",
- "criterion",
- "cudarc",
- "dashmap",
- "encoding_rs",
- "futures",
- "half",
- "hex",
- "hostname",
- "interprocess",
- "llama-cpp-2",
- "memmap2",
- "metal",
- "metrics",
- "num_cpus",
- "parking_lot",
- "pbkdf2",
- "pyo3",
- "pyo3-asyncio-0-21",
- "rand 0.8.5",
- "regex",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-test",
- "tokio-util",
- "toml 0.8.23",
- "tracing",
- "tracing-subscriber",
- "unicode-normalization",
- "uuid",
- "windows-sys 0.52.0",
-]
 
 [[package]]
 name = "version_check"

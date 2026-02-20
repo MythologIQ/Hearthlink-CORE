@@ -3,7 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   name: veritascanaries.veritas.hearthlink.ai
   labels:
-    app.kubernetes.io/name: veritas-spark
+    app.kubernetes.io/name: GG-CORE
     app.kubernetes.io/component: canary
 spec:
   group: veritas.hearthlink.ai

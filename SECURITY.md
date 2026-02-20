@@ -1,6 +1,6 @@
 # Security Policy
 
-**Veritas SPARK** (Secure Performance-Accelerated Runtime Kernel) takes security seriously. This document outlines our security policy and procedures for reporting vulnerabilities.
+**GG-CORE** (Secure Performance-Accelerated Runtime Kernel) takes security seriously. This document outlines our security policy and procedures for reporting vulnerabilities.
 
 ---
 
@@ -60,7 +60,7 @@
 
 If you discover a security vulnerability, please report it responsibly:
 
-1. **Email**: security@veritas-spark.dev (example - replace with actual)
+1. **Email**: security@GG-CORE.dev (example - replace with actual)
 2. **GitHub Security Advisory**: Use GitHub's private vulnerability reporting feature
 3. **Do NOT** create a public issue for security vulnerabilities
 
@@ -176,11 +176,11 @@ cargo test --lib security::encryption
 
 ## Contact
 
-- **Security Team**: security@veritas-spark.dev
+- **Security Team**: security@GG-CORE.dev
 - **General Issues**: GitHub Issues
 - **Documentation**: [docs/USAGE_GUIDE.md](docs/USAGE_GUIDE.md)
 
 ---
 
-Copyright 2024-2026 Veritas SPARK Contributors  
+Copyright 2024-2026 GG-CORE Contributors  
 Licensed under the Apache License, Version 2.0

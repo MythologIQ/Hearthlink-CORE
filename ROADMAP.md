@@ -1,4 +1,4 @@
-# Veritas SPARK (Secure Performance-Accelerated Runtime Kernel) Feature Roadmap
+# GG-CORE (Secure Performance-Accelerated Runtime Kernel) Feature Roadmap
 
 **Last Updated:** 2026-02-19
 **Version:** 0.6.5
@@ -7,7 +7,7 @@
 
 ## Current Status: Pre-Production
 
-Veritas SPARK is in pre-production status. Core functionality is complete and tested, but production deployment requires additional work.
+GG-CORE is in pre-production status. Core functionality is complete and tested, but production deployment requires additional work.
 
 ---
 
@@ -125,7 +125,7 @@ Veritas SPARK is in pre-production status. Core functionality is complete and te
 
 - [`ffi/`](core-runtime/src/ffi/) - C API implementation (8 files)
 - [`python/`](core-runtime/src/python/) - Python bindings (6 files)
-- [`include/veritas_spark.h`](core-runtime/include/veritas_spark.h) - Generated C header
+- [`include/gg_core.h`](core-runtime/include/gg_core.h) - Generated C header
 - [`python/`](core-runtime/python/) - Python package structure
 
 **Status:** Complete
@@ -172,7 +172,7 @@ Veritas SPARK is in pre-production status. Core functionality is complete and te
 ### CLI Health Probes (Alcatraz-compliant)
 
 - [x] Exec-based health probes for K8s (NO HTTP)
-- [x] `veritas-spark health|live|ready` subcommands
+- [x] `GG-CORE health|live|ready` subcommands
 - [x] IPC client for CLI-to-runtime communication
 
 ### CLI Architecture
@@ -209,15 +209,15 @@ Veritas SPARK is in pre-production status. Core functionality is complete and te
 
 ### Kubernetes Operator Foundation
 
-- [x] VeritasRuntime CRD
-- [x] VeritasModel CRD (with A/B variant support)
+- [x] GgRuntime CRD
+- [x] GgModel CRD (with A/B variant support)
 - [x] Helm chart with exec probes (NO HTTP)
 
 ### K8s Architecture
 
 - [`k8s/types.rs`](core-runtime/src/k8s/types.rs) - CRD Rust types
 - [`k8s/crds/`](k8s/crds/) - CRD YAML definitions
-- [`k8s/helm/veritas-spark/`](k8s/helm/veritas-spark/) - Helm chart
+- [`k8s/helm/GG-CORE/`](k8s/helm/GG-CORE/) - Helm chart
 
 **Status:** Complete
 
@@ -270,7 +270,7 @@ Veritas SPARK is in pre-production status. Core functionality is complete and te
 
 ### Build System Improvements
 
-- [x] Binary renamed to `veritas-spark-cli` (fixes PDB collision)
+- [x] Binary renamed to `GG-CORE-cli` (fixes PDB collision)
 - [x] Removed bincode (incompatible with internally-tagged enums)
 - [x] Version-pinned llama-cpp-2 to 0.1.133
 - [x] Added encoding_rs for UTF-8 token decoding
@@ -371,5 +371,5 @@ We welcome contributions! See [CLA.md](CLA.md) for contributor license agreement
 
 ---
 
-Copyright 2024-2026 Veritas SPARK Contributors  
+Copyright 2024-2026 GG-CORE Contributors  
 Licensed under the Apache License, Version 2.0

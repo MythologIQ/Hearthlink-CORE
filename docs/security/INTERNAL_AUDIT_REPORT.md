@@ -443,7 +443,7 @@ This audit certifies that Hearthlink CORE Runtime v0.6.0 meets the security requ
 
 ```
 $ cargo test --release
-   Compiling veritas-spark v0.5.0
+   Compiling GG-CORE v0.5.0
    ...
    Running 998 tests
 

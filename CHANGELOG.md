@@ -1,29 +1,57 @@
 # Changelog
 
-All notable changes to Veritas SPARK (Secure Performance-Accelerated Runtime Kernel) are documented in this file.
+All notable changes to GG-CORE (Greatest Good - Contained Offline Restricted Execution) are documented in this file.
+
+## [0.8.0] - 2026-02-19
+
+### GG-CORE Rebrand & Extension Point Architecture
+
+This release rebrands from "Veritas SPARK" to "GG-CORE" (Greatest Good - Contained Offline Restricted Execution) and introduces the extension point architecture for commercial multi-tenant features.
+
+#### Added
+
+- **Request Shim Interface** (`src/shim/mod.rs`): Extension point for commercial features
+  - `RequestInterceptor` trait for rate limiting, priority tagging, tenant context
+  - `PassthroughInterceptor` default no-op implementation
+  - `InterceptResult` and `InterceptError` types for interception results
+- **Open Core Architecture**: Clear separation between OSS runtime and commercial extensions
+  - GG-CORE OSS: Apache 2.0 licensed core runtime
+  - GG-CORE Nexus: Commercial extension point (separate repo)
+
+#### Changed
+
+- **Complete Rebrand**: All references updated from Veritas SPARK to GG-CORE
+  - `veritas-spark` → `gg-core` (crate name, CLI, socket paths)
+  - `VERITAS_SPARK_*` → `GG_CORE_*` (environment variables)
+  - Updated all documentation, comments, and branding
+
+#### Philosophy
+
+GG-CORE adopts triage principles ("Greatest Good for the Greatest Number"):
+- **C.O.R.E.**: Contained, Offline, Restricted, Execution
+- Resource-aware, multi-tenant AI that prioritizes system stability
+- Extension points for commercial tiered service models
+
+---
 
 ## [0.7.0] - 2026-02-19
 
-### Streaming Inference & Rebrand
+### Streaming Inference
 
-This release introduces real token-by-token streaming inference and rebrands from "Veritas SDR" to "Veritas SPARK" (Secure Performance-Accelerated Runtime Kernel).
+This release introduces real token-by-token streaming inference via IPC.
 
 #### Added
 
 - **Streaming Inference**: Token-by-token streaming via IPC with `stream: true` parameter
 - **Mid-Stream Cancellation**: Cancel active streaming requests with `CancelRequest` message
 - **CLI `infer` Command**: New CLI command for direct inference
-  - `veritas-spark infer --model <MODEL> --prompt <PROMPT>` - Single response
-  - `veritas-spark infer --model <MODEL> --prompt <PROMPT> --stream` - Streaming output
+  - `gg-core infer --model <MODEL> --prompt <PROMPT>` - Single response
+  - `gg-core infer --model <MODEL> --prompt <PROMPT> --stream` - Streaming output
 - **IpcStreamBridge**: New adapter for sending streaming chunks to IPC clients
 - **StreamChunk.text Field**: Optional decoded text field for client display
 
 #### Changed
 
-- **Rebrand to SPARK**: All documentation, comments, and CLI references updated
-  - SDR → SPARK (Secure Performance-Accelerated Runtime Kernel)
-  - `veritas-sdr` → `veritas-spark` (CLI, socket paths, environment variables)
-  - `VERITAS_SDR_*` → `VERITAS_SPARK_*` (environment variables)
 - **E2E Test Scripts**: Updated to include streaming verification (steps 5-7)
 
 #### Wire Protocol
@@ -104,4 +132,4 @@ This release focuses on production safety and fail-fast behavior for the Hearthl
 
 ---
 
-Copyright 2024-2026 Veritas SPARK Contributors
+Copyright 2024-2026 GG-CORE Contributors

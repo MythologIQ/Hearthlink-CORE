@@ -1,7 +1,7 @@
 //! TDD-Light tests for resource limit enforcement.
 
-use veritas_sdr::engine::InferenceError;
-use veritas_sdr::memory::{ResourceLimits, ResourceLimitsConfig};
+use gg_core::engine::InferenceError;
+use gg_core::memory::{ResourceLimits, ResourceLimitsConfig};
 
 #[test]
 fn limits_allow_within_bounds() {

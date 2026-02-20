@@ -1,4 +1,4 @@
-# Security Analysis Report - Veritas SPARK v0.5.0
+# Security Analysis Report - GG-CORE v0.5.0
 
 **Analysis Date:** 2026-02-17  
 **Analyst:** Code Review + Security Audit  

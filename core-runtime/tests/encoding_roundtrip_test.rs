@@ -1,6 +1,6 @@
 //! Property-style tests for token encoding roundtrip correctness.
 
-use veritas_sdr::ipc::{get_encoder, ProtocolVersion, TokenEncoder, V1Encoder, V2Encoder};
+use gg_core::ipc::{get_encoder, ProtocolVersion, TokenEncoder, V1Encoder, V2Encoder};
 
 #[test]
 fn v1_roundtrip_empty() {

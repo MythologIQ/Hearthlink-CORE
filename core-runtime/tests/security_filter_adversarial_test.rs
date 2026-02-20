@@ -3,7 +3,7 @@
 //! Tests that the output filter cannot be bypassed through common techniques
 //! like case variation, unicode homoglyphs, whitespace insertion, etc.
 
-use veritas_sdr::engine::filter::{OutputFilter, FilterConfig};
+use gg_core::engine::filter::{OutputFilter, FilterConfig};
 
 fn create_filter_with_blocklist(words: Vec<&str>) -> OutputFilter {
     let config = FilterConfig {

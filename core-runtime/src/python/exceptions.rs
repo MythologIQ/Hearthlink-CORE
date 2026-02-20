@@ -1,7 +1,7 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-//! Python exception types for Veritas SPARK errors
+//! Python exception types for GG-CORE errors
 
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
@@ -13,12 +13,12 @@ use crate::ipc::AuthError;
 use crate::models::LoadError;
 
 // Define exception hierarchy
-create_exception!(veritas_sdr, CoreError, PyException);
-create_exception!(veritas_sdr, AuthenticationError, CoreError);
-create_exception!(veritas_sdr, InferenceError, CoreError);
-create_exception!(veritas_sdr, ModelError, CoreError);
-create_exception!(veritas_sdr, TimeoutError, CoreError);
-create_exception!(veritas_sdr, CancellationError, CoreError);
+create_exception!(gg_core, CoreError, PyException);
+create_exception!(gg_core, AuthenticationError, CoreError);
+create_exception!(gg_core, InferenceError, CoreError);
+create_exception!(gg_core, ModelError, CoreError);
+create_exception!(gg_core, TimeoutError, CoreError);
+create_exception!(gg_core, CancellationError, CoreError);
 
 /// Convert AuthError to Python exception
 impl From<AuthError> for PyErr {

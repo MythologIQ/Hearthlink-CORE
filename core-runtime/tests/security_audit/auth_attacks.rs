@@ -2,7 +2,7 @@
 //!
 //! Tests for authentication bypass attempts, token manipulation, and session attacks.
 
-use veritas_sdr::ipc::auth::{SessionAuth, AuthError};
+use gg_core::ipc::auth::{SessionAuth, AuthError};
 use std::time::Duration;
 use std::collections::HashSet;
 

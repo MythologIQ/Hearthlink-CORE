@@ -1,7 +1,7 @@
-// Copyright 2024-2026 Veritas SPARK Contributors
+// Copyright 2024-2026 GG-CORE Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-//! C Foreign Function Interface for Veritas SPARK
+//! C Foreign Function Interface for GG-CORE
 //!
 //! Provides a stable C ABI for integration with non-Rust languages.
 //! All functions use error codes and thread-local error messages.

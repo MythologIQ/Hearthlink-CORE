@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use veritas_sdr::ab_testing::{TrafficConfig, TrafficSplitter, VariantLabel, VariantMetrics};
+use gg_core::ab_testing::{TrafficConfig, TrafficSplitter, VariantLabel, VariantMetrics};
 
 // === Metrics Analysis Tests ===
 

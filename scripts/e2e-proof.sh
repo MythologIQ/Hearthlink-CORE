@@ -1,6 +1,6 @@
 #!/bin/bash
-# Veritas SPARK E2E Proof Script
-# SPARK = Secure Performance-Accelerated Runtime Kernel
+# GG-CORE E2E Proof Script
+# GG-CORE = Greatest Good - Contained Offline Restricted Execution
 # Demonstrates Hearthlink integration compliance:
 # 1. Load real GGUF model
 # 2. Run inference with meaningful output
@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║  Veritas SPARK E2E Proof - Hearthlink Compliance             ║"
+echo "║  GG-CORE E2E Proof - Hearthlink Compliance             ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -43,7 +43,7 @@ cd "$SCRIPT_DIR/../core-runtime"
 cargo build --release 2>&1 | tail -1
 echo "  Build: OK"
 
-BINARY="$SCRIPT_DIR/../core-runtime/target/release/veritas-spark-cli"
+BINARY="$SCRIPT_DIR/../core-runtime/target/release/GG-CORE-cli"
 if [ ! -f "$BINARY" ]; then
     echo "  ERROR: Binary not found at $BINARY"
     exit 1

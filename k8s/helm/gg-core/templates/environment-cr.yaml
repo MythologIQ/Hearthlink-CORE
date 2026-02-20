@@ -1,12 +1,12 @@
 {{- if .Values.bluegreen.enabled }}
-# VeritasEnvironment Custom Resource
-# This CR is managed by the Veritas Blue-Green Controller
-apiVersion: veritas.hearthlink.ai/v1alpha1
-kind: VeritasEnvironment
+# GGCOREEnvironment Custom Resource
+# This CR is managed by the GG-CORE Blue-Green Controller
+apiVersion: gg-core.hearthlink.ai/v1alpha1
+kind: GGCOREEnvironment
 metadata:
-  name: {{ include "veritas-spark.fullname" . }}
+  name: {{ include "gg-core.fullname" . }}
   labels:
-    {{- include "veritas-spark.labels" . | nindent 4 }}
+    {{- include "gg-core.labels" . | nindent 4 }}
 spec:
   blue:
     version: {{ .Values.bluegreen.blue.version | quote }}
