@@ -1,21 +1,22 @@
 //! Request queue management.
 
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::sync::{Mutex, Notify};
 
 use super::priority::{Priority, PriorityQueue};
+use super::streaming_queue::StreamingQueuedRequest;
 use crate::engine::inference::InferenceResult;
 use crate::engine::InferenceParams;
 
-/// Response channel type for delivering results back to callers.
-pub type ResponseTx = tokio::sync::oneshot::Sender<Result<InferenceResult, String>>;
+pub use super::queued_request::{QueuedRequest, ResponseTx};
+
 /// Receiver half for awaiting inference results.
 pub type ResponseRx = tokio::sync::oneshot::Receiver<Result<InferenceResult, String>>;
 
 /// Conservative bytes-per-token estimate for tier-1 context check.
-/// UTF-8 averages ~4 bytes per token for English text.
 const BYTES_PER_TOKEN_ESTIMATE: usize = 4;
 
 /// Configuration for request queue.
@@ -33,92 +34,23 @@ impl Default for RequestQueueConfig {
     }
 }
 
-/// A queued inference request with timeout and cancellation support.
-pub struct QueuedRequest {
-    pub id: u64,
-    pub model_id: String,
-    /// Text prompt for inference.
-    pub prompt: String,
-    pub params: InferenceParams,
-    pub enqueued_at: Instant,
-    pub deadline: Option<Instant>,
-    pub cancelled: Arc<AtomicBool>,
-    /// Channel for sending the result back to the caller.
-    pub response_tx: Option<ResponseTx>,
-}
-
-impl std::fmt::Debug for QueuedRequest {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("QueuedRequest")
-            .field("id", &self.id)
-            .field("model_id", &self.model_id)
-            .field("cancelled", &self.is_cancelled())
-            .finish()
-    }
-}
-
-impl QueuedRequest {
-    /// Create a new queued request. Used for testing and batch processing.
-    pub fn new(
-        id: u64,
-        model_id: String,
-        prompt: String,
-        params: InferenceParams,
-    ) -> Self {
-        let enqueued_at = Instant::now();
-        let deadline = params.timeout_ms.map(|ms| enqueued_at + Duration::from_millis(ms));
-        Self {
-            id,
-            model_id,
-            prompt,
-            params,
-            enqueued_at,
-            deadline,
-            cancelled: Arc::new(AtomicBool::new(false)),
-            response_tx: None,
-        }
-    }
-
-    /// Check if request has been cancelled.
-    pub fn is_cancelled(&self) -> bool {
-        self.cancelled.load(Ordering::Acquire)
-    }
-
-    /// Check if request has exceeded its deadline.
-    pub fn is_expired(&self) -> bool {
-        self.deadline.map_or(false, |d| Instant::now() > d)
-    }
-
-    /// Mark the request as cancelled.
-    pub fn cancel(&self) {
-        self.cancelled.store(true, Ordering::Release);
-    }
-
-    /// Get a closure that checks cancellation (for passing to backends).
-    pub fn cancel_check(&self) -> Arc<AtomicBool> {
-        Arc::clone(&self.cancelled)
-    }
-}
-
 /// Thread-safe request queue with priority support.
 pub struct RequestQueue {
     queue: Arc<Mutex<PriorityQueue<QueuedRequest>>>,
+    streaming: Arc<Mutex<VecDeque<StreamingQueuedRequest>>>,
     next_id: AtomicU64,
     config: RequestQueueConfig,
-    /// Notifies the worker when new items are enqueued.
     notify: Arc<Notify>,
-    /// Tracks active streaming slots (reserved but not in queue).
-    streaming_count: Arc<AtomicUsize>,
 }
 
 impl RequestQueue {
     pub fn new(config: RequestQueueConfig) -> Self {
         Self {
             queue: Arc::new(Mutex::new(PriorityQueue::new())),
+            streaming: Arc::new(Mutex::new(VecDeque::new())),
             next_id: AtomicU64::new(1),
             config,
             notify: Arc::new(Notify::new()),
-            streaming_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 
@@ -133,7 +65,7 @@ impl RequestQueue {
         self.enqueue_inner(model_id, prompt, params, priority, None).await
     }
 
-    /// Enqueue with a response channel. Returns (id, position, receiver).
+    /// Enqueue with a response channel. Returns (id, receiver).
     pub async fn enqueue_with_response(
         &self,
         model_id: String,
@@ -156,37 +88,20 @@ impl RequestQueue {
         priority: Priority,
         response_tx: Option<ResponseTx>,
     ) -> Result<(u64, usize), QueueError> {
-        // Tier-1 context check: conservative byte heuristic (~4 bytes/token).
-        // Rejects obviously oversized prompts before they enter the queue.
-        // Tier-2 precise check happens post-dequeue in InferenceEngine.
-        let estimated_tokens = prompt.len() / BYTES_PER_TOKEN_ESTIMATE;
-        if estimated_tokens > self.config.max_context_tokens {
-            return Err(QueueError::ContextTooLarge {
-                estimated_tokens,
-                max: self.config.max_context_tokens,
-            });
-        }
+        check_context(&prompt, self.config.max_context_tokens)?;
 
         let mut queue = self.queue.lock().await;
-        let streaming = self.streaming_count.load(Ordering::Acquire);
-
-        if queue.len() + streaming >= self.config.max_pending {
+        let streaming = self.streaming.lock().await;
+        let total = queue.len() + streaming.len();
+        drop(streaming);
+        if total >= self.config.max_pending {
             return Err(QueueError::QueueFull);
         }
 
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        let enqueued_at = Instant::now();
-        let deadline = params.timeout_ms.map(|ms| enqueued_at + Duration::from_millis(ms));
-        let request = QueuedRequest {
-            id,
-            model_id,
-            prompt,
-            params,
-            enqueued_at,
-            deadline,
-            cancelled: Arc::new(AtomicBool::new(false)),
-            response_tx,
-        };
+        let request = QueuedRequest::with_tx(
+            id, model_id, prompt, params, response_tx,
+        );
         let position = queue.len();
         queue.push(request, priority);
         drop(queue);
@@ -195,7 +110,7 @@ impl RequestQueue {
         Ok((id, position))
     }
 
-    /// Cancel a pending request by ID. Returns true if found and cancelled.
+    /// Cancel a pending request by ID. Returns true if found.
     pub async fn cancel(&self, request_id: u64) -> bool {
         let queue = self.queue.lock().await;
         for request in queue.iter() {
@@ -219,7 +134,7 @@ impl RequestQueue {
         }
     }
 
-    /// Wait for a notification then dequeue. Returns None on shutdown.
+    /// Wait for a notification then dequeue.
     pub async fn wait_and_dequeue(&self) -> Option<QueuedRequest> {
         loop {
             if let Some(req) = self.dequeue().await {
@@ -244,51 +159,69 @@ impl RequestQueue {
         self.queue.lock().await.is_empty()
     }
 
-    /// Admit a streaming request: atomically check capacity and reserve a slot.
-    ///
-    /// Returns a guard that releases the slot on drop. The streaming path
-    /// uses this instead of full enqueue because tokens are streamed via
-    /// a channel rather than returned through a oneshot.
-    pub async fn admit_streaming(
+    /// Enqueue a streaming request. Returns the request ID.
+    pub async fn enqueue_streaming(
         &self,
-        prompt: &str,
-    ) -> Result<StreamingAdmissionGuard, QueueError> {
-        let estimated_tokens = prompt.len() / BYTES_PER_TOKEN_ESTIMATE;
-        if estimated_tokens > self.config.max_context_tokens {
-            return Err(QueueError::ContextTooLarge {
-                estimated_tokens,
-                max: self.config.max_context_tokens,
-            });
-        }
+        model_id: String,
+        prompt: String,
+        config: crate::engine::InferenceConfig,
+        token_sender: super::streaming_queue::TokenStreamTx,
+    ) -> Result<u64, QueueError> {
+        check_context(&prompt, self.config.max_context_tokens)?;
 
-        // Hold the queue lock to make check+reserve atomic.
         let queue = self.queue.lock().await;
-        let streaming = self.streaming_count.load(Ordering::Acquire);
-        if queue.len() + streaming >= self.config.max_pending {
+        let mut streaming = self.streaming.lock().await;
+        if queue.len() + streaming.len() >= self.config.max_pending {
             return Err(QueueError::QueueFull);
         }
-        self.streaming_count.fetch_add(1, Ordering::Release);
+
+        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        streaming.push_back(StreamingQueuedRequest {
+            id,
+            model_id,
+            prompt,
+            config,
+            enqueued_at: Instant::now(),
+            deadline: None,
+            cancelled: Arc::new(AtomicBool::new(false)),
+            token_sender,
+        });
+        drop(streaming);
         drop(queue);
 
-        Ok(StreamingAdmissionGuard { counter: Arc::clone(&self.streaming_count) })
+        self.notify.notify_one();
+        Ok(id)
     }
 
-    /// Current number of active streaming slots.
-    pub fn streaming_count(&self) -> usize {
-        self.streaming_count.load(Ordering::Acquire)
+    /// Dequeue a streaming request, skipping cancelled/expired.
+    pub async fn dequeue_streaming(
+        &self,
+    ) -> Option<StreamingQueuedRequest> {
+        let mut streaming = self.streaming.lock().await;
+        loop {
+            let request = streaming.pop_front()?;
+            if request.is_cancelled() || request.is_expired() {
+                continue;
+            }
+            return Some(request);
+        }
+    }
+
+    /// Current number of queued streaming requests.
+    pub async fn streaming_len(&self) -> usize {
+        self.streaming.lock().await.len()
     }
 }
 
-/// RAII guard for streaming admission. Reserves a slot on creation
-/// and releases it when dropped, preventing TOCTOU races.
-pub struct StreamingAdmissionGuard {
-    counter: Arc<AtomicUsize>,
-}
-
-impl Drop for StreamingAdmissionGuard {
-    fn drop(&mut self) {
-        self.counter.fetch_sub(1, Ordering::Release);
+fn check_context(prompt: &str, max: usize) -> Result<(), QueueError> {
+    let estimated = prompt.len() / BYTES_PER_TOKEN_ESTIMATE;
+    if estimated > max {
+        return Err(QueueError::ContextTooLarge {
+            estimated_tokens: estimated,
+            max,
+        });
     }
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -302,10 +235,7 @@ impl std::fmt::Display for QueueError {
         match self {
             Self::QueueFull => write!(f, "request queue is full"),
             Self::ContextTooLarge { estimated_tokens, max } => {
-                write!(
-                    f,
-                    "prompt too large: ~{estimated_tokens} tokens (max {max})",
-                )
+                write!(f, "prompt too large: ~{estimated_tokens} tokens (max {max})")
             }
         }
     }

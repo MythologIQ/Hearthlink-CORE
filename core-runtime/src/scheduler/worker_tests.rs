@@ -396,31 +396,83 @@ async fn admission_rejection_propagates_to_caller() {
     let _ = tokio::time::timeout(std::time::Duration::from_secs(1), worker).await;
 }
 
-/// Streaming admission succeeds when queue has capacity (C-2 fix).
+/// Streaming enqueue succeeds when queue has capacity.
 #[tokio::test]
-async fn streaming_admission_succeeds_with_capacity() {
+async fn streaming_enqueue_succeeds_with_capacity() {
     let config = RequestQueueConfig { max_pending: 10, max_context_tokens: 4096 };
     let queue = Arc::new(RequestQueue::new(config));
 
-    let guard = queue.admit_streaming("short prompt").await;
-    assert!(guard.is_ok(), "streaming admission should succeed with capacity");
+    let (tx, _rx) = crate::engine::TokenStream::new(4);
+    let result = queue
+        .enqueue_streaming("m".into(), "prompt".into(), InferenceConfig::default(), tx)
+        .await;
+    assert!(result.is_ok(), "streaming enqueue should succeed with capacity");
 }
 
-/// Streaming admission rejects when queue is full (C-2 fix).
+/// Streaming enqueue rejects when queue is full.
 #[tokio::test]
-async fn streaming_admission_rejects_when_queue_full() {
+async fn streaming_enqueue_rejects_when_queue_full() {
     let config = RequestQueueConfig { max_pending: 2, max_context_tokens: 4096 };
     let queue = Arc::new(RequestQueue::new(config));
 
-    // Fill the queue to capacity
     queue.enqueue("m".into(), "a".into(), InferenceParams::default(), Priority::Normal)
         .await.unwrap();
     queue.enqueue("m".into(), "b".into(), InferenceParams::default(), Priority::Normal)
         .await.unwrap();
 
-    // Streaming admission should be rejected
-    let result = queue.admit_streaming("c").await;
-    assert!(result.is_err(), "streaming admission must fail when queue is full");
+    let (tx, _rx) = crate::engine::TokenStream::new(4);
+    let result = queue
+        .enqueue_streaming("m".into(), "c".into(), InferenceConfig::default(), tx)
+        .await;
+    assert!(result.is_err(), "streaming enqueue must fail when queue is full");
+}
+
+/// Resource limits rejection for streaming via worker.
+#[tokio::test]
+async fn worker_rejects_streaming_when_concurrency_limit_exceeded() {
+    let (queue, engine) = setup().await;
+    let shutdown = tokio_util::sync::CancellationToken::new();
+    let limits = limits_concurrency_exceeded();
+
+    let worker = spawn_worker_with_registry(
+        queue.clone(), engine, None, None, Some(limits), shutdown.clone(),
+    );
+
+    let (tx, mut rx) = crate::engine::TokenStream::new(4);
+    queue
+        .enqueue_streaming(
+            "test-model".into(), "hi".into(),
+            InferenceConfig::default(), tx,
+        )
+        .await
+        .unwrap();
+
+    // Worker should send a final token to signal rejection.
+    let output = tokio::time::timeout(std::time::Duration::from_secs(3), rx.next()).await;
+    assert!(output.is_ok(), "should receive response from worker");
+    if let Ok(Some(out)) = output {
+        assert!(out.is_final, "rejection should send is_final=true");
+    }
+
+    shutdown.cancel();
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(1), worker).await;
+}
+
+/// Verifies that infer_cancellable delegates to infer by default.
+#[tokio::test]
+async fn default_infer_cancellable_delegates_to_infer() {
+    let model = MockModel::arc("test");
+    let input = InferenceInput::Text("hello".into());
+    let config = InferenceConfig::default();
+    let check = || false; // never cancelled
+
+    let result = model.infer_cancellable(&input, &config, Some(&check)).await;
+    assert!(result.is_ok());
+    if let Ok(InferenceOutput::Generation(gen)) = result {
+        assert_eq!(gen.text, "hello world");
+    } else {
+        panic!("expected generation output");
+    }
 }
 
 /// Verifies that routing inference through enqueue_with_response (as Python

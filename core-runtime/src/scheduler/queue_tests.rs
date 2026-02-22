@@ -1,8 +1,9 @@
-//! Tests for request queue and streaming admission guard.
+//! Tests for request queue and streaming enqueue.
 
 #[cfg(test)]
 mod tests {
-    use crate::engine::InferenceParams;
+    use crate::engine::{InferenceConfig, InferenceParams};
+    use crate::engine::TokenStream;
     use crate::scheduler::{Priority, RequestQueue, RequestQueueConfig};
 
     fn small_queue() -> RequestQueue {
@@ -17,10 +18,8 @@ mod tests {
         let q = small_queue();
         let result = q
             .enqueue_with_response(
-                "model".into(),
-                "hello".into(),
-                InferenceParams::default(),
-                Priority::Normal,
+                "model".into(), "hello".into(),
+                InferenceParams::default(), Priority::Normal,
             )
             .await;
         assert!(result.is_ok());
@@ -33,8 +32,7 @@ mod tests {
         let q = small_queue();
         for _ in 0..2 {
             q.enqueue("m".into(), "p".into(), InferenceParams::default(), Priority::Normal)
-                .await
-                .unwrap();
+                .await.unwrap();
         }
         let err = q
             .enqueue("m".into(), "p".into(), InferenceParams::default(), Priority::Normal)
@@ -43,77 +41,72 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn streaming_guard_drops_releases_slot() {
-        let q = small_queue();
-        assert_eq!(q.streaming_count(), 0);
-
-        let guard = q.admit_streaming("short prompt").await.unwrap();
-        assert_eq!(q.streaming_count(), 1);
-
-        drop(guard);
-        assert_eq!(q.streaming_count(), 0);
-    }
-
-    #[tokio::test]
-    async fn streaming_slots_count_toward_capacity() {
+    async fn streaming_enqueue_counts_toward_capacity() {
         let q = small_queue(); // max_pending = 2
 
-        // Reserve 2 streaming slots => queue should be full
-        let g1 = q.admit_streaming("a").await.unwrap();
-        let g2 = q.admit_streaming("b").await.unwrap();
+        // Enqueue 2 streaming requests => queue should be full
+        let (tx1, _rx1) = TokenStream::new(4);
+        let (tx2, _rx2) = TokenStream::new(4);
+        q.enqueue_streaming("m".into(), "a".into(), InferenceConfig::default(), tx1)
+            .await.unwrap();
+        q.enqueue_streaming("m".into(), "b".into(), InferenceConfig::default(), tx2)
+            .await.unwrap();
 
-        // Enqueue should fail — streaming slots fill capacity
+        // Regular enqueue should fail
         let err = q
             .enqueue("m".into(), "p".into(), InferenceParams::default(), Priority::Normal)
             .await;
         assert!(err.is_err());
 
-        // Third streaming admission should also fail
-        let err = q.admit_streaming("c").await;
+        // Third streaming should also fail
+        let (tx3, _rx3) = TokenStream::new(4);
+        let err = q.enqueue_streaming("m".into(), "c".into(), InferenceConfig::default(), tx3).await;
         assert!(err.is_err());
-
-        // Drop one guard => one slot freed
-        drop(g1);
-        assert_eq!(q.streaming_count(), 1);
-
-        // Now enqueue should succeed
-        let ok = q
-            .enqueue("m".into(), "p".into(), InferenceParams::default(), Priority::Normal)
-            .await;
-        assert!(ok.is_ok());
-
-        drop(g2);
     }
 
     #[tokio::test]
-    async fn concurrent_streaming_respects_capacity() {
+    async fn streaming_dequeue_returns_request() {
+        let q = small_queue();
+        let (tx, _rx) = TokenStream::new(4);
+        let id = q
+            .enqueue_streaming("model".into(), "hello".into(), InferenceConfig::default(), tx)
+            .await.unwrap();
+
+        let req = q.dequeue_streaming().await;
+        assert!(req.is_some());
+        assert_eq!(req.unwrap().id, id);
+    }
+
+    #[tokio::test]
+    async fn dequeued_streaming_frees_capacity() {
         let q = small_queue(); // max_pending = 2
 
-        // Admit two streaming requests, holding guards alive
-        let g1 = q.admit_streaming("prompt").await;
-        let g2 = q.admit_streaming("prompt").await;
-        assert!(g1.is_ok());
-        assert!(g2.is_ok());
-        assert_eq!(q.streaming_count(), 2);
+        let (tx1, _rx1) = TokenStream::new(4);
+        let (tx2, _rx2) = TokenStream::new(4);
+        q.enqueue_streaming("m".into(), "a".into(), InferenceConfig::default(), tx1)
+            .await.unwrap();
+        q.enqueue_streaming("m".into(), "b".into(), InferenceConfig::default(), tx2)
+            .await.unwrap();
 
-        // Third admission must fail while guards are held
-        let g3 = q.admit_streaming("prompt").await;
-        assert!(g3.is_err());
+        // Dequeue one streaming request
+        let _req = q.dequeue_streaming().await.unwrap();
 
-        // Enqueue must also fail (streaming fills capacity)
-        let enq = q
-            .enqueue("m".into(), "p".into(), InferenceParams::default(), Priority::Normal)
-            .await;
-        assert!(enq.is_err());
+        // Now there's space for one more
+        let (tx3, _rx3) = TokenStream::new(4);
+        let ok = q.enqueue_streaming("m".into(), "c".into(), InferenceConfig::default(), tx3).await;
+        assert!(ok.is_ok());
+    }
 
-        // Drop one guard, now one slot available
-        drop(g1.unwrap());
-        assert_eq!(q.streaming_count(), 1);
-
-        let g4 = q.admit_streaming("prompt").await;
-        assert!(g4.is_ok());
-
-        drop(g2.unwrap());
-        drop(g4.unwrap());
+    #[tokio::test]
+    async fn context_too_large_rejects_streaming() {
+        let q = RequestQueue::new(RequestQueueConfig {
+            max_pending: 10,
+            max_context_tokens: 10,
+        });
+        // 44 bytes / 4 = 11 > 10 max
+        let big = "a".repeat(44);
+        let (tx, _rx) = TokenStream::new(4);
+        let err = q.enqueue_streaming("m".into(), big, InferenceConfig::default(), tx).await;
+        assert!(err.is_err());
     }
 }

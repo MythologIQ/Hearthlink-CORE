@@ -57,10 +57,10 @@ impl InferenceEngine {
         Self::infer_with_model(&model, prompt, params).await
     }
 
-    /// Run inference with cooperative cancellation.
+    /// Run inference with cooperative per-token cancellation.
     ///
-    /// Checks `is_cancelled` before inference. Per-token cancellation
-    /// is threaded through the GGUF backend in a future PR (P0.3).
+    /// The cancellation flag is checked before inference and also
+    /// threaded through to the GGUF backend for per-token checks.
     pub async fn run_cancellable(
         &self,
         model_id: &str,
@@ -79,20 +79,18 @@ impl InferenceEngine {
         let model = self.get_model(model_id).await?;
         self.check_context(prompt)?;
 
-        let result = Self::infer_with_model(&model, prompt, params).await?;
-
-        if is_cancelled.load(Ordering::Acquire) {
-            return Err(InferenceError::ExecutionFailed("cancelled".into()));
-        }
+        let cancel = Arc::clone(&is_cancelled);
+        let check = move || cancel.load(Ordering::Acquire);
+        let result = Self::infer_cancellable(
+            &model, prompt, params, None, Some(&check),
+        ).await?;
 
         Ok(result)
     }
 
-    /// Run inference with cooperative cancellation and a per-call memory budget.
+    /// Run inference with per-token cancellation and a per-call memory budget.
     ///
-    /// The `max_memory_bytes` is enforced before calling into the model: if the
-    /// model's reported memory exceeds the budget, `MemoryExceeded` is returned
-    /// without starting inference (OOM prevention).
+    /// The `max_memory_bytes` is enforced before calling into the model.
     pub async fn run_cancellable_with_memory_limit(
         &self,
         model_id: &str,
@@ -112,13 +110,11 @@ impl InferenceEngine {
         let model = self.get_model(model_id).await?;
         self.check_context(prompt)?;
 
-        let result = Self::infer_with_model_budget(
-            &model, prompt, params, Some(max_memory_bytes),
+        let cancel = Arc::clone(&is_cancelled);
+        let check = move || cancel.load(Ordering::Acquire);
+        let result = Self::infer_cancellable(
+            &model, prompt, params, Some(max_memory_bytes), Some(&check),
         ).await?;
-
-        if is_cancelled.load(Ordering::Acquire) {
-            return Err(InferenceError::ExecutionFailed("cancelled".into()));
-        }
 
         Ok(result)
     }
@@ -149,17 +145,16 @@ impl InferenceEngine {
         prompt: &str,
         params: &InferenceParams,
     ) -> Result<InferenceResult, InferenceError> {
-        Self::infer_with_model_budget(model, prompt, params, None).await
+        Self::infer_cancellable(model, prompt, params, None, None).await
     }
 
-    async fn infer_with_model_budget(
+    async fn infer_cancellable(
         model: &Arc<dyn GgufModel>,
         prompt: &str,
         params: &InferenceParams,
         max_memory_bytes: Option<usize>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
     ) -> Result<InferenceResult, InferenceError> {
-        // Enforce per-call memory budget: reject before inference if model
-        // already reports more memory than the budget allows.
         if let Some(budget) = max_memory_bytes {
             let model_mem = model.memory_usage();
             if model_mem > budget {
@@ -174,9 +169,10 @@ impl InferenceEngine {
         config.max_memory_bytes = max_memory_bytes;
 
         let input = InferenceInput::Text(prompt.to_string());
-        let output = model.infer(&input, &config).await.map_err(|e| {
-            InferenceError::ExecutionFailed(e.to_string())
-        })?;
+        let output = model
+            .infer_cancellable(&input, &config, is_cancelled)
+            .await
+            .map_err(|e| InferenceError::ExecutionFailed(e.to_string()))?;
 
         match output {
             InferenceOutput::Generation(gen) => Ok(InferenceResult {

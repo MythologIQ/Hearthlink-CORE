@@ -67,7 +67,7 @@ impl LlamaBackendInner {
         &self,
         prompt: &str,
         config: &InferenceConfig,
-        is_cancelled: Option<&dyn Fn() -> bool>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
     ) -> Result<GenerationResult, InferenceError> {
         let tokens = self.tokenize(prompt)?;
         let max_tok = config.max_tokens.unwrap_or(256);
@@ -88,7 +88,7 @@ impl LlamaBackendInner {
         prompt: &str,
         config: &InferenceConfig,
         sender: crate::engine::TokenStreamSender,
-        is_cancelled: Option<&dyn Fn() -> bool>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
     ) -> Result<(), InferenceError> {
         let tokens = self.tokenize(prompt)?;
         let max_tok = config.max_tokens.unwrap_or(256);

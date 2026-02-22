@@ -153,3 +153,85 @@ async fn to_config_sets_max_memory_bytes_from_budget() {
         .await;
     assert!(matches!(err, Err(InferenceError::MemoryExceeded { .. })));
 }
+
+// ---- Per-token cancellation tests (P3.2) ----
+
+/// Model that checks cancellation callback and returns fewer tokens.
+struct CancellableModel {
+    cancel_at_token: usize,
+}
+
+#[async_trait::async_trait]
+impl GgufModel for CancellableModel {
+    fn model_id(&self) -> &str { "cancel-model" }
+    fn capabilities(&self) -> &[InferenceCapability] {
+        &[InferenceCapability::TextGeneration]
+    }
+    fn memory_usage(&self) -> usize { 256 }
+    async fn infer(
+        &self, _: &InferenceInput, _: &InferenceConfig,
+    ) -> Result<InferenceOutput, EngineError> {
+        Ok(InferenceOutput::Generation(GenerationResult {
+            text: "full output no cancel".into(),
+            tokens_generated: 10,
+            finish_reason: FinishReason::Stop,
+        }))
+    }
+    async fn infer_cancellable(
+        &self,
+        _input: &InferenceInput,
+        _config: &InferenceConfig,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+    ) -> Result<InferenceOutput, EngineError> {
+        let mut generated = 0;
+        for _ in 0..10 {
+            if let Some(check) = is_cancelled {
+                if check() {
+                    break;
+                }
+            }
+            generated += 1;
+            if generated == self.cancel_at_token {
+                break;
+            }
+        }
+        Ok(InferenceOutput::Generation(GenerationResult {
+            text: format!("generated {generated} tokens"),
+            tokens_generated: generated as u32,
+            finish_reason: FinishReason::Stop,
+        }))
+    }
+    async fn unload(&mut self) -> Result<(), EngineError> { Ok(()) }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+}
+
+#[tokio::test]
+async fn cancellable_model_stops_early_when_cancelled() {
+    let engine = InferenceEngine::new(4096);
+    let handle = ModelHandle::new(1);
+    let model: StdArc<dyn GgufModel> = StdArc::new(CancellableModel { cancel_at_token: 10 });
+    engine.register_model("cancel-model".into(), handle, model).await;
+
+    let params = InferenceParams::default();
+    let cancelled = StdArc::new(std::sync::atomic::AtomicBool::new(true));
+
+    // Pre-cancelled: should fail before reaching model
+    let result = engine.run_cancellable("cancel-model", "hi", &params, cancelled).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn non_cancelled_infer_cancellable_completes() {
+    let engine = InferenceEngine::new(4096);
+    let handle = ModelHandle::new(1);
+    let model: StdArc<dyn GgufModel> = StdArc::new(CancellableModel { cancel_at_token: 10 });
+    engine.register_model("cancel-model".into(), handle, model).await;
+
+    let params = InferenceParams::default();
+    let cancelled = StdArc::new(std::sync::atomic::AtomicBool::new(false));
+
+    let result = engine.run_cancellable("cancel-model", "hi", &params, cancelled).await;
+    assert!(result.is_ok());
+    let r = result.unwrap();
+    assert_eq!(r.tokens_generated, 10);
+}

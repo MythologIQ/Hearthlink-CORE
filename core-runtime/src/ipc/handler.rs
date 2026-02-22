@@ -386,10 +386,11 @@ impl IpcHandler {
         }
     }
 
-    /// Internal streaming implementation (gguf feature only).
+    /// Internal streaming implementation.
     ///
-    /// Acquires a queue admission slot before streaming, ensuring the
-    /// streaming path respects queue capacity (C-2 fix).
+    /// Enqueues the request into the streaming queue so the worker loop
+    /// handles resource limits and telemetry. The handler reads tokens
+    /// from the receiver channel and relays them to IPC.
     #[cfg(feature = "gguf")]
     async fn run_streaming_inference(
         &self,
@@ -398,25 +399,33 @@ impl IpcHandler {
         cancel: CancellationToken,
     ) -> Result<(), HandlerError> {
         let request_id = request.request_id;
-
-        // Queue admission: capacity + tier-1 context check
-        let _admission = self
-            .queue
-            .admit_streaming(&request.prompt)
-            .await
-            .map_err(|e| HandlerError::QueueFull(e.to_string()))?;
-
-        let model_id = request.model_id.clone();
-        let prompt = request.prompt.clone();
         let config = request.parameters.to_config();
-        let engine = Arc::clone(&self.inference_engine);
 
         let (token_sender, mut stream) = TokenStream::new(32);
 
-        let inf_handle = tokio::task::spawn_blocking(move || {
-            engine.run_stream_sync(&model_id, &prompt, &config, token_sender)
-        });
+        // Enqueue into the streaming queue — worker picks it up.
+        self.queue
+            .enqueue_streaming(
+                request.model_id.clone(),
+                request.prompt.clone(),
+                config,
+                token_sender,
+            )
+            .await
+            .map_err(|e| HandlerError::QueueFull(e.to_string()))?;
 
+        self.relay_stream(request_id, &mut stream, sender, cancel).await
+    }
+
+    /// Relay tokens from the stream receiver to the IPC sender.
+    #[cfg(feature = "gguf")]
+    async fn relay_stream(
+        &self,
+        request_id: super::protocol::RequestId,
+        stream: &mut TokenStream,
+        sender: &dyn StreamSender,
+        cancel: CancellationToken,
+    ) -> Result<(), HandlerError> {
         loop {
             tokio::select! {
                 biased;
@@ -428,24 +437,20 @@ impl IpcHandler {
                 token_opt = stream.next() => {
                     match token_opt {
                         Some(output) => {
-                            let chunk = if output.is_final {
+                            let done = output.is_final;
+                            let chunk = if done {
                                 StreamChunk::final_token(request_id, output.token)
                             } else {
                                 StreamChunk::token(request_id, output.token)
                             };
                             sender.send(IpcMessage::StreamChunk(chunk)).await?;
-                            if output.is_final {
-                                break;
-                            }
+                            if done { break; }
                         }
                         None => break,
                     }
                 }
             }
         }
-
-        let _ = inf_handle.await;
-        // _admission guard drops here, releasing the slot
         Ok(())
     }
 }

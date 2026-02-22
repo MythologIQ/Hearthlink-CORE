@@ -65,7 +65,7 @@ impl GgufGenerator {
         &self,
         prompt: &str,
         config: &InferenceConfig,
-        is_cancelled: Option<&dyn Fn() -> bool>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
     ) -> Result<GenerationResult, InferenceError> {
         if prompt.is_empty() {
             return Err(InferenceError::InputValidation(
@@ -99,7 +99,7 @@ impl GgufGenerator {
         prompt: &str,
         config: &InferenceConfig,
         sender: crate::engine::TokenStreamSender,
-        is_cancelled: Option<&dyn Fn() -> bool>,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
     ) -> Result<(), InferenceError> {
         if let Some(inner) = &self.inner {
             return inner.generate_stream(prompt, config, sender, is_cancelled);
@@ -198,6 +198,28 @@ impl super::GgufModel for GgufGenerator {
                 ))
             }
         }
+    }
+
+    async fn infer_cancellable(
+        &self,
+        input: &InferenceInput,
+        config: &InferenceConfig,
+        is_cancelled: Option<&(dyn Fn() -> bool + Send + Sync)>,
+    ) -> Result<InferenceOutput, InferenceError> {
+        input.validate()?;
+        config.validate()?;
+
+        let prompt = match input {
+            InferenceInput::Text(p) => p.clone(),
+            InferenceInput::ChatMessages(msgs) => self.format_chat_prompt(msgs)?,
+            InferenceInput::TextBatch(_) => {
+                return Err(InferenceError::CapabilityNotSupported(
+                    "batch generation not supported".into(),
+                ));
+            }
+        };
+        let result = self.generate_text_cancellable(&prompt, config, is_cancelled)?;
+        Ok(InferenceOutput::Generation(result))
     }
 
     async fn unload(&mut self) -> Result<(), InferenceError> {
