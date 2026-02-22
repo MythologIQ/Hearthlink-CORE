@@ -13,13 +13,12 @@
 //! - `GG-CORE live` - Liveness probe (exit 0/1)
 //! - `GG-CORE ready` - Readiness probe (exit 0/1)
 
-use std::path::PathBuf;
 use std::process::ExitCode;
-use std::time::Duration;
 
 use gg_core::cli::{
     get_socket_path, run_health, run_liveness, run_readiness, run_status, CliIpcClient,
 };
+use gg_core::config as gg_config;
 use gg_core::engine::InferenceParams;
 use gg_core::ipc::server;
 use gg_core::security::fips_tests;
@@ -100,8 +99,9 @@ async fn main() -> ExitCode {
             let subcommand = args.get(2).map(|s| s.as_str()).unwrap_or("list");
             match subcommand {
                 "list" => {
-                    eprintln!("Models list not yet implemented.");
-                    ExitCode::from(2u8)
+                    let socket_path = get_socket_path();
+                    let code = gg_core::cli::models_cmd::run_list(&socket_path).await;
+                    ExitCode::from(code as u8)
                 }
                 _ => {
                     eprintln!("Unknown models subcommand: {}", subcommand);
@@ -113,9 +113,17 @@ async fn main() -> ExitCode {
         "config" => {
             let subcommand = args.get(2).map(|s| s.as_str()).unwrap_or("show");
             match subcommand {
-                "show" | "validate" | "defaults" => {
-                    eprintln!("Config {} not yet implemented.", subcommand);
-                    ExitCode::from(2u8)
+                "show" => {
+                    gg_core::cli::config_cmd::run_show();
+                    ExitCode::SUCCESS
+                }
+                "defaults" => {
+                    gg_core::cli::config_cmd::run_defaults();
+                    ExitCode::SUCCESS
+                }
+                "validate" => {
+                    let code = gg_core::cli::config_cmd::run_validate();
+                    ExitCode::from(code as u8)
                 }
                 _ => {
                     eprintln!("Unknown config subcommand: {}", subcommand);
@@ -454,13 +462,18 @@ EXAMPLES:
 }
 
 fn load_config() -> RuntimeConfig {
-    // In production, load from environment or config file
-    // For now, use secure defaults
+    let env = gg_config::load();
     RuntimeConfig {
-        base_path: PathBuf::from("."),
-        auth_token: std::env::var("CORE_AUTH_TOKEN").unwrap_or_default(),
-        session_timeout: Duration::from_secs(3600),
-        max_context_length: 4096,
+        base_path: env.base_path,
+        auth_token: env.auth_token,
+        session_timeout: env.session_timeout,
+        max_context_length: env.max_context_length,
+        request_queue: env.request_queue,
+        resource_limits: env.resource_limits,
+        batch: env.batch,
+        shutdown_timeout: env.shutdown_timeout,
+        connections: env.connections,
+        ipc_server: env.ipc_server,
         ..Default::default()
     }
 }
@@ -556,6 +569,7 @@ async fn run_ipc_server(runtime: Runtime) -> Result<(), Box<dyn std::error::Erro
     let connections = runtime.connections;
     let shutdown = runtime.shutdown;
     let shutdown_timeout = runtime.config.shutdown_timeout;
+    let ipc_config = runtime.config.ipc_server.clone();
 
     // Spawn the inference worker (single dequeue-execute loop)
     let worker_shutdown = tokio_util::sync::CancellationToken::new();
@@ -564,6 +578,7 @@ async fn run_ipc_server(runtime: Runtime) -> Result<(), Box<dyn std::error::Erro
         runtime.inference_engine.clone(),
         Some(runtime.model_lifecycle.clone()),
         Some(runtime.model_registry.clone()),
+        Some(runtime.resource_limits.clone()),
         worker_shutdown.clone(),
     );
 
@@ -574,6 +589,7 @@ async fn run_ipc_server(runtime: Runtime) -> Result<(), Box<dyn std::error::Erro
         handler,
         connections,
         shutdown_rx,
+        ipc_config,
     ));
 
     // Wait for Ctrl+C, then initiate graceful shutdown

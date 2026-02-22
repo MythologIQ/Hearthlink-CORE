@@ -22,6 +22,7 @@
 //! - Network: Blocked (deny all)
 //! - IPC: Named pipes/Unix sockets only. No HTTP/REST/WebSocket.
 
+pub mod config;
 pub mod engine;
 pub mod health;
 pub mod ipc;
@@ -63,9 +64,12 @@ use std::time::Duration;
 
 use engine::InferenceEngine;
 use health::{HealthChecker, HealthConfig};
-use ipc::{ConnectionConfig, ConnectionPool, IpcHandler, IpcHandlerConfig, SessionAuth};
+use ipc::{
+    ConnectionConfig, ConnectionPool, IpcHandler, IpcHandlerConfig, IpcServerConfig, SessionAuth,
+};
 use memory::{
     ContextCache, ContextCacheConfig, GpuMemory, GpuMemoryConfig, MemoryPool, MemoryPoolConfig,
+    ResourceLimits, ResourceLimitsConfig,
 };
 use models::{ModelLifecycle, ModelLoader, ModelRegistry};
 use scheduler::{
@@ -86,10 +90,12 @@ pub struct RuntimeConfig {
     pub gpu_memory: GpuMemoryConfig,
     pub context_cache: ContextCacheConfig,
     pub request_queue: RequestQueueConfig,
+    pub resource_limits: ResourceLimitsConfig,
     pub batch: BatchConfig,
     pub shutdown_timeout: Duration,
     pub output_cache: OutputCacheConfig,
     pub connections: ConnectionConfig,
+    pub ipc_server: IpcServerConfig,
 }
 
 impl Default for RuntimeConfig {
@@ -103,10 +109,12 @@ impl Default for RuntimeConfig {
             gpu_memory: GpuMemoryConfig::default(),
             context_cache: ContextCacheConfig::default(),
             request_queue: RequestQueueConfig::default(),
+            resource_limits: ResourceLimitsConfig::default(),
             batch: BatchConfig::default(),
             shutdown_timeout: Duration::from_secs(30),
             output_cache: OutputCacheConfig::default(),
             connections: ConnectionConfig::default(),
+            ipc_server: IpcServerConfig::default(),
         }
     }
 }
@@ -123,6 +131,7 @@ pub struct Runtime {
     pub model_lifecycle: Arc<ModelLifecycle>,
     pub request_queue: Arc<RequestQueue>,
     pub batch_processor: BatchProcessor,
+    pub resource_limits: ResourceLimits,
     pub ipc_handler: IpcHandler,
     pub shutdown: Arc<ShutdownCoordinator>,
     pub health: Arc<HealthChecker>,
@@ -142,6 +151,7 @@ impl Runtime {
         let inference_engine = InferenceEngine::new(config.max_context_length);
         let request_queue = Arc::new(RequestQueue::new(config.request_queue.clone()));
         let batch_processor = BatchProcessor::new(config.batch.clone());
+        let resource_limits = ResourceLimits::new(config.resource_limits.clone());
         let shutdown = Arc::new(ShutdownCoordinator::new());
         let health = Arc::new(HealthChecker::new(HealthConfig::default()));
         let metrics_store = Arc::new(MetricsStore::new());
@@ -176,6 +186,7 @@ impl Runtime {
             model_lifecycle,
             request_queue,
             batch_processor,
+            resource_limits,
             ipc_handler,
             shutdown,
             health,

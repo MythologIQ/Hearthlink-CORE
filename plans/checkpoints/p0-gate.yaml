@@ -6,7 +6,7 @@ checkpoint:
   phase: "P0"
   workstream: "correctness-recovery"
   timestamp: "2026-02-22T00:00:00Z"
-  git_sha: "pending-commit"
+  git_sha: "404ec59"
   git_tag: "p0-complete"
   branch: "remediation/p0"
 
