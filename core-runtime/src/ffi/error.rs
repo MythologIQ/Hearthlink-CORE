@@ -82,6 +82,7 @@ impl From<crate::ipc::AuthError> for CoreErrorCode {
             AuthError::SessionExpired => CoreErrorCode::SessionExpired,
             AuthError::NotAuthenticated => CoreErrorCode::AuthFailed,
             AuthError::RateLimited => CoreErrorCode::RateLimited,
+            AuthError::SessionRateLimited => CoreErrorCode::RateLimited,
         }
     }
 }

@@ -118,6 +118,7 @@ fn config_from_c(c: &CoreConfig) -> Result<RuntimeConfig, String> {
         max_context_length: c.max_context_length as usize,
         request_queue: crate::scheduler::RequestQueueConfig {
             max_pending: c.max_queue_depth as usize,
+            max_context_tokens: c.max_context_length as usize,
         },
         shutdown_timeout: Duration::from_secs(c.shutdown_timeout_secs),
         ..Default::default()
