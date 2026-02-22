@@ -9,6 +9,7 @@ use crate::engine::{
     FinishReason, GenerationResult, InferenceCapability, InferenceConfig,
     InferenceError as EngineError, InferenceInput, InferenceOutput, InferenceParams,
 };
+use crate::memory::{ResourceLimits, ResourceLimitsConfig};
 use crate::scheduler::queue::{RequestQueue, RequestQueueConfig};
 use crate::scheduler::Priority;
 
@@ -208,4 +209,189 @@ async fn tier1_context_check_allows_small_prompt() {
         .enqueue("m".into(), "hello".into(), InferenceParams::default(), Priority::Normal)
         .await;
     assert!(result.is_ok());
+}
+
+// ---- Resource limits integration tests ----
+
+/// Build a ResourceLimits with a very tight total memory cap (below MockModel's 1024 bytes)
+/// but generous concurrency, so memory is the rejecting constraint.
+fn limits_memory_exceeded() -> ResourceLimits {
+    ResourceLimits::new(ResourceLimitsConfig {
+        max_memory_per_call: 512,      // per-call cap below 1024 bytes reported by MockModel
+        max_total_memory: 1024 * 1024, // total is fine
+        max_concurrent: 16,
+    })
+}
+
+/// Build a ResourceLimits with a concurrency cap of 0 so every request is rejected.
+fn limits_concurrency_exceeded() -> ResourceLimits {
+    ResourceLimits::new(ResourceLimitsConfig {
+        max_memory_per_call: usize::MAX,
+        max_total_memory: usize::MAX,
+        max_concurrent: 0, // no slots available
+    })
+}
+
+#[tokio::test]
+async fn worker_rejects_when_memory_limit_exceeded() {
+    let (queue, engine) = setup().await;
+    let shutdown = tokio_util::sync::CancellationToken::new();
+    let limits = limits_memory_exceeded();
+
+    let worker = spawn_worker_with_registry(
+        queue.clone(),
+        engine,
+        None,
+        None,
+        Some(limits),
+        shutdown.clone(),
+    );
+
+    let (_id, rx) = queue
+        .enqueue_with_response(
+            "test-model".into(), "hi".into(),
+            InferenceParams::default(), Priority::Normal,
+        )
+        .await.unwrap();
+
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(2), rx,
+    ).await.unwrap().unwrap();
+
+    assert!(result.is_err(), "request should be rejected due to memory limit");
+    let msg = result.unwrap_err();
+    assert!(
+        msg.contains("memory") || msg.contains("Memory"),
+        "error should mention memory, got: {msg}"
+    );
+
+    shutdown.cancel();
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(1), worker).await;
+}
+
+#[tokio::test]
+async fn worker_rejects_when_concurrency_limit_exceeded() {
+    let (queue, engine) = setup().await;
+    let shutdown = tokio_util::sync::CancellationToken::new();
+    let limits = limits_concurrency_exceeded();
+
+    let worker = spawn_worker_with_registry(
+        queue.clone(),
+        engine,
+        None,
+        None,
+        Some(limits),
+        shutdown.clone(),
+    );
+
+    let (_id, rx) = queue
+        .enqueue_with_response(
+            "test-model".into(), "hi".into(),
+            InferenceParams::default(), Priority::Normal,
+        )
+        .await.unwrap();
+
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(2), rx,
+    ).await.unwrap().unwrap();
+
+    assert!(result.is_err(), "request should be rejected due to concurrency limit");
+    let msg = result.unwrap_err();
+    assert!(
+        msg.contains("queue") || msg.contains("Queue") || msg.contains("concurrent"),
+        "error should mention queue/concurrency, got: {msg}"
+    );
+
+    shutdown.cancel();
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(1), worker).await;
+}
+
+#[tokio::test]
+async fn worker_releases_resource_guard_after_inference() {
+    let (queue, engine) = setup().await;
+    let shutdown = tokio_util::sync::CancellationToken::new();
+
+    // Allow exactly 1 concurrent request with enough memory.
+    let limits = ResourceLimits::new(ResourceLimitsConfig {
+        max_memory_per_call: 2048,
+        max_total_memory: 2 * 1024 * 1024,
+        max_concurrent: 1,
+    });
+
+    let worker = spawn_worker_with_registry(
+        queue.clone(),
+        engine,
+        None,
+        None,
+        Some(limits.clone()),
+        shutdown.clone(),
+    );
+
+    // Send two sequential requests. If the guard is properly dropped after
+    // the first, the second will be admitted.
+    let (_id1, rx1) = queue
+        .enqueue_with_response(
+            "test-model".into(), "first".into(),
+            InferenceParams::default(), Priority::Normal,
+        )
+        .await.unwrap();
+    let r1 = tokio::time::timeout(
+        std::time::Duration::from_secs(2), rx1,
+    ).await.unwrap().unwrap();
+    assert!(r1.is_ok(), "first request should succeed");
+
+    // After first completes, concurrent count must be back to 0.
+    assert_eq!(limits.current_concurrent(), 0, "guard should have been dropped");
+
+    let (_id2, rx2) = queue
+        .enqueue_with_response(
+            "test-model".into(), "second".into(),
+            InferenceParams::default(), Priority::Normal,
+        )
+        .await.unwrap();
+    let r2 = tokio::time::timeout(
+        std::time::Duration::from_secs(2), rx2,
+    ).await.unwrap().unwrap();
+    assert!(r2.is_ok(), "second request should succeed after guard is released");
+
+    shutdown.cancel();
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(1), worker).await;
+}
+
+#[tokio::test]
+async fn admission_rejection_propagates_to_caller() {
+    let (queue, engine) = setup().await;
+    let shutdown = tokio_util::sync::CancellationToken::new();
+    let limits = limits_concurrency_exceeded();
+
+    let worker = spawn_worker_with_registry(
+        queue.clone(),
+        engine,
+        None,
+        None,
+        Some(limits),
+        shutdown.clone(),
+    );
+
+    let (_id, rx) = queue
+        .enqueue_with_response(
+            "test-model".into(), "probe".into(),
+            InferenceParams::default(), Priority::Normal,
+        )
+        .await.unwrap();
+
+    // The oneshot channel must deliver the Err — not drop or timeout.
+    let channel_result = tokio::time::timeout(
+        std::time::Duration::from_secs(2), rx,
+    ).await;
+    assert!(channel_result.is_ok(), "channel should not time out");
+
+    let send_result = channel_result.unwrap();
+    assert!(send_result.is_ok(), "oneshot should not be dropped");
+
+    let inference_result = send_result.unwrap();
+    assert!(inference_result.is_err(), "caller must receive the rejection error");
+
+    shutdown.cancel();
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(1), worker).await;
 }

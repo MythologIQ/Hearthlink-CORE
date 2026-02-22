@@ -246,6 +246,11 @@ impl InferenceEngine {
         self.models.read().await.contains_key(model_id)
     }
 
+    /// Return the memory usage reported by a registered model, or None if not found.
+    pub async fn model_memory_usage(&self, model_id: &str) -> Option<usize> {
+        self.models.read().await.get(model_id).map(|m| m.memory_usage())
+    }
+
     /// Get the ModelHandle for a model_id (O(1) lookup).
     pub async fn get_handle(&self, model_id: &str) -> Option<ModelHandle> {
         self.id_to_handle.read().await

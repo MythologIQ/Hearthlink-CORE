@@ -7,6 +7,7 @@ use std::sync::Arc;
 use tokio::task::JoinHandle;
 
 use crate::engine::InferenceEngine;
+use crate::memory::ResourceLimits;
 use crate::models::lifecycle::ModelLifecycle;
 use crate::models::registry::ModelRegistry;
 use crate::telemetry;
@@ -18,19 +19,28 @@ pub fn spawn_worker(
     engine: Arc<InferenceEngine>,
     shutdown: tokio_util::sync::CancellationToken,
 ) -> JoinHandle<()> {
-    spawn_worker_with_registry(queue, engine, None, None, shutdown)
+    spawn_worker_with_registry(queue, engine, None, None, None, shutdown)
 }
 
-/// Spawn with optional registry for per-model stats recording.
+/// Spawn with optional registry for per-model stats recording and resource limits.
 pub fn spawn_worker_with_registry(
     queue: Arc<RequestQueue>,
     engine: Arc<InferenceEngine>,
     lifecycle: Option<Arc<ModelLifecycle>>,
     registry: Option<Arc<ModelRegistry>>,
+    resource_limits: Option<ResourceLimits>,
     shutdown: tokio_util::sync::CancellationToken,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
-        worker_loop(&queue, &engine, lifecycle.as_deref(), registry.as_deref(), shutdown).await;
+        worker_loop(
+            &queue,
+            &engine,
+            lifecycle.as_deref(),
+            registry.as_deref(),
+            resource_limits.as_ref(),
+            shutdown,
+        )
+        .await;
     })
 }
 
@@ -39,6 +49,7 @@ async fn worker_loop(
     engine: &InferenceEngine,
     lifecycle: Option<&ModelLifecycle>,
     registry: Option<&ModelRegistry>,
+    resource_limits: Option<&ResourceLimits>,
     shutdown: tokio_util::sync::CancellationToken,
 ) {
     loop {
@@ -50,7 +61,7 @@ async fn worker_loop(
             }
             req_opt = queue.wait_and_dequeue() => {
                 if let Some(request) = req_opt {
-                    execute_request(engine, lifecycle, registry, request).await;
+                    execute_request(engine, lifecycle, registry, resource_limits, request).await;
                 }
             }
         }
@@ -61,12 +72,30 @@ async fn execute_request(
     engine: &InferenceEngine,
     lifecycle: Option<&ModelLifecycle>,
     registry: Option<&ModelRegistry>,
+    resource_limits: Option<&ResourceLimits>,
     request: QueuedRequest,
 ) {
     let model_id = request.model_id.clone();
     let prompt = request.prompt.clone();
     let params = request.params.clone();
     let cancelled = request.cancel_check();
+
+    // Admission control: acquire resource slot before inference.
+    let _guard = if let Some(limits) = resource_limits {
+        let memory_estimate = estimate_memory(engine, &model_id).await;
+        match limits.try_acquire(memory_estimate) {
+            Ok(guard) => Some(guard),
+            Err(e) => {
+                telemetry::record_admission_rejection(&model_id, &e.to_string());
+                let mapped: Result<crate::engine::inference::InferenceResult, String> =
+                    Err(e.to_string());
+                send_response(request, mapped);
+                return;
+            }
+        }
+    } else {
+        None
+    };
 
     let start = std::time::Instant::now();
 
@@ -95,6 +124,16 @@ async fn execute_request(
 
     let mapped = result.map_err(|e| e.to_string());
     send_response(request, mapped);
+    // _guard drops here, releasing the resource slot.
+}
+
+/// Estimate memory for a model. Falls back to a fixed 256 MiB if not registered.
+async fn estimate_memory(engine: &InferenceEngine, model_id: &str) -> usize {
+    const FALLBACK_BYTES: usize = 256 * 1024 * 1024;
+    engine
+        .model_memory_usage(model_id)
+        .await
+        .unwrap_or(FALLBACK_BYTES)
 }
 
 fn send_response(request: QueuedRequest, result: Result<crate::engine::inference::InferenceResult, String>) {
