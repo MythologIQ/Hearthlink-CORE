@@ -1,6 +1,6 @@
 //! Request queue management.
 
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, Notify};
@@ -107,6 +107,8 @@ pub struct RequestQueue {
     config: RequestQueueConfig,
     /// Notifies the worker when new items are enqueued.
     notify: Arc<Notify>,
+    /// Tracks active streaming slots (reserved but not in queue).
+    streaming_count: Arc<AtomicUsize>,
 }
 
 impl RequestQueue {
@@ -116,6 +118,7 @@ impl RequestQueue {
             next_id: AtomicU64::new(1),
             config,
             notify: Arc::new(Notify::new()),
+            streaming_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 
@@ -165,8 +168,9 @@ impl RequestQueue {
         }
 
         let mut queue = self.queue.lock().await;
+        let streaming = self.streaming_count.load(Ordering::Acquire);
 
-        if queue.len() >= self.config.max_pending {
+        if queue.len() + streaming >= self.config.max_pending {
             return Err(QueueError::QueueFull);
         }
 
@@ -240,7 +244,7 @@ impl RequestQueue {
         self.queue.lock().await.is_empty()
     }
 
-    /// Admit a streaming request: check capacity and context, reserve a slot.
+    /// Admit a streaming request: atomically check capacity and reserve a slot.
     ///
     /// Returns a guard that releases the slot on drop. The streaming path
     /// uses this instead of full enqueue because tokens are streamed via
@@ -257,20 +261,34 @@ impl RequestQueue {
             });
         }
 
+        // Hold the queue lock to make check+reserve atomic.
         let queue = self.queue.lock().await;
-        if queue.len() >= self.config.max_pending {
+        let streaming = self.streaming_count.load(Ordering::Acquire);
+        if queue.len() + streaming >= self.config.max_pending {
             return Err(QueueError::QueueFull);
         }
+        self.streaming_count.fetch_add(1, Ordering::Release);
         drop(queue);
 
-        Ok(StreamingAdmissionGuard { _private: () })
+        Ok(StreamingAdmissionGuard { counter: Arc::clone(&self.streaming_count) })
+    }
+
+    /// Current number of active streaming slots.
+    pub fn streaming_count(&self) -> usize {
+        self.streaming_count.load(Ordering::Acquire)
     }
 }
 
-/// RAII guard for streaming admission. Ensures the streaming path
-/// went through queue admission control before executing inference.
+/// RAII guard for streaming admission. Reserves a slot on creation
+/// and releases it when dropped, preventing TOCTOU races.
 pub struct StreamingAdmissionGuard {
-    _private: (),
+    counter: Arc<AtomicUsize>,
+}
+
+impl Drop for StreamingAdmissionGuard {
+    fn drop(&mut self) {
+        self.counter.fetch_sub(1, Ordering::Release);
+    }
 }
 
 #[derive(Debug)]

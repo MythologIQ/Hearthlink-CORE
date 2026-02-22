@@ -9,6 +9,8 @@ mod dedup;
 mod pool;
 mod priority;
 mod queue;
+#[cfg(test)]
+mod queue_tests;
 pub mod thread_pool;
 pub mod worker;
 
