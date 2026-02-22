@@ -12,6 +12,7 @@ use super::exceptions::AuthenticationError;
 use super::inference::{InferenceParams, InferenceResult};
 use crate::engine::InferenceParams as RustParams;
 use crate::ipc::SessionToken;
+use crate::scheduler::Priority;
 use crate::Runtime as CoreRuntime;
 
 /// Synchronous session for inference operations
@@ -73,7 +74,19 @@ impl Session {
             .unwrap_or_default();
 
         let result = self.tokio.block_on(async {
-            self.runtime.inference_engine.run(model_id, prompt, &rust_params).await
+            let (_id, rx) = self.runtime.request_queue
+                .enqueue_with_response(
+                    model_id.to_string(),
+                    prompt.to_string(),
+                    rust_params,
+                    Priority::Normal,
+                )
+                .await
+                .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+
+            rx.await
+                .map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("worker dropped channel"))?
+                .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))
         })?;
 
         Ok(InferenceResult::from(result))
@@ -182,10 +195,20 @@ impl AsyncSession {
             runtime.ipc_handler.auth.validate(&token).await
                 .map_err(|e| AuthenticationError::new_err(e.to_string()))?;
 
-            let result = runtime
-                .inference_engine
-                .run(&model_id, &prompt, &rust_params)
-                .await?;
+            let (_id, rx) = runtime
+                .request_queue
+                .enqueue_with_response(
+                    model_id,
+                    prompt,
+                    rust_params,
+                    Priority::Normal,
+                )
+                .await
+                .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+
+            let result = rx.await
+                .map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("worker dropped channel"))?
+                .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
 
             Ok(InferenceResult::from(result))
         })

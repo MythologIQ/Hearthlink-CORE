@@ -395,3 +395,63 @@ async fn admission_rejection_propagates_to_caller() {
     shutdown.cancel();
     let _ = tokio::time::timeout(std::time::Duration::from_secs(1), worker).await;
 }
+
+/// Streaming admission succeeds when queue has capacity (C-2 fix).
+#[tokio::test]
+async fn streaming_admission_succeeds_with_capacity() {
+    let config = RequestQueueConfig { max_pending: 10, max_context_tokens: 4096 };
+    let queue = Arc::new(RequestQueue::new(config));
+
+    let guard = queue.admit_streaming("short prompt").await;
+    assert!(guard.is_ok(), "streaming admission should succeed with capacity");
+}
+
+/// Streaming admission rejects when queue is full (C-2 fix).
+#[tokio::test]
+async fn streaming_admission_rejects_when_queue_full() {
+    let config = RequestQueueConfig { max_pending: 2, max_context_tokens: 4096 };
+    let queue = Arc::new(RequestQueue::new(config));
+
+    // Fill the queue to capacity
+    queue.enqueue("m".into(), "a".into(), InferenceParams::default(), Priority::Normal)
+        .await.unwrap();
+    queue.enqueue("m".into(), "b".into(), InferenceParams::default(), Priority::Normal)
+        .await.unwrap();
+
+    // Streaming admission should be rejected
+    let result = queue.admit_streaming("c").await;
+    assert!(result.is_err(), "streaming admission must fail when queue is full");
+}
+
+/// Verifies that routing inference through enqueue_with_response (as Python
+/// Session.infer() now does) delivers results from the worker, confirming
+/// the queue-only execution invariant (C-1 fix).
+#[tokio::test]
+async fn python_session_infer_routes_through_queue() {
+    let (queue, engine) = setup().await;
+    let shutdown = tokio_util::sync::CancellationToken::new();
+    let worker = spawn_worker(queue.clone(), engine, shutdown.clone());
+
+    // Simulate what Session::infer() does: enqueue_with_response + await rx
+    let (_id, rx) = queue
+        .enqueue_with_response(
+            "test-model".into(),
+            "python prompt".into(),
+            InferenceParams::default(),
+            Priority::Normal,
+        )
+        .await
+        .unwrap();
+
+    let result = tokio::time::timeout(std::time::Duration::from_secs(2), rx)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(result.output, "hello world");
+    assert!(result.finished);
+
+    shutdown.cancel();
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(1), worker).await;
+}
