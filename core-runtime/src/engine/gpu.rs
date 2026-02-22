@@ -10,6 +10,8 @@ use std::fmt;
 use std::sync::Arc;
 use thiserror::Error;
 
+use super::gpu_allocator::{GpuAllocation, GpuAllocator};
+
 /// GPU Backend Types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GpuBackend {
@@ -98,6 +100,8 @@ pub struct GpuConfig {
     pub multi_gpu: bool,
     /// Main GPU for multi-GPU setups
     pub main_gpu: usize,
+    /// Enable GPU in sandbox
+    pub gpu_enabled: bool,
 }
 
 impl Default for GpuConfig {
@@ -110,6 +114,7 @@ impl Default for GpuConfig {
             gpu_layers: 0,
             multi_gpu: false,
             main_gpu: 0,
+            gpu_enabled: false,
         }
     }
 }
@@ -129,6 +134,7 @@ impl GpuConfig {
         Self {
             backend: GpuBackend::Cuda,
             gpu_layers: u32::MAX,
+            gpu_enabled: true,
             ..Default::default()
         }
     }
@@ -139,6 +145,7 @@ impl GpuConfig {
         Self {
             backend: GpuBackend::Metal,
             gpu_layers: u32::MAX,
+            gpu_enabled: true,
             ..Default::default()
         }
     }
@@ -172,24 +179,69 @@ pub enum GpuError {
     KernelLaunchFailed(String),
 }
 
-/// GPU Memory Handle
+/// Device placement strategy for model loading.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DevicePlacement {
+    /// Run entirely on CPU.
+    Cpu,
+    /// Run on a single GPU device, optionally offloading only some layers.
+    Gpu {
+        device_index: usize,
+        layers: Option<usize>,
+    },
+    /// Split across multiple GPU devices.
+    Split { devices: Vec<usize> },
+}
+
+impl Default for DevicePlacement {
+    fn default() -> Self {
+        Self::Cpu
+    }
+}
+
+/// GPU Memory Handle backed by a `GpuAllocator`.
 pub struct GpuMemory {
-    /// Size in bytes
     pub size: u64,
-    /// Device the memory is allocated on
     pub device: Arc<GpuDevice>,
-    /// Pointer to GPU memory (opaque)
-    pub ptr: *mut std::ffi::c_void,
+    allocation: Option<GpuAllocation>,
+    allocator: Option<Arc<dyn GpuAllocator>>,
+}
+
+impl GpuMemory {
+    /// Create a new GPU memory handle via an allocator.
+    pub fn new_allocated(
+        device: Arc<GpuDevice>,
+        allocation: GpuAllocation,
+        allocator: Arc<dyn GpuAllocator>,
+    ) -> Self {
+        Self {
+            size: allocation.size as u64,
+            device,
+            allocation: Some(allocation),
+            allocator: Some(allocator),
+        }
+    }
+
+    /// Create a CPU-only (no-op) memory handle.
+    pub fn cpu_only(size: u64, device: Arc<GpuDevice>) -> Self {
+        Self {
+            size,
+            device,
+            allocation: None,
+            allocator: None,
+        }
+    }
 }
 
 impl Drop for GpuMemory {
     fn drop(&mut self) {
-        // Actual deallocation would happen here
-        // Safety: ptr is valid and points to GPU memory
+        if let (Some(alloc), Some(allocator)) = (self.allocation.take(), &self.allocator) {
+            let _ = allocator.deallocate(&alloc);
+        }
     }
 }
 
-// Safety: GpuMemory can be sent between threads
+// Safety: The underlying allocator is Send+Sync, allocation ids are plain data.
 unsafe impl Send for GpuMemory {}
 unsafe impl Sync for GpuMemory {}
 

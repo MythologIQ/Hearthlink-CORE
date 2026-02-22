@@ -17,6 +17,7 @@ pub use speculative::{GgufDraftModel, GgufTargetModel};
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::engine::gpu::DevicePlacement;
 use crate::engine::{InferenceCapability, InferenceConfig, InferenceError};
 use crate::engine::{InferenceInput, InferenceOutput};
 
@@ -55,6 +56,9 @@ pub trait GgufModel: Send + Sync {
     ) -> Result<InferenceOutput, InferenceError>;
 
     async fn unload(&mut self) -> Result<(), InferenceError>;
+
+    /// Set device placement for this model. Default is a no-op (CPU).
+    fn set_device_placement(&mut self, _placement: DevicePlacement) {}
 
     /// Downcast support for streaming access to concrete type.
     fn as_any(&self) -> &dyn std::any::Any;

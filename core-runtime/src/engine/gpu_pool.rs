@@ -8,32 +8,33 @@
 use std::sync::Arc;
 
 use super::gpu::{GpuDevice, GpuError, GpuMemory};
+use super::gpu_allocator::GpuAllocator;
 
-/// GPU Memory Pool for efficient allocation
+/// GPU Memory Pool for efficient allocation via a `GpuAllocator`.
 pub struct GpuMemoryPool {
-    /// Device for this pool
     device: Arc<GpuDevice>,
-    /// Allocated blocks
-    blocks: Vec<GpuMemory>,
-    /// Total allocated size
+    allocator: Arc<dyn GpuAllocator>,
     total_allocated: u64,
-    /// Maximum pool size
     max_size: u64,
 }
 
 impl GpuMemoryPool {
-    /// Create a new memory pool
-    pub fn new(device: Arc<GpuDevice>, max_size: u64) -> Self {
+    /// Create a new memory pool backed by an allocator.
+    pub fn new(
+        device: Arc<GpuDevice>,
+        max_size: u64,
+        allocator: Arc<dyn GpuAllocator>,
+    ) -> Self {
         Self {
             device,
-            blocks: Vec::new(),
+            allocator,
             total_allocated: 0,
             max_size,
         }
     }
 
-    /// Allocate from pool
-    pub fn allocate(&mut self, size: u64) -> Result<&GpuMemory, GpuError> {
+    /// Allocate from pool via the underlying allocator.
+    pub fn allocate(&mut self, size: u64) -> Result<GpuMemory, GpuError> {
         if self.total_allocated + size > self.max_size {
             return Err(GpuError::OutOfMemory {
                 required: size,
@@ -41,16 +42,14 @@ impl GpuMemoryPool {
             });
         }
 
-        let memory = GpuMemory {
-            size,
-            device: self.device.clone(),
-            ptr: std::ptr::null_mut(),
-        };
-
-        self.blocks.push(memory);
+        let allocation = self.allocator.allocate(size as usize)?;
         self.total_allocated += size;
 
-        Ok(self.blocks.last().unwrap())
+        Ok(GpuMemory::new_allocated(
+            self.device.clone(),
+            allocation,
+            self.allocator.clone(),
+        ))
     }
 
     /// Get pool utilization
@@ -60,16 +59,23 @@ impl GpuMemoryPool {
         }
         self.total_allocated as f32 / self.max_size as f32
     }
+
+    /// Total bytes allocated through this pool.
+    pub fn total_allocated(&self) -> u64 {
+        self.total_allocated
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::gpu_allocator::MockGpuAllocator;
 
     #[test]
     fn test_gpu_memory_pool() {
         let device = Arc::new(GpuDevice::cpu());
-        let mut pool = GpuMemoryPool::new(device, 1024);
+        let allocator = Arc::new(MockGpuAllocator::new(4096, 0));
+        let mut pool = GpuMemoryPool::new(device, 1024, allocator);
 
         let mem = pool.allocate(512).unwrap();
         assert_eq!(mem.size, 512);
@@ -79,9 +85,10 @@ mod tests {
     #[test]
     fn test_gpu_memory_pool_out_of_memory() {
         let device = Arc::new(GpuDevice::cpu());
-        let mut pool = GpuMemoryPool::new(device, 1024);
+        let allocator = Arc::new(MockGpuAllocator::new(4096, 0));
+        let mut pool = GpuMemoryPool::new(device, 1024, allocator);
 
-        pool.allocate(512).unwrap();
+        let _mem = pool.allocate(512).unwrap();
         let result = pool.allocate(1024);
 
         assert!(matches!(result, Err(GpuError::OutOfMemory { .. })));

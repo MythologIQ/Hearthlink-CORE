@@ -8,29 +8,39 @@
 use std::sync::Arc;
 
 use super::gpu::{GpuBackend, GpuConfig, GpuDevice, GpuError, GpuMemory};
+use super::gpu_allocator::{GpuAllocator, MockGpuAllocator};
 
 /// GPU Manager - Handles device detection and memory management
 pub struct GpuManager {
-    /// Available devices
     devices: Vec<GpuDevice>,
-    /// Current configuration
     config: GpuConfig,
-    /// Active device
     active_device: Option<Arc<GpuDevice>>,
+    allocator: Arc<dyn GpuAllocator>,
 }
 
 impl GpuManager {
-    /// Create a new GPU manager
+    /// Create a new GPU manager with a default mock allocator.
     pub fn new(config: GpuConfig) -> Result<Self, GpuError> {
+        let allocator = Arc::new(MockGpuAllocator::new(
+            1024 * 1024 * 1024, // 1 GiB default
+            config.device_index,
+        ));
+        Self::with_allocator(config, allocator)
+    }
+
+    /// Create a GPU manager with a custom allocator.
+    pub fn with_allocator(
+        config: GpuConfig,
+        allocator: Arc<dyn GpuAllocator>,
+    ) -> Result<Self, GpuError> {
         let mut manager = Self {
             devices: Vec::new(),
             config,
             active_device: None,
+            allocator,
         };
-
         manager.detect_devices()?;
         manager.select_device()?;
-
         Ok(manager)
     }
 
@@ -65,7 +75,9 @@ impl GpuManager {
         let device = self
             .devices
             .iter()
-            .find(|d| d.backend == self.config.backend && d.index == self.config.device_index)
+            .find(|d| {
+                d.backend == self.config.backend && d.index == self.config.device_index
+            })
             .cloned();
 
         match device {
@@ -73,14 +85,11 @@ impl GpuManager {
                 self.active_device = Some(Arc::new(d));
                 Ok(())
             }
-            None => {
-                if self.config.backend != GpuBackend::Cpu {
-                    self.active_device = Some(Arc::new(GpuDevice::cpu()));
-                    Ok(())
-                } else {
-                    Err(GpuError::DeviceNotFound(self.config.device_index))
-                }
+            None if self.config.backend != GpuBackend::Cpu => {
+                self.active_device = Some(Arc::new(GpuDevice::cpu()));
+                Ok(())
             }
+            None => Err(GpuError::DeviceNotFound(self.config.device_index)),
         }
     }
 
@@ -108,7 +117,7 @@ impl GpuManager {
             .collect()
     }
 
-    /// Allocate GPU memory
+    /// Allocate GPU memory via the configured allocator.
     pub fn allocate_memory(&self, size: u64) -> Result<GpuMemory, GpuError> {
         let device = self
             .active_device
@@ -122,18 +131,27 @@ impl GpuManager {
             });
         }
 
-        Ok(GpuMemory {
-            size,
-            device: device.clone(),
-            ptr: std::ptr::null_mut(),
-        })
+        let allocation = self.allocator.allocate(size as usize)?;
+        Ok(GpuMemory::new_allocated(
+            device.clone(),
+            allocation,
+            self.allocator.clone(),
+        ))
     }
 
-    /// Detect CUDA devices using cudarc
+    /// Get a reference to the allocator.
+    pub fn allocator(&self) -> &Arc<dyn GpuAllocator> {
+        &self.allocator
+    }
+
+    /// Bytes currently allocated through the allocator.
+    pub fn allocated_bytes(&self) -> usize {
+        self.allocator.allocated_bytes()
+    }
+
     #[cfg(feature = "cuda")]
     fn detect_cuda_devices(&self) -> Result<Vec<GpuDevice>, GpuError> {
         use crate::engine::cuda::CudaBackend;
-
         match CudaBackend::new() {
             Ok(cuda_backend) => {
                 let devices: Vec<GpuDevice> = cuda_backend
@@ -147,11 +165,9 @@ impl GpuManager {
         }
     }
 
-    /// Detect Metal devices using metal crate
     #[cfg(all(feature = "metal", target_os = "macos"))]
     fn detect_metal_devices(&self) -> Result<Vec<GpuDevice>, GpuError> {
         use crate::engine::metal::MetalBackend;
-
         match MetalBackend::new() {
             Ok(metal_backend) => {
                 let devices: Vec<GpuDevice> = metal_backend
