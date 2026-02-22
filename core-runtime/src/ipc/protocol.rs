@@ -123,6 +123,25 @@ impl InferenceRequest {
     }
 }
 
+/// Structured error classification for inference responses.
+///
+/// Callers use this to distinguish admission rejections (retriable after resources
+/// free up) from hard execution failures (not retriable without change).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InferenceErrorCode {
+    /// Request rejected before inference started (memory or concurrency limit).
+    AdmissionRejected,
+    /// Inference failed during execution.
+    ExecutionFailed,
+    /// Model is not loaded.
+    ModelNotLoaded,
+    /// Input validation failed.
+    InputInvalid,
+    /// Server is shutting down.
+    ShuttingDown,
+}
+
 /// Inference response to caller.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InferenceResponse {
@@ -133,6 +152,9 @@ pub struct InferenceResponse {
     pub tokens_generated: usize,
     pub finished: bool,
     pub error: Option<String>,
+    /// Structured error code — present only when `error` is Some.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_code: Option<InferenceErrorCode>,
 }
 
 impl InferenceResponse {
@@ -143,6 +165,7 @@ impl InferenceResponse {
             tokens_generated,
             finished,
             error: None,
+            error_code: None,
         }
     }
 
@@ -153,6 +176,19 @@ impl InferenceResponse {
             tokens_generated: 0,
             finished: true,
             error: Some(error),
+            error_code: Some(InferenceErrorCode::ExecutionFailed),
+        }
+    }
+
+    /// Create an error response with an explicit error code.
+    pub fn error_coded(request_id: RequestId, error: String, code: InferenceErrorCode) -> Self {
+        Self {
+            request_id,
+            output: String::new(),
+            tokens_generated: 0,
+            finished: true,
+            error: Some(error),
+            error_code: Some(code),
         }
     }
 }

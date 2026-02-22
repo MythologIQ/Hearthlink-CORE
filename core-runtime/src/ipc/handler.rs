@@ -7,8 +7,9 @@ use tokio_util::sync::CancellationToken;
 use super::auth::{AuthError, SessionAuth, SessionToken};
 use super::health_handler::HealthHandler;
 use super::protocol::{
-    decode_message, encode_message, InferenceRequest, InferenceResponse, IpcMessage, ModelInfo,
-    ModelsListResponse, ProtocolError, ProtocolVersion, StreamChunk, WarmupResponse,
+    decode_message, encode_message, InferenceErrorCode, InferenceRequest, InferenceResponse,
+    IpcMessage, ModelInfo, ModelsListResponse, ProtocolError, ProtocolVersion, StreamChunk,
+    WarmupResponse,
 };
 use crate::engine::InferenceEngine;
 #[cfg(feature = "gguf")]
@@ -216,15 +217,20 @@ impl IpcHandler {
         let _guard = match self.shutdown.track() {
             Some(g) => g,
             None => {
-                return InferenceResponse::error(
+                return InferenceResponse::error_coded(
                     request.request_id,
                     "Server is shutting down".into(),
+                    InferenceErrorCode::ShuttingDown,
                 );
             }
         };
 
         if let Err(e) = request.validate() {
-            return InferenceResponse::error(request.request_id, e.to_string());
+            return InferenceResponse::error_coded(
+                request.request_id,
+                e.to_string(),
+                InferenceErrorCode::InputInvalid,
+            );
         }
 
         // Enqueue and await result from worker (queue is sole execution path)
@@ -240,10 +246,14 @@ impl IpcHandler {
 
         let (_id, rx) = match enqueue_result {
             Ok(r) => r,
-            Err(e) => return InferenceResponse::error(request.request_id, e.to_string()),
+            Err(e) => return InferenceResponse::error_coded(
+                request.request_id,
+                e.to_string(),
+                InferenceErrorCode::AdmissionRejected,
+            ),
         };
 
-        // Await the worker's response
+        // Await the worker's response — classify the error code from message content.
         match rx.await {
             Ok(Ok(result)) => InferenceResponse::success(
                 request.request_id,
@@ -251,10 +261,14 @@ impl IpcHandler {
                 result.tokens_generated,
                 result.finished,
             ),
-            Ok(Err(e)) => InferenceResponse::error(request.request_id, e),
-            Err(_) => InferenceResponse::error(
+            Ok(Err(e)) => {
+                let code = classify_worker_error(&e);
+                InferenceResponse::error_coded(request.request_id, e, code)
+            }
+            Err(_) => InferenceResponse::error_coded(
                 request.request_id,
                 "worker dropped response channel".into(),
+                InferenceErrorCode::ExecutionFailed,
             ),
         }
     }

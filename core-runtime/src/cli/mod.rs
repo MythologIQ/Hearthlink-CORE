@@ -15,8 +15,10 @@
 //! GG-CORE status   # Show system status and statistics
 //! ```
 
+pub mod config_cmd;
 pub mod health;
 pub mod ipc_client;
+pub mod models_cmd;
 pub mod status;
 
 pub use health::{run_health, run_liveness, run_readiness};
